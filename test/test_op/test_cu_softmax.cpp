@@ -1,7 +1,7 @@
 // #include <cuda_runtime_api.h>
 // #include <glog/logging.h>
 // #include <gtest/gtest.h>
-// #include "../source/op/kernels/kernels_interface.h"
+// #include "op/kernels/kernels_interface.h"
 // #include "../utils.cuh"
 // #include "base/buffer.h"
 // TEST(test_softmax_cu, softmax_nostream) {

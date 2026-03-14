@@ -5,7 +5,7 @@
 #include <model/config.h>
 #include <op/matmul.h>
 #include <sys/mman.h>
-#include "../source/op/kernels/kernels_interface.h"
+#include "op/kernels/kernels_interface.h"
 #include "base/buffer.h"
 
 TEST(test_load, load_model_config) {
