@@ -8,7 +8,7 @@ Version: 1.0
 import torch
 import torch.nn as nn
 from typing import Tuple
-from config import Qwen3Config
+from qwen3_config import Qwen3Config
 '''
   RMSNorm
 '''

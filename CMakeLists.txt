@@ -115,4 +115,4 @@ endif()
 
 set_target_properties(llama PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 add_subdirectory(test)
-add_subdirectory(demo)
+add_subdirectory(models)

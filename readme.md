@@ -51,9 +51,9 @@ https://tvle9mq8jh.feishu.cn/docx/AGb0dpqwfohQ9oxx4QycqbCjnJh
 
 ## 模型导出
 ```shell
-python3 tools/llama/export.py llama2_7b.bin --meta-llama path/to/llama/model/7B
+python3 models/llama/export_llama.py llama2_7b.bin --meta-llama path/to/llama/model/7B
 # 使用--hf标签从hugging face中加载模型， 指定--version3可以导出量化模型
-# 其他使用方法请看export.py中的命令行参数实例
+# 其他使用方法请看export_llama.py中的命令行参数实例
 ```
 
 
@@ -70,7 +70,7 @@ python3 tools/llama/export.py llama2_7b.bin --meta-llama path/to/llama/model/7B
 
 ## 生成文本的方法
 ```shell
-./llama_infer llama2_7b.bin tokenizer.model
+./models/llama_infer llama2_7b.bin tokenizer.model
 
 ```
 
@@ -84,7 +84,7 @@ huggingface-cli download --resume-download meta-llama/Llama-3.2-1B --local-dir m
 ```
 - 导出模型：
 ```shell
-python3 tools/llama3/export.py Llama-3.2-1B.bin --hf=meta-llama/Llama-3.2-1B
+python3 models/llama3/export_llama3.py Llama-3.2-1B.bin --hf=meta-llama/Llama-3.2-1B
 ```
 - 编译：
 ```shell
@@ -96,9 +96,9 @@ make -j16
 ```
 - 运行：
 ```shell
-./build/demo/llama_infer Llama-3.2-1B.bin meta-llama/Llama-3.2-1B/tokenizer.json
+./build/models/llama_infer Llama-3.2-1B.bin meta-llama/Llama-3.2-1B/tokenizer.json
 # 和 huggingface 推理的结果进行对比
-python3 demo/python/hf/llama3_infer.py
+python3 models/llama3/hf_infer_llama3.py
 ```
 
 # Qwen2.5 推理
@@ -111,7 +111,7 @@ huggingface-cli download --resume-download Qwen/Qwen2.5-0.5B --local-dir Qwen/Qw
 ```
 - 导出模型：
 ```shell
-python3 tools/qwen2/export.py Qwen2.5-0.5B.bin --hf=Qwen/Qwen2.5-0.5B
+python3 models/qwen2/export_qwen2.py Qwen2.5-0.5B.bin --hf=Qwen/Qwen2.5-0.5B
 ```
 - 编译：
 ```shell
@@ -123,13 +123,13 @@ make -j16
 ```
 - 运行：
 ```shell
-./build/demo/qwen_infer Qwen2.5-0.5B.bin Qwen/Qwen2.5-0.5B/tokenizer.json
+./build/models/qwen_infer Qwen2.5-0.5B.bin Qwen/Qwen2.5-0.5B/tokenizer.json
 # 和 huggingface 推理的结果进行对比
-python3 demo/python/hf/qwen2_infer.py
+python3 models/qwen2/hf_infer_qwen2.py
 ```
 
 ## Qwen3推理
 和上面同理，我们先从huggingface仓库中将模型下载到本地。
-1. tools/qwen3/export_pth.py中导出为pth，模型的输入`model_name`和输出地址`output_file`依次需要填写；
-2. 导出pth格式的模型后，再用同文件夹下的export_bin.py导出qwen.bin；
+1. models/qwen3/export_qwen3_pth.py中导出为pth，模型的输入`model_name`和输出地址`output_file`依次需要填写；
+2. 导出pth格式的模型后，再用同文件夹下的export_qwen3_bin.py导出qwen.bin；
 3. 用CMake选项`QWEN3_SUPPORT`重新编译项目，其他步骤就都是一样的了。

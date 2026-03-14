@@ -10,8 +10,8 @@ from tqdm import tqdm
 from pathlib import Path
 from transformers import AutoTokenizer
 
-from config import Qwen3Config
-from model import Qwen3ForCausalLM
+from qwen3_config import Qwen3Config
+from qwen3_model import Qwen3ForCausalLM
 
 def check_device_availability(device: torch.device):
     if device == "cuda":

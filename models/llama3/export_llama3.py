@@ -28,11 +28,11 @@ import torch
 from torch import nn
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-TOOLS_DIR = SCRIPT_DIR.parent
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
+MODELS_DIR = SCRIPT_DIR.parent
+if str(MODELS_DIR) not in sys.path:
+    sys.path.insert(0, str(MODELS_DIR))
 
-from shared.qwen2_model import ModelArgs, Transformer
+from shared.llama_model import ModelArgs, Transformer
 
 
 # -----------------------------------------------------------------------------
@@ -107,13 +107,10 @@ def legacy_export(model, filepath):
         serialize_fp32(out_file, layer.attention_norm.weight)
     for layer in model.layers:
         serialize_fp32(out_file, layer.attention.wq.weight)
-        serialize_fp32(out_file, layer.attention.wq.bias)
     for layer in model.layers:
         serialize_fp32(out_file, layer.attention.wk.weight)
-        serialize_fp32(out_file, layer.attention.wk.bias)
     for layer in model.layers:
         serialize_fp32(out_file, layer.attention.wv.weight)
-        serialize_fp32(out_file, layer.attention.wv.bias)
     for layer in model.layers:
         serialize_fp32(out_file, layer.attention.wo.weight)
     # ffn weights
@@ -546,7 +543,6 @@ def load_hf_model(model_path):
 
     # load HF model
     hf_model = AutoModelForCausalLM.from_pretrained(model_path)
-    print(hf_model)
     hf_dict = hf_model.state_dict()
 
     # convert LlamaConfig to ModelArgs
@@ -580,7 +576,6 @@ def load_hf_model(model_path):
 
     # create a new Transformer object and set weights
     model = Transformer(config)
-    print(model)
 
     model.tok_embeddings.weight = nn.Parameter(hf_dict['model.embed_tokens.weight'])
     model.norm.weight = nn.Parameter(hf_dict['model.norm.weight'])
@@ -593,11 +588,8 @@ def load_hf_model(model_path):
         i = layer.layer_id
         layer.attention_norm.weight = nn.Parameter(hf_dict[f'model.layers.{i}.input_layernorm.weight'])
         layer.attention.wq.weight = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.q_proj.weight'])
-        layer.attention.wq.bias = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.q_proj.bias'])
         layer.attention.wk.weight = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.k_proj.weight'])
-        layer.attention.wk.bias = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.k_proj.bias'])
         layer.attention.wv.weight = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.v_proj.weight'])
-        layer.attention.wv.bias = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.v_proj.bias'])
         layer.attention.wo.weight = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.o_proj.weight'])
         layer.ffn_norm.weight = nn.Parameter(hf_dict[f'model.layers.{i}.post_attention_layernorm.weight'])
         layer.feed_forward.w1.weight = nn.Parameter(hf_dict[f'model.layers.{i}.mlp.gate_proj.weight'])

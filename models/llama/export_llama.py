@@ -28,9 +28,9 @@ import torch
 from torch import nn
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-TOOLS_DIR = SCRIPT_DIR.parent
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
+MODELS_DIR = SCRIPT_DIR.parent
+if str(MODELS_DIR) not in sys.path:
+    sys.path.insert(0, str(MODELS_DIR))
 
 from shared.llama_model import ModelArgs, Transformer
 
@@ -568,7 +568,7 @@ def load_hf_model(model_path):
         config.dim = hf_model.config.hidden_size
         config.n_layers = hf_model.config.num_hidden_layers
         config.n_heads = hf_model.config.num_attention_heads
-        config.n_kv_heads = hf_model.config.num_key_value_heads
+        config.n_kv_heads = hf_model.config.num_attention_heads
         config.vocab_size = hf_model.config.vocab_size
         config.hidden_dim = hf_model.config.intermediate_size
         config.norm_eps = hf_model.config.rms_norm_eps
@@ -587,8 +587,11 @@ def load_hf_model(model_path):
     for layer in model.layers:
         i = layer.layer_id
         layer.attention_norm.weight = nn.Parameter(hf_dict[f'model.layers.{i}.input_layernorm.weight'])
-        layer.attention.wq.weight = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.q_proj.weight'])
-        layer.attention.wk.weight = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.k_proj.weight'])
+        layer.attention.wq.weight = nn.Parameter(permute_reverse(hf_dict[f'model.layers.{i}.self_attn.q_proj.weight']))
+        layer.attention.wk.weight = nn.Parameter(permute_reverse(
+            hf_dict[f'model.layers.{i}.self_attn.k_proj.weight'],
+            n_heads=config.n_kv_heads,
+            dim1=config.dim // config.n_heads * config.n_kv_heads))
         layer.attention.wv.weight = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.v_proj.weight'])
         layer.attention.wo.weight = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.o_proj.weight'])
         layer.ffn_norm.weight = nn.Parameter(hf_dict[f'model.layers.{i}.post_attention_layernorm.weight'])
