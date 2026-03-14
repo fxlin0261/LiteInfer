@@ -30,9 +30,6 @@ struct LLamaLayers {
     void to_cuda(std::shared_ptr<kernel::CudaConfig> config);
 };
 
-using LLama2Layers = LLamaLayers;
-using LLama3Layers = LLamaLayers;
-
 class LLamaModel : public Model {
 public:
     explicit LLamaModel(base::TokenizerType tokenizer_type, std::string token_path,
@@ -76,7 +73,5 @@ private:
     std::unique_ptr<LLamaLayers> llama_layers_;
 };
 
-using LLama2Model = LLamaModel;
-using LLama3Model = LLamaModel;
 }  // namespace model
 #endif

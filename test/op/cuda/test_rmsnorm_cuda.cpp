@@ -5,6 +5,7 @@
 #include "support/cuda_test_utils.cuh"
 #include "base/buffer.h"
 
+// 测试默认流下，CUDA RMSNorm 和 CPU 结果是否一致。
 TEST(test_rmsnorm_cu, rmsnorm_nostream) {
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -38,6 +39,7 @@ TEST(test_rmsnorm_cu, rmsnorm_nostream) {
   }
 }
 
+// 测试按维度做 RMSNorm 时，输出和原地结果是否都正确。
 TEST(test_rmsnorm_cu_dim, rmsnorm_stream) {
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -103,6 +105,7 @@ TEST(test_rmsnorm_cu_dim, rmsnorm_stream) {
   }
 }
 
+// 测试自定义流下，CUDA RMSNorm 和 CPU 结果是否一致。
 TEST(test_rmsnorm_cu, rmsnorm_stream) {
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -140,6 +143,7 @@ TEST(test_rmsnorm_cu, rmsnorm_stream) {
   cudaStreamDestroy(stream);
 }
 
+// 测试更大数据量下，自定义流的 RMSNorm 是否仍然正确。
 TEST(test_rmsnorm_cu, rmsnorm_stream2) {
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();

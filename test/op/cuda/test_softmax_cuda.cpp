@@ -4,6 +4,8 @@
 // #include "op/kernels/kernels_interface.h"
 // #include "support/cuda_test_utils.cuh"
 // #include "base/buffer.h"
+//
+// // 测试默认流下，CUDA softmax 和 CPU 结果是否一致。
 // TEST(test_softmax_cu, softmax_nostream) {
 //   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 //   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -31,6 +33,7 @@
 // }
 //
 //
+// // 测试较大输入下，自定义流的 softmax 是否正确。
 // TEST(test_softmax_cu, softmax_stream) {
 //   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 //   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -60,6 +63,7 @@
 // }
 //
 //
+// // 测试随机小数输入下，自定义流的 softmax 是否正确。
 // TEST(test_softmax_cu, softmax_stream2) {
 //   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 //   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -90,6 +94,7 @@
 // }
 //
 //
+// // 测试单个元素输入时，softmax 是否也能正确处理。
 // TEST(test_softmax_cu, softmax_stream3) {
 //   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 //   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();

@@ -4,6 +4,8 @@
 //#include "op/kernels/kernels_interface.h"
 //#include "support/cuda_test_utils.cuh"
 //#include "base/buffer.h"
+//
+//// 测试默认流下，CUDA RoPE 和 CPU 结果是否一致。
 //TEST(test_rope_cu, rope_nostream) {
 //  auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 //  auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -47,6 +49,7 @@
 //  }
 //}
 //
+//// 测试另一组参数下，默认流的 CUDA RoPE 是否正确。
 //TEST(test_rope_cu, rope_nostream2) {
 //  auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 //  auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -90,6 +93,7 @@
 //  }
 //}
 //
+//// 测试自定义流下，CUDA RoPE 和 CPU 结果是否一致。
 //TEST(test_rope_cu, rope_stream1) {
 //  auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 //  auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();

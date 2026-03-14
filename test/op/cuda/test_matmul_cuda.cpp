@@ -7,6 +7,8 @@
 #include "support/cuda_test_utils.cuh"
 #include "base/buffer.h"
 using namespace kernel;
+
+// 测试自定义流下，CUDA matmul 和 CPU 结果是否一致。
 TEST(test_matmul_cu, matmul_linear_stream5) {
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -45,6 +47,7 @@ TEST(test_matmul_cu, matmul_linear_stream5) {
   }
 }
 
+// 测试一组简单输入下，CPU matmul 的结果是否符合预期。
 TEST(test_matmul_cu, matmul_linear_course) {
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -75,6 +78,7 @@ TEST(test_matmul_cu, matmul_linear_course) {
   ASSERT_EQ(out_cpu.index<float>(2), 6);
 }
 
+// 测试一组简单输入下，CUDA matmul 的结果是否符合预期。
 TEST(test_matmul_cu, matmul_linear_course_cuda) {
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();

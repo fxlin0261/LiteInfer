@@ -4,6 +4,7 @@
 #include "op/kernels/kernels_interface.h"
 #include "support/cuda_test_utils.cuh"
 #include "base/buffer.h"
+// 测试默认流下，缩放操作后的结果是否正确。
 // TEST(test_scale_cu, scale1_nostream) {
 //   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 //   int32_t size = 32 * 151;
@@ -19,6 +20,7 @@
 //   }
 // }
 //
+// 测试自定义流场景下，缩放操作后的结果是否正确。
 // TEST(test_scale_cu, scale1_stream) {
 //   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 //   int32_t size = 32 * 151;

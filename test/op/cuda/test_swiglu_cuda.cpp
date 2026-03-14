@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 #include "op/kernels/kernels_interface.h"
 #include "base/buffer.h"
+
+// 测试默认流下，CUDA SwiGLU 和 CPU 结果是否一致。
 TEST(test_swiglu_cu, swiglu_nostream) {
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
@@ -40,6 +42,7 @@ TEST(test_swiglu_cu, swiglu_nostream) {
   }
 }
 
+// 测试自定义流下，CUDA SwiGLU 和 CPU 结果是否一致。
 TEST(test_swiglu_cu, swiglu_stream) {
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();

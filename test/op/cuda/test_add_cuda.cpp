@@ -1,76 +1,80 @@
 #include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "base/buffer.h"
 #include "op/kernels/kernels_interface.h"
 #include "support/cuda_test_utils.cuh"
-#include "base/buffer.h"
+
+// 测试默认流下的 CUDA 加法是否正确。
 TEST(test_add_cu, add1_nostream) {
-  auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
+    auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 
-  int32_t size = 32 * 151;
+    int32_t size = 32 * 151;
 
-  tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-  tensor::Tensor t2(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-  tensor::Tensor out(base::DataType::kDataTypeFp32, size, true, alloc_cu);
+    tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
+    tensor::Tensor t2(base::DataType::kDataTypeFp32, size, true, alloc_cu);
+    tensor::Tensor out(base::DataType::kDataTypeFp32, size, true, alloc_cu);
 
-  set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.f);
-  set_value_cu(static_cast<float*>(t2.get_buffer()->ptr()), size, 3.f);
+    set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.f);
+    set_value_cu(static_cast<float*>(t2.get_buffer()->ptr()), size, 3.f);
 
-  kernel::get_add_kernel(base::DeviceType::kDeviceCUDA)(t1, t2, out, nullptr);
-  cudaDeviceSynchronize();
-  float* output = new float[size];
-  cudaMemcpy(output, out.ptr<float>(), size * sizeof(float), cudaMemcpyDeviceToHost);
-  for (int i = 0; i < size; ++i) {
-    ASSERT_EQ(output[i], 5.f);
-  }
+    kernel::get_add_kernel(base::DeviceType::kDeviceCUDA)(t1, t2, out, nullptr);
+    cudaDeviceSynchronize();
+    float* output = new float[size];
+    cudaMemcpy(output, out.ptr<float>(), size * sizeof(float), cudaMemcpyDeviceToHost);
+    for (int i = 0; i < size; ++i) {
+        ASSERT_EQ(output[i], 5.f);
+    }
 
-  delete[] output;
+    delete[] output;
 }
 
+// 测试传入自定义流时，CUDA 加法是否也能正确执行。
 TEST(test_add_cu, add1_stream) {
-  auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
+    auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 
-  int32_t size = 32 * 151;
+    int32_t size = 32 * 151;
 
-  tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-  tensor::Tensor t2(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-  tensor::Tensor out(base::DataType::kDataTypeFp32, size, true, alloc_cu);
+    tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
+    tensor::Tensor t2(base::DataType::kDataTypeFp32, size, true, alloc_cu);
+    tensor::Tensor out(base::DataType::kDataTypeFp32, size, true, alloc_cu);
 
-  set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.f);
-  set_value_cu(static_cast<float*>(t2.get_buffer()->ptr()), size, 3.f);
+    set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.f);
+    set_value_cu(static_cast<float*>(t2.get_buffer()->ptr()), size, 3.f);
 
-  cudaStream_t stream;
-  cudaStreamCreate(&stream);
-  kernel::get_add_kernel(base::DeviceType::kDeviceCUDA)(t1, t2, out, stream);
-  cudaDeviceSynchronize();
-  float* output = new float[size];
-  cudaMemcpy(output, out.ptr<float>(), size * sizeof(float), cudaMemcpyDeviceToHost);
-  for (int i = 0; i < size; ++i) {
-    ASSERT_EQ(output[i], 5.f);
-  }
-  cudaStreamDestroy(stream);
-  delete[] output;
+    cudaStream_t stream;
+    cudaStreamCreate(&stream);
+    kernel::get_add_kernel(base::DeviceType::kDeviceCUDA)(t1, t2, out, stream);
+    cudaDeviceSynchronize();
+    float* output = new float[size];
+    cudaMemcpy(output, out.ptr<float>(), size * sizeof(float), cudaMemcpyDeviceToHost);
+    for (int i = 0; i < size; ++i) {
+        ASSERT_EQ(output[i], 5.f);
+    }
+    cudaStreamDestroy(stream);
+    delete[] output;
 }
 
+// 测试更大数据量和小数相加时，结果是否基本正确。
 TEST(test_add_cu, add_align1) {
-  auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
+    auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
 
-  int32_t size = 32 * 151 * 13;
+    int32_t size = 32 * 151 * 13;
 
-  tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-  tensor::Tensor t2(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-  tensor::Tensor out(base::DataType::kDataTypeFp32, size, true, alloc_cu);
+    tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
+    tensor::Tensor t2(base::DataType::kDataTypeFp32, size, true, alloc_cu);
+    tensor::Tensor out(base::DataType::kDataTypeFp32, size, true, alloc_cu);
 
-  set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.1f);
-  set_value_cu(static_cast<float*>(t2.get_buffer()->ptr()), size, 3.3f);
+    set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.1f);
+    set_value_cu(static_cast<float*>(t2.get_buffer()->ptr()), size, 3.3f);
 
-  kernel::get_add_kernel(base::DeviceType::kDeviceCUDA)( t1, t2, out, nullptr);
-  cudaDeviceSynchronize();
-  float* output = new float[size];
-  cudaMemcpy(output, out.ptr<float>(), size * sizeof(float), cudaMemcpyDeviceToHost);
-  for (int i = 0; i < size; ++i) {
-    ASSERT_NEAR(output[i], 5.4f, 0.1f);
-  }
+    kernel::get_add_kernel(base::DeviceType::kDeviceCUDA)(t1, t2, out, nullptr);
+    cudaDeviceSynchronize();
+    float* output = new float[size];
+    cudaMemcpy(output, out.ptr<float>(), size * sizeof(float), cudaMemcpyDeviceToHost);
+    for (int i = 0; i < size; ++i) {
+        ASSERT_NEAR(output[i], 5.4f, 0.1f);
+    }
 
-  delete[] output;
+    delete[] output;
 }
