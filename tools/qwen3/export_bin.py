@@ -8,7 +8,7 @@ import struct
 import torch
 import argparse
 
-from load import model_load
+from export_pth import model_load
 
 
 def serialize_fp32(file, tensor):
