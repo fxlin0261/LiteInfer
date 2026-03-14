@@ -101,7 +101,7 @@ void Qwen2Layers::to_cuda(std::shared_ptr<kernel::CudaConfig> config) {
 
 Qwen2Model::Qwen2Model(base::TokenizerType tokenizer_type, std::string token_path,
                        std::string model_path, bool is_quant_model)
-    : Model(tokenizer_type, base::ModelType::kModelTypeLLama2, std::move(token_path),
+    : Model(tokenizer_type, base::ModelType::kModelTypeQwen2, std::move(token_path),
             std::move(model_path), is_quant_model) {}
 
 base::Status Qwen2Model::init(base::DeviceType device_type) {

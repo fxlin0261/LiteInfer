@@ -48,7 +48,12 @@ enum class DataType : uint8_t {
 
 enum class ModelType : uint8_t {
     kModelTypeUnknown = 0,
-    kModelTypeLLama2 = 1,
+    // Llama 2 and Llama 3 share the same runtime implementation in this project.
+    kModelTypeLLama = 1,
+    kModelTypeLLama2 = kModelTypeLLama,
+    kModelTypeLLama3 = kModelTypeLLama,
+    kModelTypeQwen2 = 2,
+    kModelTypeQwen3 = 3,
 };
 
 inline size_t DataTypeSize(DataType data_type) {

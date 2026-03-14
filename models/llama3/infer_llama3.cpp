@@ -2,13 +2,23 @@
 #include <base/tick.h>
 #include <glog/logging.h>
 #include "model/llama3.h"
-int32_t generate(const model::LLama2Model& model, const std::string& sentence, int total_steps,
+
+namespace {
+#if defined(LLAMA3_SUPPORT)
+constexpr auto kLlamaTokenizerType = base::TokenizerType::kEncodeBpe;
+#else
+constexpr auto kLlamaTokenizerType = base::TokenizerType::kEncodeSpe;
+#endif
+}  // namespace
+
+int32_t generate(const model::LLamaModel& model, const std::string& sentence, int total_steps,
                  bool need_output = false) {
-    // 这里先把文本 sentence 编码成 token id 序列。prompt_len 是提示词长度。如果一个 token 都没有，程序直接报错退出
+    // 这里先把文本 sentence 编码成 token id 序列。prompt_len 是提示词长度。如果一个 token
+    // 都没有，程序直接报错退出
     auto tokens = model.encode(sentence);
     int32_t prompt_len = tokens.size();
     LOG_IF(FATAL, tokens.empty()) << "The tokens is empty.";
-    
+
     // pos：当前处理到第几个位置
     // next：模型当前预测出的下一个 token
     // is_prompt：现在是不是还处于“喂提示词”阶段
@@ -16,8 +26,6 @@ int32_t generate(const model::LLama2Model& model, const std::string& sentence, i
     int32_t next = -1;
     bool is_prompt = true;
     const auto& prompt_embedding = model.embedding(tokens);
-    // 是把整段 prompt 的 token 先查 embedding
-    // 也就是说，提示词阶段不需要每次重新查整段 embedding，后面可以直接取对应位置的数据来送进模型
     tensor::Tensor pos_tensor = model.get_buffer(model::ModelBufferType::kInputPos);
 
     std::vector<int32_t> words;
@@ -60,8 +68,7 @@ int main(int argc, char* argv[]) {
     const char* checkpoint_path = argv[1];  // e.g. out/model.bin
     const char* tokenizer_path = argv[2];
 
-    model::LLama2Model model(base::TokenizerType::kEncodeSpe, tokenizer_path, checkpoint_path,
-                             false);
+    model::LLamaModel model(kLlamaTokenizerType, tokenizer_path, checkpoint_path, false);
     auto init_status = model.init(base::DeviceType::kDeviceCUDA);
     if (!init_status) {
         LOG(FATAL) << "The model init failed, the error code is: " << init_status.get_err_code();

@@ -8,7 +8,7 @@
 #include "op/swiglu.h"
 namespace model {
 
-struct LLama2Layers {
+struct LLamaLayers {
     std::shared_ptr<op::Layer> add_layer_;
     std::shared_ptr<op::Layer> rope_layer_;
     std::shared_ptr<op::Layer> swiglu_layer_;
@@ -30,10 +30,13 @@ struct LLama2Layers {
     void to_cuda(std::shared_ptr<kernel::CudaConfig> config);
 };
 
-class LLama2Model : public Model {
+using LLama2Layers = LLamaLayers;
+using LLama3Layers = LLamaLayers;
+
+class LLamaModel : public Model {
 public:
-    explicit LLama2Model(base::TokenizerType tokenizer_type, std::string token_path,
-                         std::string model_path, bool is_quant_model);
+    explicit LLamaModel(base::TokenizerType tokenizer_type, std::string token_path,
+                        std::string model_path, bool is_quant_model);
 
     base::Status init(base::DeviceType device_type) override;
 
@@ -70,7 +73,10 @@ private:
 
 private:
     std::shared_ptr<kernel::CudaConfig> cuda_config_;
-    std::unique_ptr<LLama2Layers> llama_layers_;
+    std::unique_ptr<LLamaLayers> llama_layers_;
 };
+
+using LLama2Model = LLamaModel;
+using LLama3Model = LLamaModel;
 }  // namespace model
 #endif
