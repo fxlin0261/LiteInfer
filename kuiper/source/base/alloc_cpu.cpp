@@ -11,22 +11,21 @@ CPUDeviceAllocator::CPUDeviceAllocator() : DeviceAllocator(DeviceType::kDeviceCP
 }
 
 void* CPUDeviceAllocator::allocate(size_t byte_size) const {
-  if (!byte_size) {
-    return nullptr;
-  }
+    if (!byte_size) {
+        return nullptr;
+    }
 #ifdef KUIPER_HAVE_POSIX_MEMALIGN
-  void* data = nullptr;
-  const size_t alignment = (byte_size >= size_t(1024)) ? size_t(32) : size_t(16);
-  int status = posix_memalign((void**)&data,
-                              ((alignment >= sizeof(void*)) ? alignment : sizeof(void*)),
-                              byte_size);
-  if (status != 0) {
-    return nullptr;
-  }
-  return data;
+    void* data = nullptr;
+    const size_t alignment = (byte_size >= size_t(1024)) ? size_t(32) : size_t(16);
+    int status = posix_memalign(
+        (void**)&data, ((alignment >= sizeof(void*)) ? alignment : sizeof(void*)), byte_size);
+    if (status != 0) {
+        return nullptr;
+    }
+    return data;
 #else
-  void* data = malloc(byte_size);
-  return data;
+    void* data = malloc(byte_size);
+    return data;
 #endif
 }
 
