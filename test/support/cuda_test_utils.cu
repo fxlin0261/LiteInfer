@@ -1,5 +1,5 @@
 #include <glog/logging.h>
-#include "utils.cuh"
+#include "support/cuda_test_utils.cuh"
 __global__ void test_function_cu(float* cu_arr, int32_t size, float value) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid >= size) {

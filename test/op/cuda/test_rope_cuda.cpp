@@ -2,7 +2,7 @@
 //#include <glog/logging.h>
 //#include <gtest/gtest.h>
 //#include "op/kernels/kernels_interface.h"
-//#include "../utils.cuh"
+//#include "support/cuda_test_utils.cuh"
 //#include "base/buffer.h"
 //TEST(test_rope_cu, rope_nostream) {
 //  auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();

@@ -1,7 +1,7 @@
 #include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "../utils.cuh"
+#include "support/cuda_test_utils.cuh"
 #include "base/buffer.h"
 
 namespace {

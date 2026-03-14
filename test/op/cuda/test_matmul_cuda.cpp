@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include "op/kernels/cpu/matmul_kernel.h"
 #include "op/kernels/kernels_interface.h"
-#include "../utils.cuh"
+#include "support/cuda_test_utils.cuh"
 #include "base/buffer.h"
 using namespace kernel;
 TEST(test_matmul_cu, matmul_linear_stream5) {

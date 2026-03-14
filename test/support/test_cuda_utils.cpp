@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <cuda_runtime_api.h>
-#include "../utils.cuh"
+#include "support/cuda_test_utils.cuh"
 
 namespace {
 
