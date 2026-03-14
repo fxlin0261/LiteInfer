@@ -17,14 +17,14 @@ https://tvle9mq8jh.feishu.cn/docx/AGb0dpqwfohQ9oxx4QycqbCjnJh
 **如果你对大模型推理感兴趣，想要深入了解并掌握相关技术，想在校招、秋招面试当中脱颖而出，那么这门《动手自制大模型推理框架》课程绝对不容错过。快来加入我们，一起开启学习之旅吧！
     感兴趣的同学欢迎扫一扫课程下方二维码或者添加微信 lyrry1997 参加课程**
 
-<img src="imgs/me.jpg"  />
+<img src="docs/assets/me.jpg"  />
 
 
 
 ## 《动手自制大模型推理框架》课程项目运行效果
 > LLama1.1b fp32模型，视频无加速，运行平台为Nvidia 3060 laptop，速度为60.34 token/s
 
-![](./imgs/do.gif)
+![](./docs/assets/do.gif)
 
 
 
@@ -98,7 +98,7 @@ make -j16
 ```shell
 ./build/demo/llama_infer Llama-3.2-1B.bin meta-llama/Llama-3.2-1B/tokenizer.json
 # 和 huggingface 推理的结果进行对比
-python3 hf_infer/llama3_infer.py
+python3 demo/python/hf/llama3_infer.py
 ```
 
 # Qwen2.5 推理
@@ -125,7 +125,7 @@ make -j16
 ```shell
 ./build/demo/qwen_infer Qwen2.5-0.5B.bin Qwen/Qwen2.5-0.5B/tokenizer.json
 # 和 huggingface 推理的结果进行对比
-python3 hf_infer/qwen2_infer.py
+python3 demo/python/hf/qwen2_infer.py
 ```
 
 ## Qwen3推理
