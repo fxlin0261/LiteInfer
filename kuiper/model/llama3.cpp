@@ -134,7 +134,8 @@ base::Status LLama2Model::init(base::DeviceType device_type) {
         return read_status;
     }
     // 这一步是分配运行时缓冲区，不是读权重。权重是模型参数，已经由前面的 gen_model_from_file() 处理
-    // 而 init_mem() 更像是在给推理过程准备工作区，比如中间结果、KV cache、logits buffer、sin/cos cache 这些
+    // 而 init_mem() 更像是在给推理过程准备工作区，比如中间结果、KV cache、logits buffer、sin/cos
+    // cache 这些
     init_mem();
     // 是在预计算 RoPE 位置编码 需要的 sin / cos 表。
     // 原因是 Transformer 在每个 token、每个 head 上都要用到旋转位置编码，
@@ -150,8 +151,8 @@ base::Status LLama2Model::init(base::DeviceType device_type) {
                                       get_buffer(ModelBufferType::kSinCache),
                                       get_buffer(ModelBufferType::kCosCache), cuda_config_->stream);
     }
-    // 这里创建的是采样器。当前实现用的是 ArgmaxSampler，也就是每次从 logits 里直接选概率最大的 token。
-    // 所以这个项目目前默认不是 top-k / top-p 随机采样，而是更确定性的 greedy decoding
+    // 这里创建的是采样器。当前实现用的是 ArgmaxSampler，也就是每次从 logits 里直接选概率最大的
+    // token。 所以这个项目目前默认不是 top-k / top-p 随机采样，而是更确定性的 greedy decoding
     sampler_ = std::make_unique<sampler::ArgmaxSampler>(device_type_);
     return error::Success();
 }
@@ -760,5 +761,4 @@ int32_t LLama2Model::post_processing(const tensor::Tensor& pos, bool is_prompt) 
     }
     return next;
 }
-
 }  // namespace model

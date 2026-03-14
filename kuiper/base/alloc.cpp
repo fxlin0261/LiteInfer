@@ -57,5 +57,4 @@ void DeviceAllocator::memset_zero(void* ptr, size_t byte_size, void* stream, boo
         }
     }
 }
-
 }  // namespace base
