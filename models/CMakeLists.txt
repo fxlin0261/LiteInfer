@@ -4,11 +4,5 @@ function(kuiper_add_model_target target_name source_file)
 endfunction()
 
 kuiper_add_model_target(llama_infer llama3/infer_llama3.cpp)
-
-if(QWEN2_SUPPORT)
-  kuiper_add_model_target(qwen_infer qwen2/infer_qwen2.cpp)
-endif()
-
-if(QWEN3_SUPPORT)
-  kuiper_add_model_target(qwen3_infer qwen3/infer_qwen3.cpp)
-endif()
+kuiper_add_model_target(qwen_infer qwen2/infer_qwen2.cpp)
+kuiper_add_model_target(qwen3_infer qwen3/infer_qwen3.cpp)

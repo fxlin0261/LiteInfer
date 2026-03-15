@@ -29,32 +29,7 @@ if(KUIPER_WITH_CUDA)
 endif()
 
 option(USE_CPM "Use CPM for dependency management" OFF)
-option(LLAMA3_SUPPORT "Enable Llama 3 tokenizer/model support" OFF)
-option(QWEN2_SUPPORT "Enable Qwen 2 tokenizer/model support" OFF)
-option(QWEN3_SUPPORT "Enable Qwen 3 tokenizer/model support" OFF)
-
-set(KUIPER_MODEL_DEFINITIONS)
-foreach(KUIPER_MODEL_OPTION IN ITEMS LLAMA3_SUPPORT QWEN2_SUPPORT QWEN3_SUPPORT)
-  if(${KUIPER_MODEL_OPTION})
-    list(APPEND KUIPER_MODEL_DEFINITIONS ${KUIPER_MODEL_OPTION})
-  endif()
-endforeach()
-
-list(LENGTH KUIPER_MODEL_DEFINITIONS KUIPER_ENABLED_MODEL_SUPPORT_COUNT)
-if(KUIPER_ENABLED_MODEL_SUPPORT_COUNT GREATER 1)
-  message(
-    FATAL_ERROR "Enable at most one of LLAMA3_SUPPORT, QWEN2_SUPPORT, or QWEN3_SUPPORT per build. "
-                "These switches change tokenizer and model layout assumptions in shared code."
-  )
-endif()
-
-set(KUIPER_ENABLE_BPE_TOKENIZERS OFF)
-if(LLAMA3_SUPPORT
-   OR QWEN2_SUPPORT
-   OR QWEN3_SUPPORT
-)
-  set(KUIPER_ENABLE_BPE_TOKENIZERS ON)
-endif()
+set(KUIPER_ENABLE_BPE_TOKENIZERS ON)
 
 if(USE_CPM)
   include(cmake/CPM.cmake)
@@ -226,10 +201,6 @@ if(KUIPER_WITH_CUDA)
   set_target_properties(llama PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 else()
   target_compile_definitions(llama PUBLIC KUIPER_ENABLE_CUDA=0)
-endif()
-
-if(KUIPER_MODEL_DEFINITIONS)
-  target_compile_definitions(llama PUBLIC ${KUIPER_MODEL_DEFINITIONS})
 endif()
 
 if(KUIPER_ENABLE_BPE_TOKENIZERS)

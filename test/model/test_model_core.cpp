@@ -39,9 +39,9 @@ public:
 
 class FakeModel final : public model::Model {
 public:
-    FakeModel()
-        : Model(base::TokenizerType::kEncodeSpe, base::ModelType::kModelTypeLLama2, "token.model",
-                "model.bin", false) {
+    explicit FakeModel(base::ModelType model_type = base::ModelType::kModelTypeLLama2,
+                       base::TokenizerType tokenizer_type = base::TokenizerType::kEncodeSpe)
+        : Model(tokenizer_type, model_type, "token.model", "model.bin", false) {
         config_ = std::make_unique<model::TransformerConfig>();
     }
 
@@ -90,8 +90,9 @@ public:
         return insert_buffer(buffer_idx, tensor);
     }
 
-    base::Status generate_model_infos_for_test(const model::ModelConfig& config) {
-        return generate_model_infos(config);
+    base::Status generate_model_infos_for_test(const model::ModelConfig& config,
+                                               int32_t immediate_dim = 0) {
+        return generate_model_infos(config, immediate_dim);
     }
 
     model::TransformerConfig* mutable_config() { return config_.get(); }
@@ -155,6 +156,22 @@ TEST(test_model_core, generate_model_infos_populates_derived_fields) {
     EXPECT_TRUE(model.mutable_config()->is_shared_weight_);
 }
 
+TEST(test_model_core, generate_model_infos_keeps_qwen3_immediate_dim) {
+    FakeModel model(base::ModelType::kModelTypeQwen3, base::TokenizerType::kEncodeBpe);
+
+    model::ModelConfig config{};
+    config.dim = 8;
+    config.hidden_dim = 32;
+    config.layer_num = 2;
+    config.head_num = 4;
+    config.kv_head_num = 2;
+    config.vocab_size = 151936;
+    config.seq_len = 128;
+
+    ASSERT_TRUE(model.generate_model_infos_for_test(config, 64));
+    EXPECT_EQ(model.mutable_config()->immediate_dim_, 64);
+}
+
 TEST(test_model_core, insert_buffer_rejects_empty_tensor_and_duplicates) {
     FakeModel model;
 
@@ -187,45 +204,51 @@ TEST(test_model_core, encode_decode_and_sentence_ending_delegate_to_encode_layer
 }
 
 TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token) {
-    FakeModel model;
-    ASSERT_TRUE(model.init(base::DeviceType::kDeviceCPU));
+    auto run_case = [](base::ModelType model_type, base::TokenizerType tokenizer_type) {
+        FakeModel model(model_type, tokenizer_type);
+        ASSERT_TRUE(model.init(base::DeviceType::kDeviceCPU));
 
-    constexpr int32_t embed_dim = 4;
-#if defined(QWEN3_SUPPORT)
-    model.mutable_config()->hidden_dim_ = embed_dim;
-#else
-    model.mutable_config()->dim_ = embed_dim;
-#endif
+        constexpr int32_t embed_dim = 4;
+        if (base::UsesQwen3Layout(model.model_type())) {
+            model.mutable_config()->hidden_dim_ = embed_dim;
+        } else {
+            model.mutable_config()->dim_ = embed_dim;
+        }
 
-    std::vector<int32_t> token_ids{11, 22, 33};
-    std::vector<int32_t> token_count_placeholder{0, 0, 0};
-    std::vector<float> embedding_data{
-        1.f,   2.f,   3.f,   4.f,   //
-        10.f,  20.f,  30.f,  40.f,  //
-        100.f, 200.f, 300.f, 400.f,
+        std::vector<int32_t> token_ids{11, 22, 33};
+        std::vector<int32_t> token_count_placeholder{0, 0, 0};
+        std::vector<float> embedding_data{
+            1.f,   2.f,   3.f,   4.f,   //
+            10.f,  20.f,  30.f,  40.f,  //
+            100.f, 200.f, 300.f, 400.f,
+        };
+
+        auto input_tokens =
+            make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_ids.data());
+        auto input_token_num = make_cpu_tensor(base::DataType::kDataTypeInt32, {3},
+                                               token_count_placeholder.data());
+        auto input_embeddings =
+            make_cpu_tensor(base::DataType::kDataTypeFp32, {3, embed_dim}, embedding_data.data());
+        op::EmbeddingOutput embedding_output(input_tokens, input_embeddings, input_token_num);
+
+        int32_t pos_value = 2;
+        auto pos_tensor = make_cpu_tensor(base::DataType::kDataTypeInt32, {1}, &pos_value);
+
+        tensor::Tensor prompt_input = model.fill_input(pos_tensor, embedding_output, true);
+        ASSERT_EQ(prompt_input.size(), static_cast<size_t>(embed_dim));
+        EXPECT_EQ(prompt_input.ptr<float>(), embedding_data.data() + 2 * embed_dim);
+        EXPECT_FLOAT_EQ(prompt_input.index<float>(0), 100.f);
+        EXPECT_FLOAT_EQ(prompt_input.index<float>(3), 400.f);
+
+        tensor::Tensor generation_input = model.fill_input(pos_tensor, embedding_output, false);
+        ASSERT_EQ(generation_input.size(), static_cast<size_t>(embed_dim));
+        EXPECT_EQ(generation_input.ptr<float>(), embedding_data.data());
+        EXPECT_FLOAT_EQ(generation_input.index<float>(0), 1.f);
+        EXPECT_FLOAT_EQ(generation_input.index<float>(3), 4.f);
     };
 
-    auto input_tokens = make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_ids.data());
-    auto input_token_num =
-        make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_count_placeholder.data());
-    auto input_embeddings =
-        make_cpu_tensor(base::DataType::kDataTypeFp32, {3, embed_dim}, embedding_data.data());
-    op::EmbeddingOutput embedding_output(input_tokens, input_embeddings, input_token_num);
-
-    int32_t pos_value = 2;
-    auto pos_tensor = make_cpu_tensor(base::DataType::kDataTypeInt32, {1}, &pos_value);
-
-    tensor::Tensor prompt_input = model.fill_input(pos_tensor, embedding_output, true);
-    ASSERT_EQ(prompt_input.size(), static_cast<size_t>(embed_dim));
-    EXPECT_EQ(prompt_input.ptr<float>(), embedding_data.data() + 2 * embed_dim);
-    EXPECT_FLOAT_EQ(prompt_input.index<float>(0), 100.f);
-    EXPECT_FLOAT_EQ(prompt_input.index<float>(3), 400.f);
-
-    tensor::Tensor generation_input = model.fill_input(pos_tensor, embedding_output, false);
-    ASSERT_EQ(generation_input.size(), static_cast<size_t>(embed_dim));
-    EXPECT_EQ(generation_input.ptr<float>(), embedding_data.data());
-    EXPECT_FLOAT_EQ(generation_input.index<float>(0), 1.f);
-    EXPECT_FLOAT_EQ(generation_input.index<float>(3), 4.f);
+    run_case(base::ModelType::kModelTypeLLama2, base::TokenizerType::kEncodeSpe);
+    run_case(base::ModelType::kModelTypeQwen3, base::TokenizerType::kEncodeBpe);
 }
 
 TEST(test_model_core, slice_kv_cache_returns_tensor_views_into_backing_storage) {

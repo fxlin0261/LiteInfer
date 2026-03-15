@@ -61,6 +61,14 @@ base::Status Model::read_model_file() {
             "Failed to retrieve the configuration information from the model "
             "file.");
     }
+    int32_t immediate_dim = 0;
+    if (base::UsesQwen3Layout(model_type_)) {
+        if (fread(&immediate_dim, sizeof(int32_t), 1, file) != 1) {
+            return error::ModelParseError(
+                "Failed to retrieve the qwen3 immediate size information from "
+                "the model file.");
+        }
+    }
     if (is_quant_model_) {
         if (fread(&group_size_, sizeof(int32_t), 1, file) != 1) {
             return error::ModelParseError(
@@ -69,7 +77,7 @@ base::Status Model::read_model_file() {
         }
     }
 
-    auto gen_status = generate_model_infos(config);
+    auto gen_status = generate_model_infos(config, immediate_dim);
     if (!gen_status) {
         return gen_status;
     }
@@ -97,13 +105,15 @@ base::Status Model::read_model_file() {
         return error::ModelParseError("Failed to map the weight file " + model_path_ +
                                       " into memory.");
     }
-    if (!is_quant_model_) {
-        raw_model_data_->weight_data =
-            static_cast<int8_t*>(raw_model_data_->data) + sizeof(ModelConfig);
-    } else {
-        raw_model_data_->weight_data =
-            static_cast<int8_t*>(raw_model_data_->data) + sizeof(ModelConfig) + sizeof(group_size_);
+    size_t model_header_bytes = sizeof(ModelConfig);
+    if (base::UsesQwen3Layout(model_type_)) {
+        model_header_bytes += sizeof(int32_t);
     }
+    if (is_quant_model_) {
+        model_header_bytes += sizeof(group_size_);
+    }
+    raw_model_data_->weight_data =
+        static_cast<int8_t*>(raw_model_data_->data) + model_header_bytes;
     if (raw_model_data_ == nullptr) {
         LOG(ERROR);
         return error::ModelParseError("Failed to map the weight file " + model_path_ +
@@ -112,7 +122,7 @@ base::Status Model::read_model_file() {
     return error::Success();
 }
 
-base::Status Model::generate_model_infos(const ModelConfig& config) const {
+base::Status Model::generate_model_infos(const ModelConfig& config, int32_t immediate_dim) const {
     config_->dim_ = config.dim;
     config_->hidden_dim_ = config.hidden_dim;
     config_->layer_num_ = config.layer_num;
@@ -123,9 +133,7 @@ base::Status Model::generate_model_infos(const ModelConfig& config) const {
     config_->kv_dim_ = (config.dim * config.kv_head_num) / config.head_num;
     config_->kv_mul_ = config.head_num / config.kv_head_num;
     config_->head_size_ = config.dim / config.head_num;
-#if defined(QWEN3_SUPPORT)
-    config_->immediate_dim_ = config.immediate_dim_;
-#endif
+    config_->immediate_dim_ = base::UsesQwen3Layout(model_type_) ? immediate_dim : 0;
     if (config.vocab_size > 0) {
         config_->is_shared_weight_ = true;
     } else {
@@ -148,14 +156,11 @@ base::Status Model::create_encode_layer() {
     // create token encode decode layer
     if (tokenizer_type_ == TokenizerType::kEncodeSpe) {
         encode_layer_ = std::make_unique<op::SpeEncodeLayer>(this->token_path_, true, false);
-    } else {
-#ifdef LLAMA3_SUPPORT
-        encode_layer_ = std::make_unique<op::BpeEncodeLayer>(this->token_path_, true, false);
-#endif
-
-#if defined(QWEN2_SUPPORT) || defined(QWEN3_SUPPORT)
+    } else if (model_type_ == ModelType::kModelTypeQwen2 ||
+               model_type_ == ModelType::kModelTypeQwen3) {
         encode_layer_ = std::make_unique<op::QwenEncodeLayer>(this->token_path_, false, false);
-#endif
+    } else if (tokenizer_type_ == TokenizerType::kEncodeBpe) {
+        encode_layer_ = std::make_unique<op::BpeEncodeLayer>(this->token_path_, true, false);
     }
     if (!encode_layer_) {
         return error::InternalError("Create the encode layer failed.");
@@ -238,23 +243,18 @@ tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
                                  bool is_prompt) const {
     const int32_t pos = pos_tensor.index<int32_t>(0);
     auto [input_tokens, input_embeddings, input_token_num] = embedding_output;
+    UNUSED(input_tokens);
+    UNUSED(input_token_num);
 
     int32_t index = 0;
     if (is_prompt) {
         index = pos;
     }
-#if defined(QWEN3_SUPPORT)
+    const int32_t input_dim = base::UsesQwen3Layout(model_type_) ? config_->hidden_dim_
+                                                                 : config_->dim_;
     std::shared_ptr<base::Buffer> input_emb_buffer = std::make_shared<base::Buffer>(
-        config_->hidden_dim_ * sizeof(float), nullptr,
-        input_embeddings.ptr<float>(index * config_->hidden_dim_), true);
-    tensor::Tensor input(base::DataType::kDataTypeFp32, config_->hidden_dim_);
-
-#else
-    std::shared_ptr<base::Buffer> input_emb_buffer =
-        std::make_shared<base::Buffer>(config_->dim_ * sizeof(float), nullptr,
-                                       input_embeddings.ptr<float>(index * config_->dim_), true);
-    tensor::Tensor input(base::DataType::kDataTypeFp32, config_->dim_);
-#endif
+        input_dim * sizeof(float), nullptr, input_embeddings.ptr<float>(index * input_dim), true);
+    tensor::Tensor input(base::DataType::kDataTypeFp32, input_dim);
     input.assign(input_emb_buffer);
     input.set_device_type(device_type_);
     return input;

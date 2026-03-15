@@ -4,11 +4,7 @@
 #include "model/llama3.h"
 
 namespace {
-#if defined(LLAMA3_SUPPORT)
 constexpr auto kLlamaTokenizerType = base::TokenizerType::kEncodeBpe;
-#else
-constexpr auto kLlamaTokenizerType = base::TokenizerType::kEncodeSpe;
-#endif
 
 #if KUIPER_ENABLE_CUDA
 constexpr auto kDefaultDeviceType = base::DeviceType::kDeviceCUDA;

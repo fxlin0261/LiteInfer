@@ -48,12 +48,11 @@ enum class DataType : uint8_t {
 
 enum class ModelType : uint8_t {
     kModelTypeUnknown = 0,
-    // Llama 2 and Llama 3 share the same runtime implementation in this project.
     kModelTypeLLama = 1,
     kModelTypeLLama2 = kModelTypeLLama,
-    kModelTypeLLama3 = kModelTypeLLama,
-    kModelTypeQwen2 = 2,
-    kModelTypeQwen3 = 3,
+    kModelTypeLLama3 = 2,
+    kModelTypeQwen2 = 3,
+    kModelTypeQwen3 = 4,
 };
 
 inline size_t DataTypeSize(DataType data_type) {
@@ -94,6 +93,50 @@ enum class TokenizerType {
     kEncodeSpe = 0,
     kEncodeBpe = 1,
 };
+
+inline bool IsLlamaModel(ModelType model_type) {
+    return model_type == ModelType::kModelTypeLLama ||
+           model_type == ModelType::kModelTypeLLama2 ||
+           model_type == ModelType::kModelTypeLLama3;
+}
+
+inline bool IsQwenModel(ModelType model_type) {
+    return model_type == ModelType::kModelTypeQwen2 ||
+           model_type == ModelType::kModelTypeQwen3;
+}
+
+inline bool UsesQwenRoPE(ModelType model_type) { return IsQwenModel(model_type); }
+
+inline bool UsesLlama3RoPE(ModelType model_type) {
+    return model_type == ModelType::kModelTypeLLama3;
+}
+
+inline bool UsesHalfSplitRoPE(ModelType model_type) {
+    return UsesLlama3RoPE(model_type) || UsesQwenRoPE(model_type);
+}
+
+inline bool UsesQwen3Layout(ModelType model_type) {
+    return model_type == ModelType::kModelTypeQwen3;
+}
+
+inline float RoPETheta(ModelType model_type) {
+    if (UsesLlama3RoPE(model_type)) {
+        return 500000.0f;
+    }
+    if (UsesQwenRoPE(model_type)) {
+        return 1000000.0f;
+    }
+    return 10000.0f;
+}
+
+inline float RmsNormEpsilon(ModelType model_type) {
+    return IsQwenModel(model_type) ? 1e-6f : 1e-5f;
+}
+
+inline ModelType ResolveLlamaModelType(TokenizerType tokenizer_type) {
+    return tokenizer_type == TokenizerType::kEncodeBpe ? ModelType::kModelTypeLLama3
+                                                       : ModelType::kModelTypeLLama2;
+}
 
 class Status {
 public:

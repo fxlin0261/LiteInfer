@@ -108,7 +108,7 @@ static __global__ void row_rmsnorm_f32(float* in, float* wei, float* out, int si
 }
 
 void rmsnorm_kernel_cu(const tensor::Tensor& input, const tensor::Tensor& weight,
-                       const tensor::Tensor& output, void* stream) {
+                       const tensor::Tensor& output, float eps, void* stream) {
     CHECK(!input.is_empty());
     CHECK(!weight.is_empty());
     CHECK(!output.is_empty());
@@ -117,11 +117,6 @@ void rmsnorm_kernel_cu(const tensor::Tensor& input, const tensor::Tensor& weight
           weight.device_type() == base::DeviceType::kDeviceCUDA &&
           output.device_type() == base::DeviceType::kDeviceCUDA);
 
-#if defined(QWEN2_SUPPORT) || defined(QWEN3_SUPPORT)
-    const float eps = 1e-6f;
-#else
-    const float eps = 1e-5f;
-#endif
     const int32_t size = static_cast<int32_t>(input.size());
     float* in_ptr = const_cast<float*>(input.ptr<float>());
     float* wei_ptr = const_cast<float*>(weight.ptr<float>());
@@ -136,7 +131,7 @@ void rmsnorm_kernel_cu(const tensor::Tensor& input, const tensor::Tensor& weight
 }
 
 void rmsnorm_kernel_cu_dim(const tensor::Tensor& input, const tensor::Tensor& weight,
-                           const tensor::Tensor& output, int32_t dim, void* stream) {
+                           const tensor::Tensor& output, int32_t dim, float eps, void* stream) {
     CHECK(!input.is_empty());
     CHECK(!weight.is_empty());
     CHECK(!output.is_empty());
@@ -145,7 +140,6 @@ void rmsnorm_kernel_cu_dim(const tensor::Tensor& input, const tensor::Tensor& we
           weight.device_type() == base::DeviceType::kDeviceCUDA &&
           output.device_type() == base::DeviceType::kDeviceCUDA);
 
-    const float eps = 1e-6f;
     const int32_t total_size = static_cast<int32_t>(input.size());
     const int32_t size = input.get_dim(input.dims_size() - 1);
     const int32_t dim_size = total_size / size;

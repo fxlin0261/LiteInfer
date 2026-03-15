@@ -1,15 +1,13 @@
 #ifndef KUIPER_INCLUDE_OP_ENCODE_H_
 #define KUIPER_INCLUDE_OP_ENCODE_H_
 #include <sentencepiece_processor.h>
-#include "layer.h"
-#if defined (LLAMA3_SUPPORT) || defined (QWEN2_SUPPORT) || defined (QWEN3_SUPPORT)
 #include <absl/strings/str_join.h>
 #include <absl/strings/str_replace.h>
 #include <absl/strings/str_split.h>
+#include "layer.h"
 #include "base/tiktoken.h"
 #include "base/unordered_dense.h"
 #include "nlohmann/json.hpp"
-#endif
 namespace op {
 
 class EncodeLayerBase : public Layer {
@@ -54,7 +52,6 @@ class SpeEncodeLayer : public EncodeLayerBase {
   std::unique_ptr<sentencepiece::SentencePieceProcessor> spe;
 };
 
-#if defined (LLAMA3_SUPPORT) || defined (QWEN2_SUPPORT) || defined (QWEN3_SUPPORT)
 class BpeEncodeLayer : public EncodeLayerBase {
 public:
   explicit BpeEncodeLayer(std::string token_model_path, bool has_bos, bool has_eos);
@@ -82,7 +79,6 @@ class QwenEncodeLayer : public BpeEncodeLayer {
 public:
   explicit QwenEncodeLayer(std::string token_model_path, bool has_bos, bool has_eos);
 };
-#endif
 
 }  // namespace op
 #endif  // KUIPER_INCLUDE_OP_ENCODE_H_

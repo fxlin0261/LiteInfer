@@ -55,7 +55,6 @@ int32_t SpeEncodeLayer::vocab_size() const {
     return spe->GetPieceSize();
 }
 
-#if defined(LLAMA3_SUPPORT) || defined(QWEN2_SUPPORT) || defined(QWEN3_SUPPORT)
 static const std::string PAT_STR =
     R"((?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?:$|[^\S])|\s+)";
 
@@ -178,6 +177,4 @@ QwenEncodeLayer::QwenEncodeLayer(std::string token_model_path, bool has_bos, boo
     num_token_ = encoder.size() + special_tokens.size();
     tiktoken_ = std::make_unique<tiktoken::tiktoken>(encoder, special_tokens, PAT_STR);
 }
-
-#endif
 }  // namespace op

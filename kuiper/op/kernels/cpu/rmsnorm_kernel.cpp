@@ -2,7 +2,7 @@
 
 namespace kernel {
 void rmsnorm_kernel_cpu(const tensor::Tensor& input, const tensor::Tensor& weight,
-                        const tensor::Tensor& output, void* stream) {
+                        const tensor::Tensor& output, float eps, void* stream) {
     UNUSED(stream);
     CHECK(!input.is_empty());
     CHECK(!weight.is_empty());
@@ -20,12 +20,6 @@ void rmsnorm_kernel_cpu(const tensor::Tensor& input, const tensor::Tensor& weigh
     arma::fvec in_tensor(const_cast<float*>(in_ptr), dim, false, true);
     arma::fvec out_tensor(const_cast<float*>(out_ptr), dim, false, true);
     arma::fvec wei_tensor(const_cast<float*>(wei_ptr), dim, false, true);
-
-#if defined(QWEN2_SUPPORT) || defined(QWEN3_SUPPORT)
-    const float eps = 1e-6f;
-#else
-    const float eps = 1e-5f;
-#endif
 
     const float mean = arma::as_scalar(arma::mean(arma::pow(in_tensor, 2))) + eps;
     const float rsqrt = 1.f / std::sqrt(mean);

@@ -4,7 +4,7 @@
 namespace op {
 class RmsNormLayer : public LayerParam {
  public:
-  explicit RmsNormLayer(base::DeviceType device_type, int32_t dim);
+  explicit RmsNormLayer(base::DeviceType device_type, int32_t dim, float eps);
 
   base::Status check() const override;
 
@@ -12,6 +12,7 @@ class RmsNormLayer : public LayerParam {
 
  private:
   int32_t dim_ = 0;
+  float eps_ = 1e-5f;
 };
 }  // namespace op
 #endif  // KUIPER_INCLUDE_OP_RMSNORM_H_

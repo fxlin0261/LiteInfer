@@ -91,7 +91,7 @@ python3 models/llama3/export_llama3.py Llama-3.2-1B.bin --hf=meta-llama/Llama-3.
 mkdir build 
 cd build
 # 开启 USE_CPM 选项，自动下载第三方依赖，前提是需要网络畅通
-cmake -DUSE_CPM=ON -DLLAMA3_SUPPORT=ON .. 
+cmake -DUSE_CPM=ON .. 
 make -j16
 ```
 - 运行：
@@ -118,7 +118,7 @@ python3 models/qwen2/export_qwen2.py Qwen2.5-0.5B.bin --hf=Qwen/Qwen2.5-0.5B
 mkdir build 
 cd build
 # 开启 USE_CPM 选项，自动下载第三方依赖，前提是需要网络畅通
-cmake -DUSE_CPM=ON -DQWEN2_SUPPORT=ON .. 
+cmake -DUSE_CPM=ON .. 
 make -j16
 ```
 - 运行：
@@ -132,4 +132,4 @@ python3 models/qwen2/hf_infer_qwen2.py
 和上面同理，我们先从huggingface仓库中将模型下载到本地。
 1. models/qwen3/export_qwen3_pth.py中导出为pth，模型的输入`model_name`和输出地址`output_file`依次需要填写；
 2. 导出pth格式的模型后，再用同文件夹下的export_qwen3_bin.py导出qwen.bin；
-3. 用CMake选项`QWEN3_SUPPORT`重新编译项目，其他步骤就都是一样的了。
+3. 重新编译项目即可，不再需要用模型宏切换构建配置；其他步骤都一样。

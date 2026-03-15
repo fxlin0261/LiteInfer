@@ -3,8 +3,10 @@
 #include "kernels/cpu/rope_kernel.h"
 #include "kernels/kernels_interface.h"
 namespace op {
-RoPELayer::RoPELayer(base::DeviceType device_type, int32_t dim, int32_t kv_dim, int32_t head_size)
+RoPELayer::RoPELayer(base::DeviceType device_type, base::ModelType model_type, int32_t dim,
+                     int32_t kv_dim, int32_t head_size)
     : Layer(device_type, LayerType::kLayerRoPe, "RoPe"),
+      model_type_(model_type),
       dim_(dim),
       kv_dim_(kv_dim),
       head_size_(head_size) {
@@ -28,8 +30,8 @@ base::Status RoPELayer::forward() {
   if (device_type_ == base::DeviceType::kDeviceCUDA) {
     CHECK(cuda_config_ != nullptr);
   }
-  kernel::get_rope_kernel(device_type_)(dim_, kv_dim_, head_size_, input_q, input_k, input_pos,
-                                        sin_cache, cos_cache,
+  kernel::get_rope_kernel(device_type_)(model_type_, dim_, kv_dim_, head_size_, input_q, input_k,
+                                        input_pos, sin_cache, cos_cache,
                                         cuda_config_ ? cuda_config_->stream : nullptr);
   return base::error::Success();
 }

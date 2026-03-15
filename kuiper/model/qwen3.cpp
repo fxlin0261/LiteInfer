@@ -1,4 +1,3 @@
-#ifdef QWEN3_SUPPORT
 #include "model/qwen3.h"
 #include <glog/logging.h>
 #include <op/matmul.h>
@@ -136,13 +135,13 @@ base::Status Qwen3Model::init(base::DeviceType device_type) {
     }
     init_mem();
     if (device_type_ == base::DeviceType::kDeviceCPU) {
-        kernel::sin_cos_cache_calc_cpu(config_->head_size_, config_->seq_len_,
+        kernel::sin_cos_cache_calc_cpu(model_type_, config_->head_size_, config_->seq_len_,
                                        get_buffer(ModelBufferType::kSinCache).ptr<float>(),
                                        get_buffer(ModelBufferType::kCosCache).ptr<float>());
     } else {
 #if KUIPER_ENABLE_CUDA
         CHECK_NE(cuda_config_, nullptr);
-        kernel::sin_cos_cache_calc_cu(config_->head_size_, config_->seq_len_,
+        kernel::sin_cos_cache_calc_cu(model_type_, config_->head_size_, config_->seq_len_,
                                       get_buffer(ModelBufferType::kSinCache),
                                       get_buffer(ModelBufferType::kCosCache), cuda_config_->stream);
 #else
@@ -179,7 +178,7 @@ base::Status Qwen3Model::forward(const tensor::Tensor& input, const tensor::Tens
 void Qwen3Model::create_nonparam_layers() {
     CHECK(qwen_layers_ != nullptr);
     qwen_layers_->rope_layer_ = std::make_shared<op::RoPELayer>(
-        device_type_, config_->dim_, config_->kv_dim_, config_->head_size_);
+        device_type_, model_type_, config_->dim_, config_->kv_dim_, config_->head_size_);
 
     qwen_layers_->mha_layer_ = std::make_shared<op::MultiHeadAttention>(
         device_type_, 0, config_->kv_mul_, config_->kv_dim_, config_->seq_len_, config_->head_num_,
@@ -206,7 +205,8 @@ void Qwen3Model::create_param_layers() {
     // rmsnorm attention attention, ffn, final
     for (int32_t i = 0; i < 2 * config_->layer_num_ + 1; ++i) {
         std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, hidden_dim);
+            std::make_shared<op::RmsNormLayer>(device_type_, hidden_dim,
+                                               base::RmsNormEpsilon(model_type_));
 
         rms_norm_layer->set_weight(0, {hidden_dim}, weight_ptr, cpu_device_type);
         qwen_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
@@ -232,7 +232,8 @@ void Qwen3Model::create_param_layers() {
     // query norm
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, config_->head_size_);
+            std::make_shared<op::RmsNormLayer>(device_type_, config_->head_size_,
+                                               base::RmsNormEpsilon(model_type_));
         rms_norm_layer->set_weight(0, {config_->head_size_}, this->raw_model_data_->weight(pos),
                                    cpu_device_type);
         qwen_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
@@ -251,7 +252,8 @@ void Qwen3Model::create_param_layers() {
     // key norm
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, config_->head_size_);
+            std::make_shared<op::RmsNormLayer>(device_type_, config_->head_size_,
+                                               base::RmsNormEpsilon(model_type_));
         rms_norm_layer->set_weight(0, {config_->head_size_}, this->raw_model_data_->weight(pos),
                                    cpu_device_type);
         qwen_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
@@ -652,4 +654,3 @@ int32_t Qwen3Model::post_processing(const tensor::Tensor& pos, bool is_prompt) c
 }
 
 }  // namespace model
-#endif

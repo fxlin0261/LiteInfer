@@ -7,6 +7,7 @@
 
 // 测试默认流下，CUDA RMSNorm 和 CPU 结果是否一致。
 TEST(test_rmsnorm_cu, rmsnorm_nostream) {
+  const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeLLama2);
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
 
@@ -30,9 +31,10 @@ TEST(test_rmsnorm_cu, rmsnorm_nostream) {
   wei_cu.to_cuda(nullptr);
   out_cu.to_cuda(nullptr);
 
-  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCUDA)(in_cu, wei_cu, out_cu, nullptr);
+  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCUDA)(in_cu, wei_cu, out_cu, eps, nullptr);
   out_cu.to_cpu();
-  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCPU)(in_cpu, wei_cpu, out_cpu, nullptr);
+  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCPU)(in_cpu, wei_cpu, out_cpu, eps,
+                                                           nullptr);
 
   for (int i = 0; i < size; ++i) {
     ASSERT_NEAR(out_cu.index<float>(i), out_cpu.index<float>(i), 1e-5f);
@@ -41,6 +43,7 @@ TEST(test_rmsnorm_cu, rmsnorm_nostream) {
 
 // 测试按维度做 RMSNorm 时，输出和原地结果是否都正确。
 TEST(test_rmsnorm_cu_dim, rmsnorm_stream) {
+  const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeQwen3);
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
 
@@ -66,8 +69,10 @@ TEST(test_rmsnorm_cu_dim, rmsnorm_stream) {
   cudaStream_t stream;
   cudaStreamCreate(&stream);
 
-  kernel::get_rmsnorm_dim_kernel(base::DeviceType::kDeviceCUDA)(in_cu, wei_cu, out_cu, 1, nullptr);
-  kernel::get_rmsnorm_dim_kernel(base::DeviceType::kDeviceCUDA)(in_cu, wei_cu, in_cu, 1, nullptr);
+  kernel::get_rmsnorm_dim_kernel(base::DeviceType::kDeviceCUDA)(in_cu, wei_cu, out_cu, 1, eps,
+                                                                nullptr);
+  kernel::get_rmsnorm_dim_kernel(base::DeviceType::kDeviceCUDA)(in_cu, wei_cu, in_cu, 1, eps,
+                                                                nullptr);
 
   out_cu.to_cpu();
   in_cu.to_cpu();
@@ -91,7 +96,7 @@ TEST(test_rmsnorm_cu_dim, rmsnorm_stream) {
   out_cu_golden.to_cuda();
 
   kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCUDA)(in_cu_golden, wei_cu_golden,
-                                                            out_cu_golden, nullptr);
+                                                            out_cu_golden, eps, nullptr);
 
   out_cu_golden.to_cpu();
 
@@ -107,6 +112,7 @@ TEST(test_rmsnorm_cu_dim, rmsnorm_stream) {
 
 // 测试自定义流下，CUDA RMSNorm 和 CPU 结果是否一致。
 TEST(test_rmsnorm_cu, rmsnorm_stream) {
+  const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeLLama2);
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
 
@@ -132,10 +138,11 @@ TEST(test_rmsnorm_cu, rmsnorm_stream) {
   out_cu.to_cuda(nullptr);
   cudaStream_t stream;
   cudaStreamCreate(&stream);
-  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCUDA)(in_cu, wei_cu, out_cu, stream);
+  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCUDA)(in_cu, wei_cu, out_cu, eps, stream);
   out_cu.to_cpu();
 
-  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCPU)(in_cpu, wei_cpu, out_cpu, nullptr);
+  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCPU)(in_cpu, wei_cpu, out_cpu, eps,
+                                                           nullptr);
 
   for (int i = 0; i < size; ++i) {
     ASSERT_NEAR(out_cu.index<float>(i), out_cpu.index<float>(i), 1e-5f);
@@ -145,6 +152,7 @@ TEST(test_rmsnorm_cu, rmsnorm_stream) {
 
 // 测试更大数据量下，自定义流的 RMSNorm 是否仍然正确。
 TEST(test_rmsnorm_cu, rmsnorm_stream2) {
+  const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeLLama2);
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
 
@@ -170,10 +178,11 @@ TEST(test_rmsnorm_cu, rmsnorm_stream2) {
   out_cu.to_cuda(nullptr);
   cudaStream_t stream;
   cudaStreamCreate(&stream);
-  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCUDA)(in_cu, wei_cu, out_cu, stream);
+  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCUDA)(in_cu, wei_cu, out_cu, eps, stream);
   out_cu.to_cpu();
 
-  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCPU)(in_cpu, wei_cpu, out_cpu, nullptr);
+  kernel::get_rmsnorm_kernel(base::DeviceType::kDeviceCPU)(in_cpu, wei_cpu, out_cpu, eps,
+                                                           nullptr);
 
   for (int i = 0; i < size; ++i) {
     ASSERT_NEAR(out_cu.index<float>(i), out_cpu.index<float>(i), 1e-5f);

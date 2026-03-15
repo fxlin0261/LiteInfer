@@ -135,13 +135,13 @@ base::Status Qwen2Model::init(base::DeviceType device_type) {
     }
     init_mem();
     if (device_type_ == base::DeviceType::kDeviceCPU) {
-        kernel::sin_cos_cache_calc_cpu(config_->head_size_, config_->seq_len_,
+        kernel::sin_cos_cache_calc_cpu(model_type_, config_->head_size_, config_->seq_len_,
                                        get_buffer(ModelBufferType::kSinCache).ptr<float>(),
                                        get_buffer(ModelBufferType::kCosCache).ptr<float>());
     } else {
 #if KUIPER_ENABLE_CUDA
         CHECK_NE(cuda_config_, nullptr);
-        kernel::sin_cos_cache_calc_cu(config_->head_size_, config_->seq_len_,
+        kernel::sin_cos_cache_calc_cu(model_type_, config_->head_size_, config_->seq_len_,
                                       get_buffer(ModelBufferType::kSinCache),
                                       get_buffer(ModelBufferType::kCosCache), cuda_config_->stream);
 #else
@@ -178,7 +178,7 @@ base::Status Qwen2Model::forward(const tensor::Tensor& input, const tensor::Tens
 void Qwen2Model::create_nonparam_layers() {
     CHECK(qwen_layers_ != nullptr);
     qwen_layers_->rope_layer_ = std::make_shared<op::RoPELayer>(
-        device_type_, config_->dim_, config_->kv_dim_, config_->head_size_);
+        device_type_, model_type_, config_->dim_, config_->kv_dim_, config_->head_size_);
 
     qwen_layers_->mha_layer_ = std::make_shared<op::MultiHeadAttention>(
         device_type_, 0, config_->kv_mul_, config_->kv_dim_, config_->seq_len_, config_->head_num_,
@@ -291,7 +291,8 @@ void Qwen2Model::create_param_quant_layers() {
     // rmsnorm attention attention,ffn,final
     for (int32_t i = 0; i < 2 * config_->layer_num_ + 1; ++i) {
         std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, dim);
+            std::make_shared<op::RmsNormLayer>(device_type_, dim,
+                                               base::RmsNormEpsilon(model_type_));
 
         rms_norm_layer->set_weight(0, {dim}, weight_ptr, cpu_device_type);
         qwen_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
@@ -405,7 +406,8 @@ void Qwen2Model::create_param_layers() {
 
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, config_->dim_);
+            std::make_shared<op::RmsNormLayer>(device_type_, config_->dim_,
+                                               base::RmsNormEpsilon(model_type_));
 
         const void* weight_rmsnorm = raw_model_data_->weight(rmsnorm_pos);
         rms_norm_layer->set_weight(0, {config_->dim_}, weight_rmsnorm, cpu_device_type);
@@ -421,7 +423,8 @@ void Qwen2Model::create_param_layers() {
 
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, config_->dim_);
+            std::make_shared<op::RmsNormLayer>(device_type_, config_->dim_,
+                                               base::RmsNormEpsilon(model_type_));
         const void* weight_rmsnorm = raw_model_data_->weight(rmsnorm_pos);
         rms_norm_layer->set_weight(0, {config_->dim_}, weight_rmsnorm, cpu_device_type);
         qwen_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
@@ -434,8 +437,8 @@ void Qwen2Model::create_param_layers() {
     rmsnorm_pos += config_->layer_num_ * config_->hidden_dim_ * config_->dim_;
     rmsnorm_pos += config_->layer_num_ * config_->hidden_dim_ * config_->dim_;
 
-    std::shared_ptr<op::RmsNormLayer> rms_final_layer =
-        std::make_shared<op::RmsNormLayer>(device_type_, config_->dim_);
+    std::shared_ptr<op::RmsNormLayer> rms_final_layer = std::make_shared<op::RmsNormLayer>(
+        device_type_, config_->dim_, base::RmsNormEpsilon(model_type_));
 
     const void* weight_rmsnorm_final = raw_model_data_->weight(rmsnorm_pos);
     rms_final_layer->set_weight(0, {config_->dim_}, weight_rmsnorm_final, cpu_device_type);

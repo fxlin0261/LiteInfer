@@ -63,7 +63,8 @@ protected:
 
     virtual base::Status gen_model_from_file();
 
-    virtual base::Status generate_model_infos(const ModelConfig& config) const;
+    virtual base::Status generate_model_infos(const ModelConfig& config,
+                                              int32_t immediate_dim = 0) const;
 
     virtual int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const = 0;
 

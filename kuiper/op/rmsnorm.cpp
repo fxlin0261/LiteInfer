@@ -3,8 +3,10 @@
 #include "kernels/cpu/rmsnorm_kernel.h"
 #include "kernels/kernels_interface.h"
 namespace op {
-RmsNormLayer::RmsNormLayer(base::DeviceType device_type, int32_t dim)
-    : LayerParam(device_type, LayerType::kLayerRMSNorm, false, "RMSNorm"), dim_(dim) {
+RmsNormLayer::RmsNormLayer(base::DeviceType device_type, int32_t dim, float eps)
+    : LayerParam(device_type, LayerType::kLayerRMSNorm, false, "RMSNorm"),
+      dim_(dim),
+      eps_(eps) {
   reset_input_size(1);
   reset_output_size(1);
   reset_weight_size(1);
@@ -22,10 +24,10 @@ base::Status RmsNormLayer::forward() {
     CHECK(cuda_config_ != nullptr);
   }
   if (input.dims_size() == 1) {
-    kernel::get_rmsnorm_kernel(device_type_)(input, weight, output,
+    kernel::get_rmsnorm_kernel(device_type_)(input, weight, output, eps_,
                                              cuda_config_ ? cuda_config_->stream : nullptr);
   } else {
-    kernel::get_rmsnorm_dim_kernel(device_type_)(input, weight, output, dim_,
+    kernel::get_rmsnorm_dim_kernel(device_type_)(input, weight, output, dim_, eps_,
                                                  cuda_config_ ? cuda_config_->stream : nullptr);
   }
 
