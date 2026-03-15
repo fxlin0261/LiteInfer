@@ -241,6 +241,9 @@ std::pair<tensor::Tensor, tensor::Tensor> Model::slice_kv_cache(int32_t layer_id
 tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
                                  const op::EmbeddingOutput& embedding_output,
                                  bool is_prompt) const {
+    // pos_tensor：当前位置，通常表示当前 token 的位置
+    // embedding_output：embedding 层的输出
+    // is_prompt：当前是不是 prompt 阶段
     const int32_t pos = pos_tensor.index<int32_t>(0);
     auto [input_tokens, input_embeddings, input_token_num] = embedding_output;
     UNUSED(input_tokens);
@@ -252,6 +255,11 @@ tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
     }
     const int32_t input_dim = base::UsesQwen3Layout(model_type_) ? config_->hidden_dim_
                                                                  : config_->dim_;
+    // Prompt stage:
+    // input_embeddings shape is [token_num, input_dim], and we slice row `index`.
+    // Decode stage:
+    // input_embeddings shape is [1, input_dim].
+    // In both cases the returned `input` shape is [input_dim].
     std::shared_ptr<base::Buffer> input_emb_buffer = std::make_shared<base::Buffer>(
         input_dim * sizeof(float), nullptr, input_embeddings.ptr<float>(index * input_dim), true);
     tensor::Tensor input(base::DataType::kDataTypeFp32, input_dim);

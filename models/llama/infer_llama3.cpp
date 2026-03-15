@@ -19,14 +19,19 @@ int32_t generate(const model::Llama3Model& model, const std::string& sentence, i
     bool is_prompt = true;
     const auto& prompt_embedding = model.embedding(tokens);
     tensor::Tensor pos_tensor = model.get_buffer(model::ModelBufferType::kInputPos);
-
     std::vector<int32_t> words;
+
+    //  pos 像“当前走到第几格”
+    //  total_steps 像“最多只能走多少格”
+    //  pos < total_steps 就是“还没走满，可以继续”
     while (pos < total_steps) {
+        // 第0个位置赋值
         pos_tensor.index<int32_t>(0) = pos;
+        // 不是最后一个
         if (pos < prompt_len - 1) {
             tensor::Tensor input = model.fill_input(pos_tensor, prompt_embedding, is_prompt);
             model.predict(input, pos_tensor, is_prompt, next);
-        } else {
+        } else {    // 最后一个
             is_prompt = false;
             tokens = std::vector<int32_t>{next};
             const auto& token_embedding = model.embedding(tokens);

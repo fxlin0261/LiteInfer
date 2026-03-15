@@ -5,6 +5,8 @@
 
 int32_t generate(const model::Llama2Model& model, const std::string& sentence, int total_steps,
                  bool need_output = false) {
+    // llama2 加了BOS 没加EOS
+    // 返回一串tokens id: BOS+id
     auto tokens = model.encode(sentence);
     int32_t prompt_len = tokens.size();
     LOG_IF(FATAL, tokens.empty()) << "The tokens is empty.";
@@ -12,6 +14,14 @@ int32_t generate(const model::Llama2Model& model, const std::string& sentence, i
     int32_t pos = 0;
     int32_t next = -1;
     bool is_prompt = true;
+    // 返回值为op::EmbeddingOutput
+    // 也就是说：
+    // input_tokens
+    // 输入的 token id，shape 是 [token_num]
+    // input_embeddings
+    // embedding 查表后的结果，shape 是 [token_num, dim]
+    // input_token_num
+    // 表示 token 数量的 tensor，shape 是 [token_num]
     const auto& prompt_embedding = model.embedding(tokens);
     tensor::Tensor pos_tensor = model.get_buffer(model::ModelBufferType::kInputPos);
 
@@ -19,6 +29,7 @@ int32_t generate(const model::Llama2Model& model, const std::string& sentence, i
     while (pos < total_steps) {
         pos_tensor.index<int32_t>(0) = pos;
         if (pos < prompt_len - 1) {
+            // 把当前步需要的输入向量取出来给 是个一维的
             tensor::Tensor input = model.fill_input(pos_tensor, prompt_embedding, is_prompt);
             model.predict(input, pos_tensor, is_prompt, next);
         } else {

@@ -7,14 +7,15 @@ __global__ void emb_kernel_cu_fp32(int32_t vocab_size, int32_t token_num, int32_
     if (token_idx >= token_num) {
         return;
     }
+    // input[token_idx] 先取出一个 token id
     int32_t token = input_ptr[token_idx];
     if (token >= vocab_size) {
         return;
     }
-
+    // 去 weight 这个 embedding 矩阵里找到第 token 行
     float* output_ptr_start = output_ptr + token_idx * weight_dim;
     const float* weight_ptr_start = weight_ptr + token * weight_dim;
-
+    // 把这一整行复制到 output 的第 token_idx 行
     for (int32_t i = threadIdx.x; i < weight_dim; i += blockDim.x) {
         output_ptr_start[i] = weight_ptr_start[i];
     }
@@ -27,7 +28,9 @@ void emb_kernel_cu(const tensor::Tensor& input, const tensor::Tensor& weight,
         input_cu = input.clone();
         input_cu.to_cuda();
     }
+    // input_num = token 数
     const int32_t input_num = static_cast<int32_t>(input.size());
+    // weight_dim = embedding 维度
     const int32_t weight_dim = weight.get_dim(1);
     CHECK(weight.device_type() == output.device_type());
     CHECK(output.device_type() == base::DeviceType::kDeviceCUDA);

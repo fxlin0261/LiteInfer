@@ -35,6 +35,7 @@ SpeEncodeLayer::SpeEncodeLayer(std::string token_model_path, bool has_bos, bool 
 std::vector<int32_t> SpeEncodeLayer::encode(const std::string& sentence) const {
     CHECK(spe != nullptr);
     // sentencepiece
+    // sentence = "Hello world" -> input_ids = {15496, 995}
     std::vector<int32_t> input_ids = spe->EncodeAsIds(sentence);
     if (has_bos_) {
         input_ids.insert(input_ids.begin(), spe->bos_id());

@@ -344,140 +344,154 @@ void LlamaModelBase::create_param_quant_layers() {
 void LlamaModelBase::create_param_layers() {
     CHECK(!is_quant_model_);
     CHECK(llama_layers_ != nullptr);
-    // The embedding layer
-    auto cpu_device_type = base::DeviceType::kDeviceCPU;
-    llama_layers_->embedding_layer_ = std::make_shared<op::EmbeddingLayer>(
-        device_type_, config_->dim_, config_->seq_len_, std::abs(config_->vocab_size_));
+    const auto cpu_device_type = base::DeviceType::kDeviceCPU;
+    const int32_t dim = config_->dim_;
+    const int32_t hidden_dim = config_->hidden_dim_;
+    const int32_t layer_num = config_->layer_num_;
+    const int32_t kv_dim = config_->kv_dim_;
+    const int32_t vocab_size = std::abs(config_->vocab_size_);
+    const int32_t seq_len = config_->seq_len_;
+    const int32_t head_size = config_->head_size_;
 
-    const void* weight_embedding = raw_model_data_->weight(0);
-    llama_layers_->embedding_layer_->set_weight(0, {std::abs(config_->vocab_size_), config_->dim_},
-                                                weight_embedding, cpu_device_type);
+    const size_t embedding_size = static_cast<size_t>(vocab_size) * dim;
+    const size_t attn_rms_size = static_cast<size_t>(layer_num) * dim;
+    const size_t wq_size = static_cast<size_t>(layer_num) * dim * dim;
+    const size_t wk_size = static_cast<size_t>(layer_num) * kv_dim * dim;
+    const size_t wv_size = static_cast<size_t>(layer_num) * kv_dim * dim;
+    const size_t wo_size = static_cast<size_t>(layer_num) * dim * dim;
+    const size_t ffn_rms_size = static_cast<size_t>(layer_num) * dim;
+    const size_t w1_size = static_cast<size_t>(layer_num) * hidden_dim * dim;
+    const size_t w2_size = static_cast<size_t>(layer_num) * hidden_dim * dim;
+    const size_t w3_size = static_cast<size_t>(layer_num) * hidden_dim * dim;
+    const size_t final_rms_size = dim;
+    const size_t rope_cache_size = static_cast<size_t>(seq_len) * head_size;
 
-    // create all matmul layer
-    int32_t dim = config_->dim_;
-    size_t pos = dim * std::abs(config_->vocab_size_) + dim * config_->layer_num_;
-    // create weight matrix for query
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        auto wq = std::make_shared<op::MatmulLayer>(device_type_, dim, dim);
-        wq->set_weight(0, {dim, dim}, this->raw_model_data_->weight(pos), cpu_device_type);
-        llama_layers_->wq_layers_.push_back(wq);
-        pos += dim * dim;
+    const size_t embedding_offset = 0;
+    const size_t attn_rms_offset = embedding_offset + embedding_size;
+    const size_t wq_offset = attn_rms_offset + attn_rms_size;
+    const size_t wk_offset = wq_offset + wq_size;
+    const size_t wv_offset = wk_offset + wk_size;
+    const size_t wo_offset = wv_offset + wv_size;
+    const size_t ffn_rms_offset = wo_offset + wo_size;
+    const size_t w1_offset = ffn_rms_offset + ffn_rms_size;
+    const size_t w2_offset = w1_offset + w1_size;
+    const size_t w3_offset = w2_offset + w2_size;
+    const size_t final_rms_offset = w3_offset + w3_size;
+    // RoPE cache corresponds to the diagram's LlamaRotaryEmbedding. The actual RoPE layer is
+    // created in create_nonparam_layers(); here we only skip over the precomputed sin/cos region
+    // stored in the model file.
+    const size_t rope_cache_offset = final_rms_offset + final_rms_size;
+    const size_t cls_offset = rope_cache_offset + rope_cache_size;
+
+    auto make_matmul = [&](int32_t out_features, int32_t in_features, size_t offset) {
+        auto layer = std::make_shared<op::MatmulLayer>(device_type_, out_features, in_features);
+        layer->set_weight(0, {out_features, in_features}, raw_model_data_->weight(offset),
+                          cpu_device_type);
+        return layer;
+    };
+
+    auto make_rmsnorm = [&](size_t offset) {
+        auto layer = std::make_shared<op::RmsNormLayer>(device_type_, dim,
+                                                        base::RmsNormEpsilon(model_type_));
+        layer->set_weight(0, {dim}, raw_model_data_->weight(offset), cpu_device_type);
+        return layer;
+    };
+
+    // Diagram mapping: nn.Embedding
+    // token ids shape: [token_num]
+    // embedding weight shape: [vocab_size, dim]
+    // embedding output shape: [token_num, dim]
+    llama_layers_->embedding_layer_ =
+        std::make_shared<op::EmbeddingLayer>(device_type_, dim, seq_len, vocab_size);
+    llama_layers_->embedding_layer_->set_weight(0, {vocab_size, dim},
+                                                raw_model_data_->weight(embedding_offset),
+                                                cpu_device_type);
+
+    // Diagram mapping: each loop iteration builds one LlamaDecoderLayer / Transformer block.
+    // Order matches the forward pass:
+    // attention rmsnorm -> qkv/o -> ffn rmsnorm -> w1/w2/w3.
+    for (int32_t layer_idx = 0; layer_idx < layer_num; ++layer_idx) {
+        const size_t attn_rms_layer_offset =
+            attn_rms_offset + static_cast<size_t>(layer_idx) * dim;
+        const size_t wq_layer_offset =
+            wq_offset + static_cast<size_t>(layer_idx) * dim * dim;
+        const size_t wk_layer_offset =
+            wk_offset + static_cast<size_t>(layer_idx) * kv_dim * dim;
+        const size_t wv_layer_offset =
+            wv_offset + static_cast<size_t>(layer_idx) * kv_dim * dim;
+        const size_t wo_layer_offset =
+            wo_offset + static_cast<size_t>(layer_idx) * dim * dim;
+        const size_t ffn_rms_layer_offset =
+            ffn_rms_offset + static_cast<size_t>(layer_idx) * dim;
+        const size_t w1_layer_offset =
+            w1_offset + static_cast<size_t>(layer_idx) * hidden_dim * dim;
+        const size_t w2_layer_offset =
+            w2_offset + static_cast<size_t>(layer_idx) * hidden_dim * dim;
+        const size_t w3_layer_offset =
+            w3_offset + static_cast<size_t>(layer_idx) * hidden_dim * dim;
+
+        // Diagram mapping: LlamaAttention -> input_layernorm / LlamaRMSNorm
+        // input shape: [dim]
+        // rms weight shape: [dim]
+        // output shape: [dim]
+        llama_layers_->rmsnorm_layers_.push_back(make_rmsnorm(attn_rms_layer_offset));
+
+        // Diagram mapping: q_proj
+        // wq weight shape: [dim, dim], input [dim], output [dim]
+        llama_layers_->wq_layers_.push_back(make_matmul(dim, dim, wq_layer_offset));
+
+        // Diagram mapping: k_proj
+        // wk weight shape: [kv_dim, dim], input [dim], output [kv_dim]
+        llama_layers_->wk_layers_.push_back(make_matmul(kv_dim, dim, wk_layer_offset));
+
+        // Diagram mapping: v_proj
+        // wv weight shape: [kv_dim, dim], input [dim], output [kv_dim]
+        llama_layers_->wv_layers_.push_back(make_matmul(kv_dim, dim, wv_layer_offset));
+
+        // Diagram mapping: o_proj
+        // wo weight shape: [dim, dim], input [dim], output [dim]
+        llama_layers_->wo_layers_.push_back(make_matmul(dim, dim, wo_layer_offset));
+
+        // Diagram mapping: LlamaMLP -> pre-MLP LlamaRMSNorm / post_attention_layernorm
+        // input shape: [dim]
+        // rms weight shape: [dim]
+        // output shape: [dim]
+        llama_layers_->rmsnorm_layers_.push_back(make_rmsnorm(ffn_rms_layer_offset));
+
+        // Diagram mapping: gate projection in SwiGLU MLP
+        // w1 weight shape: [hidden_dim, dim], input [dim], output [hidden_dim]
+        llama_layers_->w1_layers_.push_back(make_matmul(hidden_dim, dim, w1_layer_offset));
+
+        // Diagram mapping: up_proj in SwiGLU MLP
+        // w3 weight shape: [hidden_dim, dim], input [dim], output [hidden_dim]
+        llama_layers_->w3_layers_.push_back(make_matmul(hidden_dim, dim, w3_layer_offset));
+
+        // Diagram mapping: down_proj in SwiGLU MLP
+        // w2 weight shape: [dim, hidden_dim], input [hidden_dim], output [dim]
+        llama_layers_->w2_layers_.push_back(make_matmul(dim, hidden_dim, w2_layer_offset));
     }
 
-    // create weight matrix for key
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        auto wk = std::make_shared<op::MatmulLayer>(device_type_, config_->kv_dim_, dim);
-        wk->set_weight(0, {config_->kv_dim_, dim}, this->raw_model_data_->weight(pos),
-                       cpu_device_type);
-        llama_layers_->wk_layers_.push_back(wk);
-        pos += config_->kv_dim_ * dim;
-    }
+    // Diagram mapping: final LlamaRMSNorm before LM head
+    // input shape: [dim]
+    // rms weight shape: [dim]
+    // output shape: [dim]
+    llama_layers_->rmsnorm_layers_.push_back(make_rmsnorm(final_rms_offset));
 
-    // create weight matrix for value
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        auto wv = std::make_shared<op::MatmulLayer>(device_type_, config_->kv_dim_, dim);
-        wv->set_weight(0, {config_->kv_dim_, dim}, this->raw_model_data_->weight(pos),
-                       cpu_device_type);
-        llama_layers_->wv_layers_.push_back(wv);
-        pos += config_->kv_dim_ * dim;
-    }
-
-    // create weight matrix for output
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        auto wo = std::make_shared<op::MatmulLayer>(device_type_, dim, dim);
-        wo->set_weight(0, {dim, dim}, this->raw_model_data_->weight(pos), cpu_device_type);
-        llama_layers_->wo_layers_.push_back(wo);
-        pos += dim * dim;
-    }
-
-    // skip ffn rmsnorm
-    pos += config_->layer_num_ * dim;
-
-    // w1 layers
-    int32_t hidden_dim = config_->hidden_dim_;
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        auto w1 = std::make_shared<op::MatmulLayer>(device_type_, hidden_dim, dim);
-        w1->set_weight(0, {hidden_dim, dim}, this->raw_model_data_->weight(pos), cpu_device_type);
-        llama_layers_->w1_layers_.push_back(w1);
-        pos += dim * hidden_dim;
-    }
-
-    // w2 layers
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        auto w2 = std::make_shared<op::MatmulLayer>(device_type_, dim, hidden_dim);
-        w2->set_weight(0, {dim, hidden_dim}, this->raw_model_data_->weight(pos), cpu_device_type);
-        llama_layers_->w2_layers_.push_back(w2);
-        pos += dim * hidden_dim;
-    }
-
-    // w3 layers
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        auto w3 = std::make_shared<op::MatmulLayer>(device_type_, hidden_dim, dim);
-        w3->set_weight(0, {hidden_dim, dim}, this->raw_model_data_->weight(pos), cpu_device_type);
-        llama_layers_->w3_layers_.push_back(w3);
-        pos += dim * hidden_dim;
-    }
-
-    // skip final rms weight
-    pos += dim;
-    // skip freqs_cos and freqs_sin weight
-    pos += config_->seq_len_ * config_->head_size_;
-
-    llama_layers_->cls_layer_ =
-        std::make_shared<op::MatmulLayer>(device_type_, config_->vocab_size_, dim);
+    // Diagram mapping: LM head / output projection before final outputs
+    // weight shape: [vocab_size, dim]
+    // input hidden state shape: [dim]
+    // logits output shape: [vocab_size]
+    llama_layers_->cls_layer_ = std::make_shared<op::MatmulLayer>(device_type_, vocab_size, dim);
     if (config_->is_shared_weight_) {
-        // using token embedding weight
-        llama_layers_->cls_layer_->set_weight(0, {config_->vocab_size_, dim},
-                                              this->raw_model_data_->weight(0), cpu_device_type);
+        // Tie word embeddings: LM head shares the same weight matrix as nn.Embedding.
+        llama_layers_->cls_layer_->set_weight(0, {vocab_size, dim},
+                                              raw_model_data_->weight(embedding_offset),
+                                              cpu_device_type);
     } else {
-        llama_layers_->cls_layer_->set_weight(0, {config_->vocab_size_, dim},
-                                              this->raw_model_data_->weight(pos), cpu_device_type);
+        llama_layers_->cls_layer_->set_weight(0, {vocab_size, dim},
+                                              raw_model_data_->weight(cls_offset),
+                                              cpu_device_type);
     }
-
-    // create rmsnorm layer
-    size_t rmsnorm_pos = config_->dim_ * std::abs(config_->vocab_size_);
-
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, config_->dim_,
-                                               base::RmsNormEpsilon(model_type_));
-
-        const void* weight_rmsnorm = raw_model_data_->weight(rmsnorm_pos);
-        rms_norm_layer->set_weight(0, {config_->dim_}, weight_rmsnorm, cpu_device_type);
-        llama_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
-        rmsnorm_pos += config_->dim_;
-    }
-
-    // skip attention.wq attention.wk attention.wv attention.wo
-    rmsnorm_pos += config_->layer_num_ * config_->dim_ * config_->dim_;
-    rmsnorm_pos +=
-        config_->layer_num_ * config_->dim_ * (config_->kv_head_num_ * config_->head_size_);
-    rmsnorm_pos +=
-        config_->layer_num_ * config_->dim_ * (config_->kv_head_num_ * config_->head_size_);
-    rmsnorm_pos += config_->layer_num_ * config_->dim_ * config_->dim_;
-
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, config_->dim_,
-                                               base::RmsNormEpsilon(model_type_));
-        const void* weight_rmsnorm = raw_model_data_->weight(rmsnorm_pos);
-        rms_norm_layer->set_weight(0, {config_->dim_}, weight_rmsnorm, cpu_device_type);
-        llama_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
-
-        rmsnorm_pos += config_->dim_;
-    }
-
-    // skip ffn.w1 ffn.w2 ffn.w3
-    rmsnorm_pos += config_->layer_num_ * config_->hidden_dim_ * config_->dim_;
-    rmsnorm_pos += config_->layer_num_ * config_->hidden_dim_ * config_->dim_;
-    rmsnorm_pos += config_->layer_num_ * config_->hidden_dim_ * config_->dim_;
-
-    std::shared_ptr<op::RmsNormLayer> rms_final_layer = std::make_shared<op::RmsNormLayer>(
-        device_type_, config_->dim_, base::RmsNormEpsilon(model_type_));
-
-    const void* weight_rmsnorm_final = raw_model_data_->weight(rmsnorm_pos);
-    rms_final_layer->set_weight(0, {config_->dim_}, weight_rmsnorm_final, cpu_device_type);
-    llama_layers_->rmsnorm_layers_.push_back(rms_final_layer);
 }
 
 void LlamaModelBase::init_mem() {
@@ -637,17 +651,27 @@ op::EmbeddingOutput LlamaModelBase::embedding(const std::vector<int>& tokens) co
     auto input_tokens = get_buffer(ModelBufferType::kInputTokens);
     auto input_embeddings = get_buffer(ModelBufferType::kInputEmbeddings);
     if (input_tokens.size() != tokens.size()) {
+        // 举个小例子，假设 "hello" 编完后有 2 个 token tokens = [1, 22172]
+        // 那么 reshape 后大概就是：
+        // input_tokens.shape = [2]
+        // input_embeddings.shape = [2, dim] dim表示每个 token 的 embedding 维度
         input_tokens.reshape({static_cast<int32_t>(tokens.size())});
         input_embeddings.reshape({static_cast<int32_t>(tokens.size()), config_->dim_});
     }
     for (int32_t i = 0; i < tokens.size(); ++i) {
+        // input_tokens shape: [token_num]
         input_tokens.index<int32_t>(i) = tokens.at(i);
     }
-
+    // input_token_num shape: [token_num]
+    // input_embeddings shape after embedding: [token_num, dim]
     auto input_token_num =
         tensor::Tensor(base::DataType::kDataTypeInt32, static_cast<int32_t>(tokens.size()));
     LOG_IF(FATAL, !llama_layers_->embedding_layer_)
         << "The embedding layer in the Llama model is null pointer.";
+    // input_tokens = [id1, id2]
+    // input_token_num 一个shape为[2]的tensor
+    // input_embeddings为[token_num, dim]的tensor
+    // 这行的工作：实际上去embedding中取一个向量出来
     STATUS_CHECK(
         llama_layers_->embedding_layer_->forward(input_tokens, input_token_num, input_embeddings));
 
@@ -657,7 +681,8 @@ op::EmbeddingOutput LlamaModelBase::embedding(const std::vector<int>& tokens) co
 
 void LlamaModelBase::attention_rms(int32_t layer_idx, const tensor::Tensor& input) const {
     CHECK(llama_layers_ != nullptr);
-    // attn rmsnorm
+    // input shape: [dim]
+    // rmsnorm_output shape: [dim]
     tensor::Tensor rmsnorm_output = get_buffer(ModelBufferType::kOutputRMSNorm);
     std::shared_ptr<op::Layer> rmsnorm_layer = llama_layers_->rmsnorm_layers_.at(layer_idx);
     if (!rmsnorm_layer) {
@@ -668,28 +693,31 @@ void LlamaModelBase::attention_rms(int32_t layer_idx, const tensor::Tensor& inpu
 
 void LlamaModelBase::attention_qkv(int32_t layer_idx, const tensor::Tensor& pos_tensor) const {
     CHECK(llama_layers_ != nullptr);
-    // kv cache
+    // rmsnorm_output shape: [dim]
+    // query shape: [dim]
+    // key/value slice shape: [kv_dim]
     tensor::Tensor query = this->get_buffer(ModelBufferType::kQuery);
     int32_t pos = pos_tensor.index<int32_t>(0);
-    // wq wk wv @ input
     const auto& [key, val] = slice_kv_cache(layer_idx, pos);
-    // query
+
+    // wq: [dim, dim] x [dim] -> [dim]
     const auto& query_layer = llama_layers_->wq_layers_.at(layer_idx);
     CHECK_NE(query_layer, nullptr) << "The query layer in the attention block is null pointer.";
 
     auto rmsnorm_output = get_buffer(ModelBufferType::kOutputRMSNorm);
     STATUS_CHECK(query_layer->forward(rmsnorm_output, query));
 
-    // key
+    // wk: [kv_dim, dim] x [dim] -> [kv_dim]
     const auto& key_layer = llama_layers_->wk_layers_.at(layer_idx);
     CHECK_NE(key_layer, nullptr) << "The key layer in the attention block is null pointer.";
     STATUS_CHECK(key_layer->forward(rmsnorm_output, key));
-    // value
+    // wv: [kv_dim, dim] x [dim] -> [kv_dim]
     const auto& value_layer = llama_layers_->wv_layers_.at(layer_idx);
     CHECK_NE(value_layer, nullptr) << "The value layer in the attention block is null pointer.";
     STATUS_CHECK(value_layer->forward(rmsnorm_output, val));
 
-    // rope
+    // RoPE keeps the same shapes:
+    // query [dim] -> [dim], key [kv_dim] -> [kv_dim]
     CHECK_NE(llama_layers_->rope_layer_, nullptr)
         << "The RoPE layer in the attention block is null pointer.";
     STATUS_CHECK(llama_layers_->rope_layer_->forward(
@@ -709,12 +737,13 @@ base::Status LlamaModelBase::predict(const tensor::Tensor& input, const tensor::
 
 void LlamaModelBase::attention_mha(int32_t layer_idx, const tensor::Tensor& pos_tensor) const {
     CHECK(llama_layers_ != nullptr);
-    // mha
+    // key_cache/value_cache shape: [layer_num, seq_len, kv_dim]
     tensor::Tensor key_cache = get_buffer(ModelBufferType::kKeyCache);
-    // VAL = [val1,val2,...val t]
-    // output @ VAL = 最终的结果
     tensor::Tensor val_cache = get_buffer(ModelBufferType::kValueCache);
 
+    // query shape: [dim]
+    // score_storage shape: [head_num, seq_len]
+    // mha_output shape: [dim]
     tensor::Tensor mha_output = get_buffer(ModelBufferType::kOutputMHA);
     tensor::Tensor score_storage = get_buffer(ModelBufferType::kScoreStorage);
     tensor::Tensor query = this->get_buffer(ModelBufferType::kQuery);
@@ -726,7 +755,8 @@ void LlamaModelBase::attention_mha(int32_t layer_idx, const tensor::Tensor& pos_
     std::dynamic_pointer_cast<op::MultiHeadAttention>(mha_layer)->set_layer_idx(layer_idx);
     STATUS_CHECK(mha_layer->forward(query, score_storage, key_cache, val_cache, mha_output));
 
-    // wo @ attention output
+    // wo: [dim, dim] x [dim] -> [dim]
+    // attn_output shape: [dim]
     tensor::Tensor attn_output = get_buffer(ModelBufferType::kAttnOutput);
     const auto& wo_layer = llama_layers_->wo_layers_.at(layer_idx);
     CHECK_NE(wo_layer, nullptr) << "The weight output layer is null pointer.";
@@ -735,43 +765,44 @@ void LlamaModelBase::attention_mha(int32_t layer_idx, const tensor::Tensor& pos_
 
 void LlamaModelBase::feed_forward(int32_t layer_idx, const tensor::Tensor& input) const {
     CHECK(llama_layers_ != nullptr);
-    // residual add
+    // residual add: [dim] + [dim] -> [dim]
     CHECK_NE(llama_layers_->add_layer_, nullptr)
         << "The add layer in the feedforward block is null pointer";
     STATUS_CHECK(
         llama_layers_->add_layer_->forward(input, get_buffer(ModelBufferType::kAttnOutput), input));
 
-    // ffn rmsnorm
+    // input shape: [dim]
+    // ffn_norm_output shape: [dim]
     tensor::Tensor ffn_norm_output = get_buffer(ModelBufferType::kFFNRMSNorm);
     const auto& ffn_rmsnorm = llama_layers_->rmsnorm_layers_.at(layer_idx + config_->layer_num_);
     CHECK_NE(ffn_rmsnorm, nullptr)
         << "The final rmsnorm layer in the feedforward block is null pointer";
     STATUS_CHECK(ffn_rmsnorm->forward(input, ffn_norm_output));
 
-    // w1
+    // w1: [hidden_dim, dim] x [dim] -> [hidden_dim]
     tensor::Tensor w1_output = get_buffer(ModelBufferType::kW1Output);
     const auto& w1_layer = llama_layers_->w1_layers_.at(layer_idx);
     CHECK_NE(w1_layer, nullptr) << "The w1 layer in the feedforward block is null pointer";
     STATUS_CHECK(w1_layer->forward(ffn_norm_output, w1_output));
 
-    // w3
+    // w3: [hidden_dim, dim] x [dim] -> [hidden_dim]
     tensor::Tensor w3_ouput = get_buffer(ModelBufferType::kW3Output);
     const auto& w3_layer = llama_layers_->w3_layers_.at(layer_idx);
     CHECK_NE(w3_layer, nullptr) << "The w3 layer in the feedforward block is null pointer";
     STATUS_CHECK(w3_layer->forward(ffn_norm_output, w3_ouput));
 
-    // SwiGLU
+    // SwiGLU: [hidden_dim] and [hidden_dim] -> [hidden_dim]
     CHECK_NE(llama_layers_->swiglu_layer_, nullptr)
         << "The swiglu layer in the feedforward block is null pointer";
     STATUS_CHECK(llama_layers_->swiglu_layer_->forward(w1_output, w3_ouput, w1_output));
 
-    // w2
+    // w2: [dim, hidden_dim] x [hidden_dim] -> [dim]
     tensor::Tensor w2_output = get_buffer(ModelBufferType::kW2Output);
     const auto& w2_layer = llama_layers_->w2_layers_.at(layer_idx);
     CHECK_NE(w2_layer, nullptr) << "The w2 layer in the feedforward block is null pointer";
     STATUS_CHECK(w2_layer->forward(w1_output, w2_output));
 
-    // residual add
+    // residual add: [dim] + [dim] -> [dim]
     CHECK_NE(llama_layers_->add_layer_, nullptr)
         << "The add layer in the feedforward block is null pointer";
     STATUS_CHECK(llama_layers_->add_layer_->forward(input, w2_output, input));
@@ -779,10 +810,12 @@ void LlamaModelBase::feed_forward(int32_t layer_idx, const tensor::Tensor& input
 
 void LlamaModelBase::cls_logits(const tensor::Tensor& input) const {
     CHECK(llama_layers_ != nullptr);
+    // input shape before final norm: [dim]
     const auto& norm = llama_layers_->rmsnorm_layers_.at(2 * config_->layer_num_);
     CHECK_NE(norm, nullptr);
     STATUS_CHECK(norm->forward(input, input));
 
+    // cls: [vocab_size, dim] x [dim] -> [vocab_size]
     tensor::Tensor forward_output = get_buffer(ModelBufferType::kForwardOutput);
     CHECK_NE(llama_layers_->cls_layer_, nullptr);
     STATUS_CHECK(llama_layers_->cls_layer_->forward(input, forward_output));
