@@ -1,9 +1,9 @@
-#include "model/standard_decoder.h"
+#include "model/decoder/standard_decoder.h"
 #include <glog/logging.h>
 #include <op/matmul.h>
 #include <op/mha.h>
 #include <op/rmsnorm.h>
-#include "model/model_utils.h"
+#include "model/decoder/model_utils.h"
 #include "op/kernels/cpu/rope_kernel.h"
 
 namespace model {
@@ -87,6 +87,7 @@ base::Status StandardDecoderModel::predict(const tensor::Tensor& input,
 
 base::Status StandardDecoderModel::forward(const tensor::Tensor& input,
                                            const tensor::Tensor& pos_tensor, int& next) const {
+    // Run the shared decoder stack over one prompt/generation step.
     UNUSED(next);
     if (input.is_empty()) {
         return base::error::InvalidArgument("The input tensor is empty.");
@@ -106,6 +107,7 @@ base::Status StandardDecoderModel::forward(const tensor::Tensor& input,
 }
 
 op::EmbeddingOutput StandardDecoderModel::embedding(const std::vector<int>& tokens) const {
+    // 将 token id 转成 decoder 输入 embedding。
     auto input_tokens = get_buffer(ModelBufferType::kInputTokens);
     auto input_embeddings = get_buffer(ModelBufferType::kInputEmbeddings);
     const int32_t embedding_width = residual_width();
@@ -128,12 +130,12 @@ op::EmbeddingOutput StandardDecoderModel::embedding(const std::vector<int>& toke
 }
 
 StandardDecoderLayers& StandardDecoderModel::layers() {
-    CHECK_NE(layers_, nullptr);
+    CHECK(layers_ != nullptr) << "The decoder layers are null pointer.";
     return *layers_;
 }
 
 const StandardDecoderLayers& StandardDecoderModel::layers() const {
-    CHECK_NE(layers_, nullptr);
+    CHECK(layers_ != nullptr) << "The decoder layers are null pointer.";
     return *layers_;
 }
 
@@ -160,6 +162,7 @@ void StandardDecoderModel::apply_attention_projection_norms(int32_t layer_idx,
 }
 
 void StandardDecoderModel::init_mem() {
+    // 分配 embedding、中间激活和 KV cache 等运行期缓冲区。
     std::shared_ptr<base::DeviceAllocator> alloc;
     if (device_type_ == base::DeviceType::kDeviceCPU) {
         alloc = base::CPUDeviceAllocatorFactory::get_instance();

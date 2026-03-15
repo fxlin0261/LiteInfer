@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "unordered_dense.h"
+#include "base/unordered_dense.h"
 
 namespace tiktoken {
 

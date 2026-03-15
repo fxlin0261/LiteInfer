@@ -1,4 +1,4 @@
-#include "model/model_utils.h"
+#include "model/decoder/model_utils.h"
 
 #if KUIPER_ENABLE_CUDA
 #include "op/kernels/cuda/rope_kernel.cuh"

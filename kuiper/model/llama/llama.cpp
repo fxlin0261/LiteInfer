@@ -1,13 +1,13 @@
-#include "model/llama.h"
+#include "model/llama/llama.h"
 #include <glog/logging.h>
 #include <op/matmul.h>
 #include <op/mha.h>
 #include <op/rmsnorm.h>
 #include <sentencepiece_processor.h>
 #include <utility>
-#include "../op/kernels/cpu/rope_kernel.h"
+#include "op/kernels/cpu/rope_kernel.h"
 #if KUIPER_ENABLE_CUDA
-#include "../op/kernels/cuda/rope_kernel.cuh"
+#include "op/kernels/cuda/rope_kernel.cuh"
 #endif
 #include "base/tick.h"
 namespace model {
@@ -648,30 +648,20 @@ base::Status LlamaModelBase::create_layers() {
 }
 
 op::EmbeddingOutput LlamaModelBase::embedding(const std::vector<int>& tokens) const {
+    // 将 token id 映射成输入 embedding。
     auto input_tokens = get_buffer(ModelBufferType::kInputTokens);
     auto input_embeddings = get_buffer(ModelBufferType::kInputEmbeddings);
     if (input_tokens.size() != tokens.size()) {
-        // 举个小例子，假设 "hello" 编完后有 2 个 token tokens = [1, 22172]
-        // 那么 reshape 后大概就是：
-        // input_tokens.shape = [2]
-        // input_embeddings.shape = [2, dim] dim表示每个 token 的 embedding 维度
         input_tokens.reshape({static_cast<int32_t>(tokens.size())});
         input_embeddings.reshape({static_cast<int32_t>(tokens.size()), config_->dim_});
     }
     for (int32_t i = 0; i < tokens.size(); ++i) {
-        // input_tokens shape: [token_num]
         input_tokens.index<int32_t>(i) = tokens.at(i);
     }
-    // input_token_num shape: [token_num]
-    // input_embeddings shape after embedding: [token_num, dim]
     auto input_token_num =
         tensor::Tensor(base::DataType::kDataTypeInt32, static_cast<int32_t>(tokens.size()));
     LOG_IF(FATAL, !llama_layers_->embedding_layer_)
         << "The embedding layer in the Llama model is null pointer.";
-    // input_tokens = [id1, id2]
-    // input_token_num 一个shape为[2]的tensor
-    // input_embeddings为[token_num, dim]的tensor
-    // 这行的工作：实际上去embedding中取一个向量出来
     STATUS_CHECK(
         llama_layers_->embedding_layer_->forward(input_tokens, input_token_num, input_embeddings));
 
@@ -681,8 +671,7 @@ op::EmbeddingOutput LlamaModelBase::embedding(const std::vector<int>& tokens) co
 
 void LlamaModelBase::attention_rms(int32_t layer_idx, const tensor::Tensor& input) const {
     CHECK(llama_layers_ != nullptr);
-    // input shape: [dim]
-    // rmsnorm_output shape: [dim]
+    // 注意力块前的 RMSNorm。
     tensor::Tensor rmsnorm_output = get_buffer(ModelBufferType::kOutputRMSNorm);
     std::shared_ptr<op::Layer> rmsnorm_layer = llama_layers_->rmsnorm_layers_.at(layer_idx);
     if (!rmsnorm_layer) {
@@ -693,31 +682,25 @@ void LlamaModelBase::attention_rms(int32_t layer_idx, const tensor::Tensor& inpu
 
 void LlamaModelBase::attention_qkv(int32_t layer_idx, const tensor::Tensor& pos_tensor) const {
     CHECK(llama_layers_ != nullptr);
-    // rmsnorm_output shape: [dim]
-    // query shape: [dim]
-    // key/value slice shape: [kv_dim]
+    // 计算当前层的 Q/K/V，并对 Q/K 应用 RoPE。
     tensor::Tensor query = this->get_buffer(ModelBufferType::kQuery);
     int32_t pos = pos_tensor.index<int32_t>(0);
     const auto& [key, val] = slice_kv_cache(layer_idx, pos);
 
-    // wq: [dim, dim] x [dim] -> [dim]
     const auto& query_layer = llama_layers_->wq_layers_.at(layer_idx);
     CHECK_NE(query_layer, nullptr) << "The query layer in the attention block is null pointer.";
 
     auto rmsnorm_output = get_buffer(ModelBufferType::kOutputRMSNorm);
     STATUS_CHECK(query_layer->forward(rmsnorm_output, query));
 
-    // wk: [kv_dim, dim] x [dim] -> [kv_dim]
     const auto& key_layer = llama_layers_->wk_layers_.at(layer_idx);
     CHECK_NE(key_layer, nullptr) << "The key layer in the attention block is null pointer.";
     STATUS_CHECK(key_layer->forward(rmsnorm_output, key));
-    // wv: [kv_dim, dim] x [dim] -> [kv_dim]
     const auto& value_layer = llama_layers_->wv_layers_.at(layer_idx);
     CHECK_NE(value_layer, nullptr) << "The value layer in the attention block is null pointer.";
     STATUS_CHECK(value_layer->forward(rmsnorm_output, val));
 
-    // RoPE keeps the same shapes:
-    // query [dim] -> [dim], key [kv_dim] -> [kv_dim]
+    // RoPE 只改位置编码，不改变张量形状。
     CHECK_NE(llama_layers_->rope_layer_, nullptr)
         << "The RoPE layer in the attention block is null pointer.";
     STATUS_CHECK(llama_layers_->rope_layer_->forward(
@@ -727,6 +710,7 @@ void LlamaModelBase::attention_qkv(int32_t layer_idx, const tensor::Tensor& pos_
 
 base::Status LlamaModelBase::predict(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                                      bool is_prompt, int& next) const {
+    // 执行一步解码；非 prompt 阶段会采样下一个 token。
     auto status = forward(input, pos_tensor, next);
     if (!status) {
         return status;
@@ -737,13 +721,10 @@ base::Status LlamaModelBase::predict(const tensor::Tensor& input, const tensor::
 
 void LlamaModelBase::attention_mha(int32_t layer_idx, const tensor::Tensor& pos_tensor) const {
     CHECK(llama_layers_ != nullptr);
-    // key_cache/value_cache shape: [layer_num, seq_len, kv_dim]
+    // 用当前 query 和 KV cache 计算注意力输出。
     tensor::Tensor key_cache = get_buffer(ModelBufferType::kKeyCache);
     tensor::Tensor val_cache = get_buffer(ModelBufferType::kValueCache);
 
-    // query shape: [dim]
-    // score_storage shape: [head_num, seq_len]
-    // mha_output shape: [dim]
     tensor::Tensor mha_output = get_buffer(ModelBufferType::kOutputMHA);
     tensor::Tensor score_storage = get_buffer(ModelBufferType::kScoreStorage);
     tensor::Tensor query = this->get_buffer(ModelBufferType::kQuery);
@@ -755,8 +736,6 @@ void LlamaModelBase::attention_mha(int32_t layer_idx, const tensor::Tensor& pos_
     std::dynamic_pointer_cast<op::MultiHeadAttention>(mha_layer)->set_layer_idx(layer_idx);
     STATUS_CHECK(mha_layer->forward(query, score_storage, key_cache, val_cache, mha_output));
 
-    // wo: [dim, dim] x [dim] -> [dim]
-    // attn_output shape: [dim]
     tensor::Tensor attn_output = get_buffer(ModelBufferType::kAttnOutput);
     const auto& wo_layer = llama_layers_->wo_layers_.at(layer_idx);
     CHECK_NE(wo_layer, nullptr) << "The weight output layer is null pointer.";
@@ -765,44 +744,38 @@ void LlamaModelBase::attention_mha(int32_t layer_idx, const tensor::Tensor& pos_
 
 void LlamaModelBase::feed_forward(int32_t layer_idx, const tensor::Tensor& input) const {
     CHECK(llama_layers_ != nullptr);
-    // residual add: [dim] + [dim] -> [dim]
+    // 执行 FFN，并把结果写回残差流。
     CHECK_NE(llama_layers_->add_layer_, nullptr)
         << "The add layer in the feedforward block is null pointer";
     STATUS_CHECK(
         llama_layers_->add_layer_->forward(input, get_buffer(ModelBufferType::kAttnOutput), input));
 
-    // input shape: [dim]
-    // ffn_norm_output shape: [dim]
     tensor::Tensor ffn_norm_output = get_buffer(ModelBufferType::kFFNRMSNorm);
     const auto& ffn_rmsnorm = llama_layers_->rmsnorm_layers_.at(layer_idx + config_->layer_num_);
     CHECK_NE(ffn_rmsnorm, nullptr)
         << "The final rmsnorm layer in the feedforward block is null pointer";
     STATUS_CHECK(ffn_rmsnorm->forward(input, ffn_norm_output));
 
-    // w1: [hidden_dim, dim] x [dim] -> [hidden_dim]
     tensor::Tensor w1_output = get_buffer(ModelBufferType::kW1Output);
     const auto& w1_layer = llama_layers_->w1_layers_.at(layer_idx);
     CHECK_NE(w1_layer, nullptr) << "The w1 layer in the feedforward block is null pointer";
     STATUS_CHECK(w1_layer->forward(ffn_norm_output, w1_output));
 
-    // w3: [hidden_dim, dim] x [dim] -> [hidden_dim]
     tensor::Tensor w3_ouput = get_buffer(ModelBufferType::kW3Output);
     const auto& w3_layer = llama_layers_->w3_layers_.at(layer_idx);
     CHECK_NE(w3_layer, nullptr) << "The w3 layer in the feedforward block is null pointer";
     STATUS_CHECK(w3_layer->forward(ffn_norm_output, w3_ouput));
 
-    // SwiGLU: [hidden_dim] and [hidden_dim] -> [hidden_dim]
+    // SwiGLU 门控激活。
     CHECK_NE(llama_layers_->swiglu_layer_, nullptr)
         << "The swiglu layer in the feedforward block is null pointer";
     STATUS_CHECK(llama_layers_->swiglu_layer_->forward(w1_output, w3_ouput, w1_output));
 
-    // w2: [dim, hidden_dim] x [hidden_dim] -> [dim]
     tensor::Tensor w2_output = get_buffer(ModelBufferType::kW2Output);
     const auto& w2_layer = llama_layers_->w2_layers_.at(layer_idx);
     CHECK_NE(w2_layer, nullptr) << "The w2 layer in the feedforward block is null pointer";
     STATUS_CHECK(w2_layer->forward(w1_output, w2_output));
 
-    // residual add: [dim] + [dim] -> [dim]
     CHECK_NE(llama_layers_->add_layer_, nullptr)
         << "The add layer in the feedforward block is null pointer";
     STATUS_CHECK(llama_layers_->add_layer_->forward(input, w2_output, input));
@@ -810,12 +783,11 @@ void LlamaModelBase::feed_forward(int32_t layer_idx, const tensor::Tensor& input
 
 void LlamaModelBase::cls_logits(const tensor::Tensor& input) const {
     CHECK(llama_layers_ != nullptr);
-    // input shape before final norm: [dim]
+    // 最后一层归一化后投影到词表 logits。
     const auto& norm = llama_layers_->rmsnorm_layers_.at(2 * config_->layer_num_);
     CHECK_NE(norm, nullptr);
     STATUS_CHECK(norm->forward(input, input));
 
-    // cls: [vocab_size, dim] x [dim] -> [vocab_size]
     tensor::Tensor forward_output = get_buffer(ModelBufferType::kForwardOutput);
     CHECK_NE(llama_layers_->cls_layer_, nullptr);
     STATUS_CHECK(llama_layers_->cls_layer_->forward(input, forward_output));

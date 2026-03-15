@@ -3,10 +3,10 @@
 #include <op/embedding.h>
 #include <map>
 #include <string>
-#include "config.h"
-#include "op/encode.h"
+#include "model/core/config.h"
+#include "op/tokenizer_layer.h"
 #include "op/layer.h"
-#include "raw_model_data.h"
+#include "model/core/raw_model_data.h"
 #include "sampler/argmax_sampler.h"
 #include "sentencepiece_processor.h"
 #include "tensor/tensor.h"
@@ -60,7 +60,7 @@ protected:
 
     virtual base::Status read_model_file();
 
-    virtual base::Status create_encode_layer();
+    virtual base::Status create_tokenizer_layer();
 
     virtual base::Status gen_model_from_file();
 
@@ -91,7 +91,7 @@ protected:
 
     std::string token_path_;
     std::string model_path_;
-    std::unique_ptr<op::EncodeLayerBase> encode_layer_;
+    std::unique_ptr<op::TokenizerLayerBase> tokenizer_layer_;
     std::map<ModelBufferType, tensor::Tensor> buffers_;
     std::unique_ptr<sampler::Sampler> sampler_;
     std::shared_ptr<RawModelData> raw_model_data_;

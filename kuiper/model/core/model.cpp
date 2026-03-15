@@ -1,4 +1,4 @@
-#include "model/model.h"
+#include "model/core/model.h"
 #include <cstdio>
 #include <fcntl.h>
 #include <memory>
@@ -52,8 +52,8 @@ base::Status Model::read_model_file() {
                                    " may be the path does not exist!");
     }
 
-    std::unique_ptr<FILE, decltype(&std::fclose)> file(std::fopen(model_path_.data(), "rb"),
-                                                       &std::fclose);
+    auto* raw_file = std::fopen(model_path_.data(), "rb");
+    std::unique_ptr<FILE, int (*)(FILE*)> file(raw_file, &std::fclose);
     if (!file) {
         return error::PathNotValid("Failed to open the file. The path may be invalid.");
     }
@@ -152,24 +152,27 @@ base::Status Model::generate_model_infos(const ModelConfig& config, int32_t imme
     return base::error::Success();
 }
 
-base::Status Model::create_encode_layer() {
+base::Status Model::create_tokenizer_layer() {
     using namespace base;
 
-    // create token encode decode layer
+    // Create the text-tokenization adapter used by the model runtime.
     if (tokenizer_type_ == TokenizerType::kEncodeSpe) {
-        encode_layer_ = std::make_unique<op::SpeEncodeLayer>(this->token_path_, true, false);
+        tokenizer_layer_ =
+            std::make_unique<op::SentencePieceTokenizerLayer>(this->token_path_, true, false);
     } else if (tokenizer_type_ == TokenizerType::kEncodeBpe) {
         if (use_qwen_tokenizer()) {
-            encode_layer_ = std::make_unique<op::QwenEncodeLayer>(this->token_path_, false, false);
+            tokenizer_layer_ =
+                std::make_unique<op::QwenTokenizerLayer>(this->token_path_, false, false);
         } else {
-            encode_layer_ = std::make_unique<op::BpeEncodeLayer>(this->token_path_, true, false);
+            tokenizer_layer_ =
+                std::make_unique<op::BpeTokenizerLayer>(this->token_path_, true, false);
         }
     }
-    if (!encode_layer_) {
-        return error::InternalError("Create the encode layer failed.");
+    if (!tokenizer_layer_) {
+        return error::InternalError("Create the tokenizer layer failed.");
     }
 
-    config_->vocab_size_ = encode_layer_->vocab_size();
+    config_->vocab_size_ = tokenizer_layer_->vocab_size();
     if (config_->vocab_size_ <= 0) {
         return error::InternalError("The vocab size param read error from the model file!");
     }
@@ -180,12 +183,11 @@ base::Status Model::gen_model_from_file() {
     using namespace base;
     config_ = std::make_unique<TransformerConfig>();
 
-    // init sentence piece processor
-    // google sentence piece
-    auto create_encode_status = create_encode_layer();
-    if (!create_encode_status) {
-        LOG(ERROR) << "Create the encode layer failed!";
-        return create_encode_status;
+    // 先初始化 tokenizer，再加载依赖词表信息的模型数据。
+    auto create_tokenizer_status = create_tokenizer_layer();
+    if (!create_tokenizer_status) {
+        LOG(ERROR) << "Create the tokenizer layer failed!";
+        return create_tokenizer_status;
     }
     // mmap
     auto mmap_status = read_model_file();
@@ -203,27 +205,29 @@ base::Status Model::gen_model_from_file() {
 }
 
 std::vector<int32_t> Model::encode(const std::string& sentence) const {
-    CHECK(encode_layer_ != nullptr);
-    return encode_layer_->encode(sentence);
+    // 文本转 token id。
+    CHECK(tokenizer_layer_ != nullptr);
+    return tokenizer_layer_->encode(sentence);
 }
 
 bool Model::is_sentence_ending(int32_t token_idx) const {
-    CHECK(this->encode_layer_ != nullptr);
-    return this->encode_layer_->is_sentence_ending(token_idx);
+    CHECK(this->tokenizer_layer_ != nullptr);
+    return this->tokenizer_layer_->is_sentence_ending(token_idx);
 }
 
 std::string Model::decode(int32_t token_idx) const {
-    CHECK(this->encode_layer_ != nullptr);
-    return this->encode_layer_->decode(token_idx);
+    CHECK(this->tokenizer_layer_ != nullptr);
+    return this->tokenizer_layer_->decode(token_idx);
 }
 
 std::string Model::decode(std::vector<int32_t> token_idxs) const {
-    CHECK(this->encode_layer_ != nullptr);
-    return this->encode_layer_->decode(token_idxs);
+    CHECK(this->tokenizer_layer_ != nullptr);
+    return this->tokenizer_layer_->decode(token_idxs);
 }
 
 std::pair<tensor::Tensor, tensor::Tensor> Model::slice_kv_cache(int32_t layer_idx,
                                                                 int32_t token_pos) const {
+    // 返回当前层、当前位置对应的 KV cache 视图。
     int32_t layer_offset = layer_idx * config_->seq_len_ * config_->kv_dim_;
     int32_t cache_offset = layer_offset + token_pos * config_->kv_dim_;
 
@@ -244,9 +248,7 @@ std::pair<tensor::Tensor, tensor::Tensor> Model::slice_kv_cache(int32_t layer_id
 tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
                                  const op::EmbeddingOutput& embedding_output,
                                  bool is_prompt) const {
-    // pos_tensor：当前位置，通常表示当前 token 的位置
-    // embedding_output：embedding 层的输出
-    // is_prompt：当前是不是 prompt 阶段
+    // 选出当前解码步真正要送入模型的一行 embedding。
     const int32_t pos = pos_tensor.index<int32_t>(0);
     auto [input_tokens, input_embeddings, input_token_num] = embedding_output;
     UNUSED(input_tokens);
@@ -257,11 +259,7 @@ tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
         index = pos;
     }
     const int32_t input_dim = input_width();
-    // Prompt stage:
-    // input_embeddings shape is [token_num, input_dim], and we slice row `index`.
-    // Decode stage:
-    // input_embeddings shape is [1, input_dim].
-    // In both cases the returned `input` shape is [input_dim].
+    // prompt 阶段取第 pos 行；decode 阶段只有一行可用。
     std::shared_ptr<base::Buffer> input_emb_buffer = std::make_shared<base::Buffer>(
         input_dim * sizeof(float), nullptr, input_embeddings.ptr<float>(index * input_dim), true);
     tensor::Tensor input(base::DataType::kDataTypeFp32, input_dim);

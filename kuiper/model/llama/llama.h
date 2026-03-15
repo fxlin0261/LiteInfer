@@ -1,18 +1,14 @@
-#ifndef KUIPER_INCLUDE_MODEL_STANDARD_DECODER_H_
-#define KUIPER_INCLUDE_MODEL_STANDARD_DECODER_H_
-
+#ifndef KUIPER_INCLUDE_MODEL_LLAMA_H_
+#define KUIPER_INCLUDE_MODEL_LLAMA_H_
 #include <base/cuda_config.h>
-#include <memory>
-#include <vector>
-#include "model.h"
+#include "model/core/model.h"
 #include "op/add.h"
 #include "op/embedding.h"
 #include "op/rope.h"
 #include "op/swiglu.h"
-
 namespace model {
 
-struct StandardDecoderLayers {
+struct LlamaLayers {
     std::shared_ptr<op::Layer> add_layer_;
     std::shared_ptr<op::Layer> rope_layer_;
     std::shared_ptr<op::Layer> swiglu_layer_;
@@ -27,8 +23,6 @@ struct StandardDecoderLayers {
     std::vector<std::shared_ptr<op::Layer>> w2_layers_;
     std::vector<std::shared_ptr<op::Layer>> rmsnorm_layers_;
     std::vector<std::shared_ptr<op::Layer>> w3_layers_;
-    std::vector<std::shared_ptr<op::Layer>> query_norm_layers_;
-    std::vector<std::shared_ptr<op::Layer>> key_norm_layers_;
     std::shared_ptr<op::Layer> cls_layer_;
 
     std::shared_ptr<op::Layer> embedding_layer_;
@@ -36,11 +30,10 @@ struct StandardDecoderLayers {
     void to_cuda(std::shared_ptr<kernel::CudaConfig> config);
 };
 
-class StandardDecoderModel : public Model {
+class LlamaModelBase : public Model {
 public:
-    explicit StandardDecoderModel(base::TokenizerType tokenizer_type, base::ModelType model_type,
-                                  std::string token_path, std::string model_path,
-                                  bool is_quant_model);
+    explicit LlamaModelBase(base::TokenizerType tokenizer_type, base::ModelType model_type,
+                            std::string token_path, std::string model_path, bool is_quant_model);
 
     base::Status init(base::DeviceType device_type) override;
 
@@ -52,32 +45,12 @@ public:
 
     op::EmbeddingOutput embedding(const std::vector<int>& tokens) const override;
 
-protected:
-    StandardDecoderLayers& layers();
-
-    const StandardDecoderLayers& layers() const;
-
-    const std::shared_ptr<kernel::CudaConfig>& cuda_config() const;
-
-    base::Status create_param_layers() override = 0;
-
-    int32_t input_width() const override;
-
-    virtual int32_t residual_width() const;
-
-    virtual int32_t attention_width() const;
-
-    virtual int32_t ffn_width() const;
-
-    virtual base::Status validate_custom_layers() const;
-
-    virtual void apply_attention_projection_norms(int32_t layer_idx, tensor::Tensor& query,
-                                                  tensor::Tensor& key) const;
-
 private:
     void init_mem() override;
 
     base::Status create_layers() override;
+
+    base::Status create_param_layers() override;
 
     base::Status create_nonparam_layers() override;
 
@@ -97,9 +70,22 @@ private:
 
 private:
     std::shared_ptr<kernel::CudaConfig> cuda_config_;
-    std::unique_ptr<StandardDecoderLayers> layers_;
+    std::unique_ptr<LlamaLayers> llama_layers_;
+};
+
+class Llama2Model : public LlamaModelBase {
+public:
+    explicit Llama2Model(std::string token_path, std::string model_path, bool is_quant_model)
+        : LlamaModelBase(base::TokenizerType::kEncodeSpe, base::ModelType::kModelTypeLlama2,
+                         std::move(token_path), std::move(model_path), is_quant_model) {}
+};
+
+class Llama3Model : public LlamaModelBase {
+public:
+    explicit Llama3Model(std::string token_path, std::string model_path, bool is_quant_model)
+        : LlamaModelBase(base::TokenizerType::kEncodeBpe, base::ModelType::kModelTypeLlama3,
+                         std::move(token_path), std::move(model_path), is_quant_model) {}
 };
 
 }  // namespace model
-
-#endif  // KUIPER_INCLUDE_MODEL_STANDARD_DECODER_H_
+#endif

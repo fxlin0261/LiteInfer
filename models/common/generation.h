@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <utility>
 #include <vector>
-#include "model/model.h"
+#include "model/core/model.h"
 
 namespace app {
 

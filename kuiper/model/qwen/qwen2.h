@@ -1,7 +1,7 @@
 #ifndef KUIPER_INCLUDE_MODEL_QWEN2_H_
 #define KUIPER_INCLUDE_MODEL_QWEN2_H_
 
-#include "standard_decoder.h"
+#include "model/decoder/standard_decoder.h"
 
 namespace model {
 

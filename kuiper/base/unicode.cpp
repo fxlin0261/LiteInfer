@@ -68,55 +68,6 @@ uint32_t unicode_cpt_from_utf8(const std::string& utf8, size_t& offset) {
     throw std::invalid_argument("failed to convert utf8 to codepoint");
 }
 
-// static std::vector<uint16_t> unicode_cpt_to_utf16(uint32_t cp) {
-//     std::vector<uint16_t> result;
-//     if (/* 0x0000 <= cp && */ cp <= 0xffff) {
-//         result.emplace_back(cp);
-//         return result;
-//     }
-//     if (0x10000 <= cp && cp <= 0x10ffff) {
-//         result.emplace_back(0xd800 | ((cp - 0x10000) >> 10));
-//         result.emplace_back(0xdc00 | ((cp - 0x10000) & 0x03ff));
-//         return result;
-//     }
-//     throw std::invalid_argument("failed to convert codepoint to utf16");
-// }
-
-// static std::vector<uint16_t> unicode_cpts_to_utf16(const std::vector<uint32_t> & cps) {
-//     std::vector<uint16_t> result;
-//     for (size_t i = 0; i < cps.size(); ++i) {
-//         auto temp = unicode_cpt_to_utf16(cps[i]);
-//         result.insert(result.end(), temp.begin(), temp.end());
-//     }
-//     return result;
-// }
-
-// static uint32_t unicode_cpt_from_utf16(const std::vector<uint16_t> & utf16, size_t & offset) {
-//     assert(offset < utf16.size());
-//     if (((utf16[0] >> 10) << 10) != 0xd800) {
-//         auto result = utf16[offset + 0];
-//         offset += 1;
-//         return result;
-//     }
-//
-//     if (offset + 1 >= utf16.size() || !((utf16[1] & 0xdc00) == 0xdc00)) {
-//         throw std::invalid_argument("invalid character");
-//     }
-//
-//     auto result = 0x10000 + (((utf16[0] & 0x03ff) << 10) | (utf16[1] & 0x03ff));
-//     offset += 2;
-//     return result;
-// }
-
-// static std::vector<uint32_t> unicode_cpts_from_utf16(const std::vector<uint16_t> & utf16) {
-//     std::vector<uint32_t> result;
-//     size_t offset = 0;
-//     while (offset < utf16.size()) {
-//         result.push_back(unicode_cpt_from_utf16(utf16, offset));
-//     }
-//     return result;
-// }
-
 static std::vector<codepoint_flags> unicode_cpt_flags_array() {
     std::vector<codepoint_flags> cpt_flags(MAX_CODEPOINTS, codepoint_flags::UNDEFINED);
 
@@ -246,7 +197,7 @@ static std::vector<std::string> unicode_byte_encoding_process(
     return bpe_encoded_words;
 }
 
-// GPT2 system regex:  's|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+
+// GPT-2 风格分词规则。
 static std::vector<size_t> unicode_regex_split_custom_gpt2(const std::string& text,
                                                            const std::vector<size_t>& offsets) {
     std::vector<size_t> bpe_offsets;      // store the offset of each word
@@ -367,8 +318,7 @@ static std::vector<size_t> unicode_regex_split_custom_gpt2(const std::string& te
     return bpe_offsets;
 }
 
-// LLAMA3 system regex: "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}|
-// ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+"
+// Llama3 风格分词规则。
 static std::vector<size_t> unicode_regex_split_custom_llama3(const std::string& text,
                                                              const std::vector<size_t>& offsets) {
     std::vector<size_t> bpe_offsets;      // store the offset of each word
@@ -512,7 +462,7 @@ static std::vector<size_t> unicode_regex_split_custom_llama3(const std::string& 
     return bpe_offsets;
 }
 
-// use std::wregex to split the text
+// 使用 std::wregex 进行通用分词。
 static std::vector<size_t> unicode_regex_split_stl(const std::wstring& wtext,
                                                    const std::wstring& regex_expr,
                                                    const std::vector<size_t>& offsets) {
@@ -544,7 +494,7 @@ static std::vector<size_t> unicode_regex_split_stl(const std::wstring& wtext,
     return bpe_offsets;
 }
 
-// use std::regex to split the text
+// 使用 std::regex 处理 ASCII 路径。
 static std::vector<size_t> unicode_regex_split_stl(const std::string& text,
                                                    const std::string& regex_expr,
                                                    const std::vector<size_t>& offsets) {
@@ -597,9 +547,6 @@ static std::vector<size_t> unicode_regex_split_custom(const std::string& text,
     return bpe_offsets;
 }
 
-//
-// interface
-//
 
 std::string unicode_cpt_to_utf8(uint32_t cp) {
     std::string result;

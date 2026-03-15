@@ -1,18 +1,18 @@
-#ifndef KUIPER_INCLUDE_OP_ENCODE_H_
-#define KUIPER_INCLUDE_OP_ENCODE_H_
+#ifndef KUIPER_INCLUDE_OP_TOKENIZER_LAYER_H_
+#define KUIPER_INCLUDE_OP_TOKENIZER_LAYER_H_
 #include <absl/strings/str_join.h>
 #include <absl/strings/str_replace.h>
 #include <absl/strings/str_split.h>
 #include <sentencepiece_processor.h>
-#include "base/tiktoken.h"
+#include "tokenizer/tiktoken.h"
 #include "base/unordered_dense.h"
 #include "layer.h"
 #include "nlohmann/json.hpp"
 namespace op {
 
-class EncodeLayerBase : public Layer {
+class TokenizerLayerBase : public Layer {
 public:
-    explicit EncodeLayerBase(std::string token_model_path, bool has_bos, bool has_eos)
+    explicit TokenizerLayerBase(std::string token_model_path, bool has_bos, bool has_eos)
         : Layer(base::DeviceType::kDeviceCPU, LayerType::kLayerEncode, "Encode"),
           has_bos_(has_bos),
           has_eos_(has_eos),
@@ -34,9 +34,9 @@ protected:
     std::string token_model_path_;
 };
 
-class SpeEncodeLayer : public EncodeLayerBase {
+class SentencePieceTokenizerLayer : public TokenizerLayerBase {
 public:
-    explicit SpeEncodeLayer(std::string token_model_path, bool has_bos, bool has_eos);
+    explicit SentencePieceTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos);
 
     std::vector<int32_t> encode(const std::string& sentence) const override;
 
@@ -52,9 +52,9 @@ private:
     std::unique_ptr<sentencepiece::SentencePieceProcessor> spe;
 };
 
-class BpeEncodeLayer : public EncodeLayerBase {
+class BpeTokenizerLayer : public TokenizerLayerBase {
 public:
-    explicit BpeEncodeLayer(std::string token_model_path, bool has_bos, bool has_eos);
+    explicit BpeTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos);
 
     std::vector<int32_t> encode(const std::string& sentence) const override;
 
@@ -75,10 +75,10 @@ protected:
     std::unique_ptr<tiktoken::tiktoken> tiktoken_;
 };
 
-class QwenEncodeLayer : public BpeEncodeLayer {
+class QwenTokenizerLayer : public BpeTokenizerLayer {
 public:
-    explicit QwenEncodeLayer(std::string token_model_path, bool has_bos, bool has_eos);
+    explicit QwenTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos);
 };
 
 }  // namespace op
-#endif  // KUIPER_INCLUDE_OP_ENCODE_H_
+#endif  // KUIPER_INCLUDE_OP_TOKENIZER_LAYER_H_

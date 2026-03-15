@@ -5,13 +5,13 @@
 #include <string>
 #include <vector>
 #include "base/alloc.h"
-#include "model/model.h"
+#include "model/core/model.h"
 
 namespace {
 
-class FakeEncodeLayer final : public op::EncodeLayerBase {
+class FakeEncodeLayer final : public op::TokenizerLayerBase {
 public:
-    FakeEncodeLayer() : EncodeLayerBase("fake.model", true, false) {}
+    FakeEncodeLayer() : TokenizerLayerBase("fake.model", true, false) {}
 
     std::vector<int32_t> encode(const std::string& sentence) const override {
         return {101, static_cast<int32_t>(sentence.size())};
@@ -81,8 +81,8 @@ public:
         return op::EmbeddingOutput(input_tokens, input_embeddings, input_token_num);
     }
 
-    void set_encode_layer_for_test(std::unique_ptr<op::EncodeLayerBase> layer) {
-        encode_layer_ = std::move(layer);
+    void set_tokenizer_layer_for_test(std::unique_ptr<op::TokenizerLayerBase> layer) {
+        tokenizer_layer_ = std::move(layer);
     }
 
     base::Status insert_buffer_for_test(model::ModelBufferType buffer_idx,
@@ -198,7 +198,7 @@ TEST(test_model_core, insert_buffer_rejects_empty_tensor_and_duplicates) {
 
 TEST(test_model_core, encode_decode_and_sentence_ending_delegate_to_encode_layer) {
     FakeModel model;
-    model.set_encode_layer_for_test(std::make_unique<FakeEncodeLayer>());
+    model.set_tokenizer_layer_for_test(std::make_unique<FakeEncodeLayer>());
 
     const auto encoded = model.encode("hello");
     ASSERT_EQ(encoded.size(), 2U);

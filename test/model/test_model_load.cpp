@@ -2,7 +2,7 @@
 #include <fcntl.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <model/config.h>
+#include <model/core/config.h>
 #include <op/matmul.h>
 #include <sys/mman.h>
 #include "base/buffer.h"
@@ -25,7 +25,7 @@ TEST(test_load, load_model_config) {
     ASSERT_NE(file, nullptr);
 
     auto config = model::ModelConfig{};
-    fread(&config, sizeof(model::ModelConfig), 1, file);
+    ASSERT_EQ(fread(&config, sizeof(model::ModelConfig), 1, file), 1u);
     ASSERT_EQ(config.dim, 16);
     ASSERT_EQ(config.hidden_dim, 128);
     ASSERT_EQ(config.layer_num, 256);
@@ -40,7 +40,7 @@ TEST(test_load, load_model_weight) {
     ASSERT_NE(file, nullptr);
 
     auto config = model::ModelConfig{};
-    fread(&config, sizeof(model::ModelConfig), 1, file);
+    ASSERT_EQ(fread(&config, sizeof(model::ModelConfig), 1, file), 1u);
 
     fseek(file, 0, SEEK_END);
     auto file_size = ftell(file);
@@ -63,7 +63,7 @@ TEST(test_load, create_matmul) {
     ASSERT_NE(file, nullptr);
 
     auto config = model::ModelConfig{};
-    fread(&config, sizeof(model::ModelConfig), 1, file);
+    ASSERT_EQ(fread(&config, sizeof(model::ModelConfig), 1, file), 1u);
 
     fseek(file, 0, SEEK_END);
     auto file_size = ftell(file);

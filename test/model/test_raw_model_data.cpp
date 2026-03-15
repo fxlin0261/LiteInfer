@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <array>
 #include <cstdint>
-#include "model/raw_model_data.h"
+#include "model/core/raw_model_data.h"
 
 TEST(test_raw_model_data, fp32_weight_interprets_offset_in_elements) {
     std::array<float, 4> weights{1.f, 2.f, 3.f, 4.f};

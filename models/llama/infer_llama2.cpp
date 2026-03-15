@@ -1,7 +1,7 @@
 #include <base/base.h>
 #include <base/tick.h>
 #include <glog/logging.h>
-#include "model/llama2.h"
+#include "model/llama/llama.h"
 
 int32_t generate(const model::Llama2Model& model, const std::string& sentence, int total_steps,
                  bool need_output = false) {

@@ -1,4 +1,4 @@
-#include "model/qwen3.h"
+#include "model/qwen/qwen3.h"
 #include <op/matmul.h>
 #include <op/rmsnorm.h>
 #include <utility>
@@ -12,6 +12,7 @@ Qwen3Model::Qwen3Model(std::string token_path, std::string model_path, bool is_q
 base::Status Qwen3Model::create_param_layers() {
     CHECK(!is_quant_model_);
 
+    // 按序列化权重布局构建 Qwen3 各层参数。
     size_t pos = 0;
     const int32_t dim = config_->dim_;
     const int32_t kv_dim = config_->kv_dim_;

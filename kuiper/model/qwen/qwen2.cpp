@@ -1,4 +1,4 @@
-#include "model/qwen2.h"
+#include "model/qwen/qwen2.h"
 #include <op/matmul.h>
 #include <op/rmsnorm.h>
 #include <utility>
@@ -12,6 +12,7 @@ Qwen2Model::Qwen2Model(std::string token_path, std::string model_path, bool is_q
 base::Status Qwen2Model::create_param_layers() {
     CHECK(!is_quant_model_);
 
+    // 按序列化权重布局构建 Qwen2 各层参数。
     auto cpu_device_type = base::DeviceType::kDeviceCPU;
     layers().embedding_layer_ = std::make_shared<op::EmbeddingLayer>(
         device_type_, config_->dim_, config_->seq_len_, config_->vocab_size_);

@@ -6,7 +6,7 @@
 #include <vector>
 #include "base/base.h"
 #include "common/generation.h"
-#include "model/qwen2.h"
+#include "model/qwen/qwen2.h"
 
 // 聊天消息结构体
 struct ChatMessage {

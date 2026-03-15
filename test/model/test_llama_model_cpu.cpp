@@ -1,7 +1,6 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <model/llama2.h>
-#include <model/llama3.h>
+#include <model/llama/llama.h>
 #include <filesystem>
 #include <memory>
 #include <optional>

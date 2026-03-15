@@ -2,7 +2,7 @@
 #include <base/tick.h>
 #include <glog/logging.h>
 #include "common/generation.h"
-#include "model/qwen2.h"
+#include "model/qwen/qwen2.h"
 
 int32_t generate(const model::Qwen2Model& model, const std::string& sentence, int total_steps,
                  bool need_output = false) {

@@ -1,4 +1,4 @@
-#include "model/raw_model_data.h"
+#include "model/core/raw_model_data.h"
 #include <sys/mman.h>
 #include <unistd.h>
 namespace model {
