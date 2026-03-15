@@ -1,21 +1,11 @@
-# =========================
-# 缓存和构建产物
-# =========================
-# 忽略通用缓存文件夹
+# Caches
 .cache/
 
-# 忽略构建输出文件夹
+# Build outputs
 build/
+cmake-build-*/
 build-local-*/
 
-# =========================
-# IDE 和编辑器配置文件
-# =========================
-# 忽略 VS Code 的本地工作区配置
+# Editor metadata
 .vscode/
-
-# 忽略 CLion (JetBrains 系列) 的本地项目配置
 .idea/
-
-# 忽略 CLion 自动生成的 CMake 构建目录 (如 cmake-build-debug 等)
-cmake-build-*/

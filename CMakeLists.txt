@@ -42,13 +42,17 @@ endforeach()
 
 list(LENGTH KUIPER_MODEL_DEFINITIONS KUIPER_ENABLED_MODEL_SUPPORT_COUNT)
 if(KUIPER_ENABLED_MODEL_SUPPORT_COUNT GREATER 1)
-  message(FATAL_ERROR
-    "Enable at most one of LLAMA3_SUPPORT, QWEN2_SUPPORT, or QWEN3_SUPPORT per build. "
-    "These switches change tokenizer and model layout assumptions in shared code.")
+  message(
+    FATAL_ERROR "Enable at most one of LLAMA3_SUPPORT, QWEN2_SUPPORT, or QWEN3_SUPPORT per build. "
+                "These switches change tokenizer and model layout assumptions in shared code."
+  )
 endif()
 
 set(KUIPER_ENABLE_BPE_TOKENIZERS OFF)
-if(LLAMA3_SUPPORT OR QWEN2_SUPPORT OR QWEN3_SUPPORT)
+if(LLAMA3_SUPPORT
+   OR QWEN2_SUPPORT
+   OR QWEN3_SUPPORT
+)
   set(KUIPER_ENABLE_BPE_TOKENIZERS ON)
 endif()
 
@@ -116,23 +120,31 @@ if(NOT TARGET armadillo AND NOT TARGET Armadillo::Armadillo)
   find_package(Armadillo REQUIRED)
 endif()
 
-if(NOT TARGET sentencepiece::sentencepiece AND NOT TARGET sentencepiece AND NOT TARGET sentencepiece-static)
+if(NOT TARGET sentencepiece::sentencepiece
+   AND NOT TARGET sentencepiece
+   AND NOT TARGET sentencepiece-static
+)
   find_package(sentencepiece QUIET)
 endif()
 
-if(NOT TARGET sentencepiece::sentencepiece AND NOT TARGET sentencepiece AND NOT TARGET sentencepiece-static)
+if(NOT TARGET sentencepiece::sentencepiece
+   AND NOT TARGET sentencepiece
+   AND NOT TARGET sentencepiece-static
+)
   set(KUIPER_SENTENCEPIECE_PREFIX_HINTS
-    /opt/homebrew
-    /opt/homebrew/opt/sentencepiece
-    /usr/local
-    /usr/local/opt/sentencepiece
+      /opt/homebrew
+      /opt/homebrew/opt/sentencepiece
+      /usr/local
+      /usr/local/opt/sentencepiece
   )
-  find_path(SENTENCEPIECE_INCLUDE_DIR
+  find_path(
+    SENTENCEPIECE_INCLUDE_DIR
     sentencepiece_processor.h
     HINTS ${KUIPER_SENTENCEPIECE_PREFIX_HINTS}
     PATH_SUFFIXES include
   )
-  find_library(SENTENCEPIECE_LIBRARY
+  find_library(
+    SENTENCEPIECE_LIBRARY
     NAMES sentencepiece
     HINTS ${KUIPER_SENTENCEPIECE_PREFIX_HINTS}
     PATH_SUFFIXES lib
@@ -140,9 +152,10 @@ if(NOT TARGET sentencepiece::sentencepiece AND NOT TARGET sentencepiece AND NOT 
 
   if(SENTENCEPIECE_INCLUDE_DIR AND SENTENCEPIECE_LIBRARY)
     add_library(sentencepiece UNKNOWN IMPORTED)
-    set_target_properties(sentencepiece PROPERTIES
-      IMPORTED_LOCATION "${SENTENCEPIECE_LIBRARY}"
-      INTERFACE_INCLUDE_DIRECTORIES "${SENTENCEPIECE_INCLUDE_DIR}"
+    set_target_properties(
+      sentencepiece
+      PROPERTIES IMPORTED_LOCATION "${SENTENCEPIECE_LIBRARY}"
+                 INTERFACE_INCLUDE_DIRECTORIES "${SENTENCEPIECE_INCLUDE_DIR}"
     )
   else()
     message(FATAL_ERROR "Unable to find sentencepiece headers and library.")
@@ -194,13 +207,9 @@ else()
   message(FATAL_ERROR "Unable to find a usable Armadillo target or library.")
 endif()
 
-file(GLOB_RECURSE LLAMA_SOURCES CONFIGURE_DEPENDS
-  "${PROJECT_SOURCE_DIR}/kuiper/*.cpp"
-)
+file(GLOB_RECURSE LLAMA_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/kuiper/*.cpp")
 if(KUIPER_WITH_CUDA)
-  file(GLOB_RECURSE KUIPER_CUDA_SOURCES CONFIGURE_DEPENDS
-    "${PROJECT_SOURCE_DIR}/kuiper/*.cu"
-  )
+  file(GLOB_RECURSE KUIPER_CUDA_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/kuiper/*.cu")
   list(APPEND LLAMA_SOURCES ${KUIPER_CUDA_SOURCES})
 endif()
 
@@ -209,12 +218,7 @@ add_library(kuiper::llama ALIAS llama)
 
 target_compile_features(llama PUBLIC cxx_std_17)
 target_include_directories(llama PUBLIC "${PROJECT_SOURCE_DIR}/kuiper")
-target_link_libraries(llama
-  PUBLIC
-    glog::glog
-    kuiper_armadillo
-    kuiper_sentencepiece
-)
+target_link_libraries(llama PUBLIC glog::glog kuiper_armadillo kuiper_sentencepiece)
 
 if(KUIPER_WITH_CUDA)
   target_link_libraries(llama PUBLIC ${KUIPER_CUDART_TARGET})
@@ -229,12 +233,7 @@ if(KUIPER_MODEL_DEFINITIONS)
 endif()
 
 if(KUIPER_ENABLE_BPE_TOKENIZERS)
-  target_link_libraries(llama
-    PUBLIC
-      absl::base
-      re2::re2
-      nlohmann_json::nlohmann_json
-  )
+  target_link_libraries(llama PUBLIC absl::base re2::re2 nlohmann_json::nlohmann_json)
 endif()
 
 if(WIN32)
