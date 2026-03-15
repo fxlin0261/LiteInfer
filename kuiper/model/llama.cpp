@@ -215,7 +215,7 @@ base::Status LlamaModelBase::forward(const tensor::Tensor& input, const tensor::
     return base::error::Success();
 }
 
-void LlamaModelBase::create_nonparam_layers() {
+base::Status LlamaModelBase::create_nonparam_layers() {
     CHECK(llama_layers_ != nullptr);
     llama_layers_->rope_layer_ = std::make_shared<op::RoPELayer>(
         device_type_, model_type_, config_->dim_, config_->kv_dim_, config_->head_size_);
@@ -228,9 +228,10 @@ void LlamaModelBase::create_nonparam_layers() {
 
     llama_layers_->swiglu_layer_ =
         std::make_shared<op::SwiGLULayer>(device_type_, config_->hidden_dim_);
+    return base::error::Success();
 }
 
-void LlamaModelBase::create_param_quant_layers() {
+base::Status LlamaModelBase::create_param_quant_layers() {
     CHECK(is_quant_model_);
     CHECK(llama_layers_ != nullptr);
 
@@ -337,9 +338,10 @@ void LlamaModelBase::create_param_quant_layers() {
         llama_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
         weight_ptr += dim;
     }
+    return base::error::Success();
 }
 
-void LlamaModelBase::create_param_layers() {
+base::Status LlamaModelBase::create_param_layers() {
     CHECK(!is_quant_model_);
     CHECK(llama_layers_ != nullptr);
     const auto cpu_device_type = base::DeviceType::kDeviceCPU;
@@ -481,6 +483,7 @@ void LlamaModelBase::create_param_layers() {
         llama_layers_->cls_layer_->set_weight(0, {vocab_size, dim},
                                               raw_model_data_->weight(cls_offset), cpu_device_type);
     }
+    return base::error::Success();
 }
 
 void LlamaModelBase::init_mem() {
@@ -566,12 +569,20 @@ base::Status LlamaModelBase::create_layers() {
         llama_layers_ = std::make_unique<LlamaLayers>();
     }
 
+    base::Status layer_status;
     if (!is_quant_model_) {
-        create_param_layers();
+        layer_status = create_param_layers();
     } else {
-        create_param_quant_layers();
+        layer_status = create_param_quant_layers();
     }
-    create_nonparam_layers();
+    if (!layer_status) {
+        return layer_status;
+    }
+
+    layer_status = create_nonparam_layers();
+    if (!layer_status) {
+        return layer_status;
+    }
 
     if (!llama_layers_->embedding_layer_) {
         return error::InternalError("Create the embedding layer for the Llama model failed!");

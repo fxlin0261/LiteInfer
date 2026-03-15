@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include "base/base.h"
+#include "common/generation.h"
 #include "model/qwen2.h"
 
 // 聊天消息结构体
@@ -28,8 +29,7 @@ public:
     // 初始化模型
     bool init() {
         try {
-            model_ = std::make_unique<model::Qwen2Model>(base::TokenizerType::kEncodeBpe,
-                                                         tokenizer_path_, model_path_, false);
+            model_ = std::make_unique<model::Qwen2Model>(tokenizer_path_, model_path_, false);
 
             auto init_status = model_->init(base::DefaultDeviceType());
             if (!init_status) {
@@ -63,53 +63,24 @@ public:
     // 生成文本回复
     std::string generate(const std::string& prompt, int max_length) {
         auto tokens = model_->encode(prompt);
-        int32_t prompt_len = tokens.size();
+        const int32_t prompt_len = static_cast<int32_t>(tokens.size());
         LOG_IF(FATAL, tokens.empty()) << "输入tokens为空。";
 
-        int32_t pos = 0;
-        int32_t next = tokens.at(pos);
-        bool is_prompt = true;
-        const auto& prompt_embedding = model_->embedding(tokens);
-        tensor::Tensor pos_tensor = model_->get_buffer(model::ModelBufferType::kInputPos);
-
-        std::vector<int32_t> words;
-        words.push_back(next);
-
-        while (pos < max_length) {
-            pos_tensor.index<int32_t>(0) = pos;
-
-            if (pos < prompt_len - 1) {
-                tensor::Tensor input = model_->fill_input(pos_tensor, prompt_embedding, is_prompt);
-                model_->predict(input, pos_tensor, is_prompt, next);
-            } else {
-                is_prompt = false;
-                std::vector<int32_t> current_tokens = {next};
-                const auto& token_embedding = model_->embedding(current_tokens);
-                tensor::Tensor input = model_->fill_input(pos_tensor, token_embedding, is_prompt);
-                model_->predict(input, pos_tensor, is_prompt, next);
-            }
-
-            if (is_prompt) {
-                next = tokens.at(pos + 1);
-                words.push_back(next);
-            } else {
-                words.push_back(next);
-                // 检查是否生成了结束标记
-                if (pos >= 3) {
-                    auto decoded =
-                        model_->decode(std::vector<int32_t>(words.end() - 4, words.end()));
-                    if (decoded.find("<|im_end|>") != std::string::npos ||
-                        decoded.find("<|endoftext|>") != std::string::npos) {
-                        break;
-                    }
+        app::GenerationState state;
+        state.next = tokens.front();
+        state.words.push_back(state.next);
+        auto result = app::RunGeneration(
+            *model_, std::move(tokens), max_length, std::move(state),
+            [](app::GenerationState& state, std::vector<int32_t>& tokens, int32_t pos) {
+                if (state.is_prompt) {
+                    state.next = tokens.at(pos + 1);
                 }
-            }
-
-            pos += 1;
-        }
+                state.words.push_back(state.next);
+            });
 
         // 提取生成的回复，去除提示部分
-        std::vector<int32_t> response_tokens(words.begin() + prompt_len, words.end());
+        std::vector<int32_t> response_tokens(result.state.words.begin() + prompt_len,
+                                             result.state.words.end());
         std::string response = model_->decode(response_tokens);
 
         // 移除结束标记

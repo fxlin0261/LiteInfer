@@ -1,5 +1,7 @@
 #include "model/model.h"
+#include <cstdio>
 #include <fcntl.h>
+#include <memory>
 #include <sys/mman.h>
 #include <sys/stat.h>
 namespace model {
@@ -50,27 +52,28 @@ base::Status Model::read_model_file() {
                                    " may be the path does not exist!");
     }
 
-    FILE* file = fopen(model_path_.data(), "rb");
+    std::unique_ptr<FILE, decltype(&std::fclose)> file(std::fopen(model_path_.data(), "rb"),
+                                                       &std::fclose);
     if (!file) {
         return error::PathNotValid("Failed to open the file. The path may be invalid.");
     }
 
     auto config = ModelConfig{};
-    if (fread(&config, sizeof(ModelConfig), 1, file) != 1) {
+    if (fread(&config, sizeof(ModelConfig), 1, file.get()) != 1) {
         return error::ModelParseError(
             "Failed to retrieve the configuration information from the model "
             "file.");
     }
     int32_t immediate_dim = 0;
     if (base::UsesQwen3Layout(model_type_)) {
-        if (fread(&immediate_dim, sizeof(int32_t), 1, file) != 1) {
+        if (fread(&immediate_dim, sizeof(int32_t), 1, file.get()) != 1) {
             return error::ModelParseError(
                 "Failed to retrieve the qwen3 immediate size information from "
                 "the model file.");
         }
     }
     if (is_quant_model_) {
-        if (fread(&group_size_, sizeof(int32_t), 1, file) != 1) {
+        if (fread(&group_size_, sizeof(int32_t), 1, file.get()) != 1) {
             return error::ModelParseError(
                 "Failed to retrieve the group size information from the model "
                 "file.");
@@ -113,7 +116,7 @@ base::Status Model::read_model_file() {
         model_header_bytes += sizeof(group_size_);
     }
     raw_model_data_->weight_data = static_cast<int8_t*>(raw_model_data_->data) + model_header_bytes;
-    if (raw_model_data_ == nullptr) {
+    if (raw_model_data_->weight_data == nullptr) {
         LOG(ERROR);
         return error::ModelParseError("Failed to map the weight file " + model_path_ +
                                       " into memory, the pointer to weight start address is null");
@@ -155,11 +158,12 @@ base::Status Model::create_encode_layer() {
     // create token encode decode layer
     if (tokenizer_type_ == TokenizerType::kEncodeSpe) {
         encode_layer_ = std::make_unique<op::SpeEncodeLayer>(this->token_path_, true, false);
-    } else if (model_type_ == ModelType::kModelTypeQwen2 ||
-               model_type_ == ModelType::kModelTypeQwen3) {
-        encode_layer_ = std::make_unique<op::QwenEncodeLayer>(this->token_path_, false, false);
     } else if (tokenizer_type_ == TokenizerType::kEncodeBpe) {
-        encode_layer_ = std::make_unique<op::BpeEncodeLayer>(this->token_path_, true, false);
+        if (use_qwen_tokenizer()) {
+            encode_layer_ = std::make_unique<op::QwenEncodeLayer>(this->token_path_, false, false);
+        } else {
+            encode_layer_ = std::make_unique<op::BpeEncodeLayer>(this->token_path_, true, false);
+        }
     }
     if (!encode_layer_) {
         return error::InternalError("Create the encode layer failed.");
@@ -252,8 +256,7 @@ tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
     if (is_prompt) {
         index = pos;
     }
-    const int32_t input_dim =
-        base::UsesQwen3Layout(model_type_) ? config_->hidden_dim_ : config_->dim_;
+    const int32_t input_dim = input_width();
     // Prompt stage:
     // input_embeddings shape is [token_num, input_dim], and we slice row `index`.
     // Decode stage:
@@ -266,4 +269,11 @@ tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
     input.set_device_type(device_type_);
     return input;
 }
+
+int32_t Model::input_width() const {
+    CHECK(config_ != nullptr);
+    return config_->dim_;
+}
+
+bool Model::use_qwen_tokenizer() const { return false; }
 }  // namespace model

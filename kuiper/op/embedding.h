@@ -20,6 +20,8 @@ public:
     explicit EmbeddingLayer(base::DeviceType device_type, int32_t dim, int32_t seq_len,
                             int32_t vocab_size);
 
+    using LayerParam::forward;
+
     base::Status check() const override;
 
     base::Status forward() override;

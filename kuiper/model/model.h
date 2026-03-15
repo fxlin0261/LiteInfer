@@ -67,6 +67,10 @@ protected:
     virtual base::Status generate_model_infos(const ModelConfig& config,
                                               int32_t immediate_dim = 0) const;
 
+    virtual int32_t input_width() const;
+
+    virtual bool use_qwen_tokenizer() const;
+
     virtual int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const = 0;
 
 private:
@@ -74,11 +78,11 @@ private:
 
     virtual base::Status create_layers() = 0;
 
-    virtual void create_param_layers() = 0;
+    virtual base::Status create_param_layers() = 0;
 
-    virtual void create_nonparam_layers() = 0;
+    virtual base::Status create_nonparam_layers() = 0;
 
-    virtual void create_param_quant_layers() = 0;
+    virtual base::Status create_param_quant_layers() = 0;
 
 protected:
     int32_t group_size_ = 1;

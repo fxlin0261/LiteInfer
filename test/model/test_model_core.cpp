@@ -98,6 +98,13 @@ public:
     model::TransformerConfig* mutable_config() { return config_.get(); }
 
 private:
+    int32_t input_width() const override {
+        if (base::UsesQwen3Layout(model_type_)) {
+            return config_->hidden_dim_;
+        }
+        return Model::input_width();
+    }
+
     int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const override {
         UNUSED(pos);
         UNUSED(is_prompt);
@@ -108,11 +115,11 @@ private:
 
     base::Status create_layers() override { return base::error::Success(); }
 
-    void create_param_layers() override {}
+    base::Status create_param_layers() override { return base::error::Success(); }
 
-    void create_nonparam_layers() override {}
+    base::Status create_nonparam_layers() override { return base::error::Success(); }
 
-    void create_param_quant_layers() override {}
+    base::Status create_param_quant_layers() override { return base::error::Success(); }
 };
 
 tensor::Tensor make_cpu_tensor(base::DataType data_type, const std::vector<int32_t>& dims,

@@ -9,6 +9,8 @@ public:
                                 int32_t kv_dim, int32_t seq_len, int32_t head_num,
                                 int32_t head_size);
 
+    using Layer::forward;
+
     base::Status check() const override;
 
     void set_pos(int32_t pos);

@@ -1,4 +1,4 @@
-#include <cuda_runtime_api.h>
+#include <filesystem>
 #include <fcntl.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -8,8 +8,16 @@
 #include "base/buffer.h"
 #include "op/kernels/kernels_interface.h"
 
+namespace {
+
+std::filesystem::path test_model_path() {
+    return std::filesystem::path(__FILE__).parent_path().parent_path() / "data" / "test.bin";
+}
+
+}  // namespace
+
 TEST(test_load, load_model_config) {
-    std::string model_path = "./test/data/test.bin";
+    const std::string model_path = test_model_path().string();
     int32_t fd = open(model_path.data(), O_RDONLY);
     ASSERT_NE(fd, -1);
 
@@ -24,7 +32,7 @@ TEST(test_load, load_model_config) {
 }
 
 TEST(test_load, load_model_weight) {
-    std::string model_path = "./test/data/test.bin";
+    const std::string model_path = test_model_path().string();
     int32_t fd = open(model_path.data(), O_RDONLY);
     ASSERT_NE(fd, -1);
 
@@ -47,7 +55,7 @@ TEST(test_load, load_model_weight) {
 }
 
 TEST(test_load, create_matmul) {
-    std::string model_path = "./test/data/test.bin";
+    const std::string model_path = test_model_path().string();
     int32_t fd = open(model_path.data(), O_RDONLY);
     ASSERT_NE(fd, -1);
 

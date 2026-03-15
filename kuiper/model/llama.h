@@ -50,11 +50,11 @@ private:
 
     base::Status create_layers() override;
 
-    void create_param_layers() override;
+    base::Status create_param_layers() override;
 
-    void create_nonparam_layers() override;
+    base::Status create_nonparam_layers() override;
 
-    void create_param_quant_layers() override;
+    base::Status create_param_quant_layers() override;
 
     void attention_mha(int32_t layer_idx, const tensor::Tensor& pos_tensor) const;
 
