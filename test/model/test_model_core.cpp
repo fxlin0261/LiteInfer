@@ -223,10 +223,9 @@ TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token)
             100.f, 200.f, 300.f, 400.f,
         };
 
-        auto input_tokens =
-            make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_ids.data());
-        auto input_token_num = make_cpu_tensor(base::DataType::kDataTypeInt32, {3},
-                                               token_count_placeholder.data());
+        auto input_tokens = make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_ids.data());
+        auto input_token_num =
+            make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_count_placeholder.data());
         auto input_embeddings =
             make_cpu_tensor(base::DataType::kDataTypeFp32, {3, embed_dim}, embedding_data.data());
         op::EmbeddingOutput embedding_output(input_tokens, input_embeddings, input_token_num);

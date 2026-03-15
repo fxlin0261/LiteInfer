@@ -3,16 +3,16 @@
 #include "layer.h"
 namespace op {
 class RmsNormLayer : public LayerParam {
- public:
-  explicit RmsNormLayer(base::DeviceType device_type, int32_t dim, float eps);
+public:
+    explicit RmsNormLayer(base::DeviceType device_type, int32_t dim, float eps);
 
-  base::Status check() const override;
+    base::Status check() const override;
 
-  base::Status forward() override;
+    base::Status forward() override;
 
- private:
-  int32_t dim_ = 0;
-  float eps_ = 1e-5f;
+private:
+    int32_t dim_ = 0;
+    float eps_ = 1e-5f;
 };
 }  // namespace op
 #endif  // KUIPER_INCLUDE_OP_RMSNORM_H_

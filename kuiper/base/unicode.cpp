@@ -697,17 +697,13 @@ std::vector<std::string> unicode_regex_split(const std::string& text,
         {codepoint_flags::PUNCTUATION, 0xD3},
     };
 
-    static const std::
-        map<int, std::string>
-            k_ucat_map =
-                {
-                    {codepoint_flags::NUMBER, "\x30-\x39"},           // 0-9
-                    {codepoint_flags::LETTER, "\x41-\x5A\x61-\x7A"},  // A-Za-z
-                    {
-                        codepoint_flags::PUNCTUATION,
-                        "\x21-\x23\x25-\x2A\x2C-\x2F\x3A-\x3B\x3F-\x40\\\x5B-"
-                        "\\\x5D\x5F\\\x7B\\\x7D"},  // !-#%-*,-/:-;?-@\[-\]_\{\}
-                };
+    static const std::map<int, std::string> k_ucat_map = {
+        {codepoint_flags::NUMBER, "\x30-\x39"},           // 0-9
+        {codepoint_flags::LETTER, "\x41-\x5A\x61-\x7A"},  // A-Za-z
+        {codepoint_flags::PUNCTUATION,
+         "\x21-\x23\x25-\x2A\x2C-\x2F\x3A-\x3B\x3F-\x40\\\x5B-"
+         "\\\x5D\x5F\\\x7B\\\x7D"},  // !-#%-*,-/:-;?-@\[-\]_\{\}
+    };
 
     // compute collapsed codepoints only if needed by at least one regex
     bool need_collapse = false;

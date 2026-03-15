@@ -95,14 +95,12 @@ enum class TokenizerType {
 };
 
 inline bool IsLlamaModel(ModelType model_type) {
-    return model_type == ModelType::kModelTypeLlama ||
-           model_type == ModelType::kModelTypeLlama2 ||
+    return model_type == ModelType::kModelTypeLlama || model_type == ModelType::kModelTypeLlama2 ||
            model_type == ModelType::kModelTypeLlama3;
 }
 
 inline bool IsQwenModel(ModelType model_type) {
-    return model_type == ModelType::kModelTypeQwen2 ||
-           model_type == ModelType::kModelTypeQwen3;
+    return model_type == ModelType::kModelTypeQwen2 || model_type == ModelType::kModelTypeQwen3;
 }
 
 inline bool UsesQwenRoPE(ModelType model_type) { return IsQwenModel(model_type); }

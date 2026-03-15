@@ -1,9 +1,9 @@
 #include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "base/buffer.h"
 #include "op/kernels/kernels_interface.h"
 #include "support/cuda_test_utils.cuh"
-#include "base/buffer.h"
 // 测试默认流下，缩放操作后的结果是否正确。
 // TEST(test_scale_cu, scale1_nostream) {
 //   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();

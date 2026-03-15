@@ -235,9 +235,8 @@ void Qwen3Model::create_param_layers() {
 
     // rmsnorm attention attention, ffn, final
     for (int32_t i = 0; i < 2 * config_->layer_num_ + 1; ++i) {
-        std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, hidden_dim,
-                                               base::RmsNormEpsilon(model_type_));
+        std::shared_ptr<op::RmsNormLayer> rms_norm_layer = std::make_shared<op::RmsNormLayer>(
+            device_type_, hidden_dim, base::RmsNormEpsilon(model_type_));
 
         rms_norm_layer->set_weight(0, {hidden_dim}, weight_ptr, cpu_device_type);
         qwen_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
@@ -262,9 +261,8 @@ void Qwen3Model::create_param_layers() {
 
     // query norm
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, config_->head_size_,
-                                               base::RmsNormEpsilon(model_type_));
+        std::shared_ptr<op::RmsNormLayer> rms_norm_layer = std::make_shared<op::RmsNormLayer>(
+            device_type_, config_->head_size_, base::RmsNormEpsilon(model_type_));
         rms_norm_layer->set_weight(0, {config_->head_size_}, this->raw_model_data_->weight(pos),
                                    cpu_device_type);
         qwen_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
@@ -282,9 +280,8 @@ void Qwen3Model::create_param_layers() {
 
     // key norm
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, config_->head_size_,
-                                               base::RmsNormEpsilon(model_type_));
+        std::shared_ptr<op::RmsNormLayer> rms_norm_layer = std::make_shared<op::RmsNormLayer>(
+            device_type_, config_->head_size_, base::RmsNormEpsilon(model_type_));
         rms_norm_layer->set_weight(0, {config_->head_size_}, this->raw_model_data_->weight(pos),
                                    cpu_device_type);
         qwen_layers_->rmsnorm_layers_.push_back(rms_norm_layer);

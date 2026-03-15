@@ -24,7 +24,8 @@ namespace kernel {
 
 namespace {
 [[noreturn]] void cuda_kernel_unavailable(const char* kernel_name) {
-    LOG(FATAL) << kernel_name << " requires CUDA, but this build was compiled without CUDA support.";
+    LOG(FATAL) << kernel_name
+               << " requires CUDA, but this build was compiled without CUDA support.";
 }
 
 template <typename Kernel>
@@ -122,8 +123,8 @@ SwigluKernel get_swiglu_kernel(base::DeviceType device_type, void* stream) {
 }
 
 RMSNormKernel get_rmsnorm_kernel(base::DeviceType device_type) {
-    return select_kernel(device_type, rmsnorm_kernel_cpu, kRmsNormKernelCuda,
-                         "rmsnorm_kernel_cu", "Unknown device type for get a rmsnorm kernel.");
+    return select_kernel(device_type, rmsnorm_kernel_cpu, kRmsNormKernelCuda, "rmsnorm_kernel_cu",
+                         "Unknown device type for get a rmsnorm kernel.");
 }
 
 RMSNormKernelDim get_rmsnorm_dim_kernel(base::DeviceType device_type) {

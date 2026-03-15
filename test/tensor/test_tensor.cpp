@@ -2,8 +2,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <tensor/tensor.h>
-#include "support/cuda_test_utils.cuh"
 #include "base/buffer.h"
+#include "support/cuda_test_utils.cuh"
 
 namespace {
 bool cuda_available() {

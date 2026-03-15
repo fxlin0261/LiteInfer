@@ -56,9 +56,8 @@ void sin_cos_cache_calc_cpu(base::ModelType model_type, int head_size, int max_s
     const float rope_theta = base::RoPETheta(model_type);
     for (int pos = 0; pos < max_seq_len; ++pos) {
         for (int head_dim = 0; head_dim < head_size; ++head_dim) {
-            float freq =
-                1.0f / std::pow(rope_theta, static_cast<float>(head_dim) /
-                                                static_cast<float>(head_size));
+            float freq = 1.0f / std::pow(rope_theta, static_cast<float>(head_dim) /
+                                                         static_cast<float>(head_size));
             float val = static_cast<float>(pos) * freq;
             float fcr = cosf(val);
             float fci = sinf(val);

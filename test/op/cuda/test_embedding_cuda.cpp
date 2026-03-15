@@ -9,9 +9,9 @@ TEST(test_emb_cu, emb1_nostream) {
     auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
     auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
 
-    int32_t token = 4;  //  词表大小
-    int32_t dim = 512;  //  词向量维度
-    int32_t size = 2048;  //  总元素数 
+    int32_t token = 4;    //  词表大小
+    int32_t dim = 512;    //  词向量维度
+    int32_t size = 2048;  //  总元素数
     // 构造输入 token
     tensor::Tensor input(base::DataType::kDataTypeFp32, 1, true, alloc_cpu);
     // 这里创建了一个长度为 1 的输入张量，里面存的是 token id  1

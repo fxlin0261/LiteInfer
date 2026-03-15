@@ -7,8 +7,7 @@
 #endif
 
 namespace base {
-CPUDeviceAllocator::CPUDeviceAllocator() : DeviceAllocator(DeviceType::kDeviceCPU) {
-}
+CPUDeviceAllocator::CPUDeviceAllocator() : DeviceAllocator(DeviceType::kDeviceCPU) {}
 
 void* CPUDeviceAllocator::allocate(size_t byte_size) const {
     if (!byte_size) {
@@ -30,9 +29,9 @@ void* CPUDeviceAllocator::allocate(size_t byte_size) const {
 }
 
 void CPUDeviceAllocator::release(void* ptr) const {
-  if (ptr) {
-    free(ptr);
-  }
+    if (ptr) {
+        free(ptr);
+    }
 }
 
 std::shared_ptr<CPUDeviceAllocator> CPUDeviceAllocatorFactory::instance = nullptr;

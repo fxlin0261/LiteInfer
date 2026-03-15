@@ -35,10 +35,10 @@ typedef void (*RMSNormKernelDim)(const tensor::Tensor& input, const tensor::Tens
                                  void* stream);
 
 typedef void (*RoPEKernel)(base::ModelType model_type, int32_t dim, int32_t kv_dim,
-                           int32_t head_size,
-                           const tensor::Tensor& input_q, const tensor::Tensor& input_k,
-                           const tensor::Tensor& input_pos, const tensor::Tensor& sin_cache,
-                           const tensor::Tensor& cos_cache, void* stream);
+                           int32_t head_size, const tensor::Tensor& input_q,
+                           const tensor::Tensor& input_k, const tensor::Tensor& input_pos,
+                           const tensor::Tensor& sin_cache, const tensor::Tensor& cos_cache,
+                           void* stream);
 
 typedef void (*ScaleKernel)(float scale, const tensor::Tensor& input, void* stream);
 

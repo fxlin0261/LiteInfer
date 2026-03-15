@@ -31,7 +31,7 @@ int32_t generate(const model::Llama3Model& model, const std::string& sentence, i
         if (pos < prompt_len - 1) {
             tensor::Tensor input = model.fill_input(pos_tensor, prompt_embedding, is_prompt);
             model.predict(input, pos_tensor, is_prompt, next);
-        } else {    // 最后一个
+        } else {  // 最后一个
             is_prompt = false;
             tokens = std::vector<int32_t>{next};
             const auto& token_embedding = model.embedding(tokens);

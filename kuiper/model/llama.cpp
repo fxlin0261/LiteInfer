@@ -140,10 +140,9 @@ void LlamaLayers::to_cuda(std::shared_ptr<kernel::CudaConfig> config) {
 }
 
 LlamaModelBase::LlamaModelBase(base::TokenizerType tokenizer_type, base::ModelType model_type,
-                               std::string token_path, std::string model_path,
-                               bool is_quant_model)
-    : Model(tokenizer_type, model_type, std::move(token_path),
-            std::move(model_path), is_quant_model) {}
+                               std::string token_path, std::string model_path, bool is_quant_model)
+    : Model(tokenizer_type, model_type, std::move(token_path), std::move(model_path),
+            is_quant_model) {}
 
 base::Status LlamaModelBase::init(base::DeviceType device_type) {
     using namespace base;
@@ -331,9 +330,8 @@ void LlamaModelBase::create_param_quant_layers() {
 
     // rmsnorm attention attention,ffn,final
     for (int32_t i = 0; i < 2 * config_->layer_num_ + 1; ++i) {
-        std::shared_ptr<op::RmsNormLayer> rms_norm_layer =
-            std::make_shared<op::RmsNormLayer>(device_type_, dim,
-                                               base::RmsNormEpsilon(model_type_));
+        std::shared_ptr<op::RmsNormLayer> rms_norm_layer = std::make_shared<op::RmsNormLayer>(
+            device_type_, dim, base::RmsNormEpsilon(model_type_));
 
         rms_norm_layer->set_weight(0, {dim}, weight_ptr, cpu_device_type);
         llama_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
@@ -403,26 +401,19 @@ void LlamaModelBase::create_param_layers() {
     // embedding output shape: [token_num, dim]
     llama_layers_->embedding_layer_ =
         std::make_shared<op::EmbeddingLayer>(device_type_, dim, seq_len, vocab_size);
-    llama_layers_->embedding_layer_->set_weight(0, {vocab_size, dim},
-                                                raw_model_data_->weight(embedding_offset),
-                                                cpu_device_type);
+    llama_layers_->embedding_layer_->set_weight(
+        0, {vocab_size, dim}, raw_model_data_->weight(embedding_offset), cpu_device_type);
 
     // Diagram mapping: each loop iteration builds one LlamaDecoderLayer / Transformer block.
     // Order matches the forward pass:
     // attention rmsnorm -> qkv/o -> ffn rmsnorm -> w1/w2/w3.
     for (int32_t layer_idx = 0; layer_idx < layer_num; ++layer_idx) {
-        const size_t attn_rms_layer_offset =
-            attn_rms_offset + static_cast<size_t>(layer_idx) * dim;
-        const size_t wq_layer_offset =
-            wq_offset + static_cast<size_t>(layer_idx) * dim * dim;
-        const size_t wk_layer_offset =
-            wk_offset + static_cast<size_t>(layer_idx) * kv_dim * dim;
-        const size_t wv_layer_offset =
-            wv_offset + static_cast<size_t>(layer_idx) * kv_dim * dim;
-        const size_t wo_layer_offset =
-            wo_offset + static_cast<size_t>(layer_idx) * dim * dim;
-        const size_t ffn_rms_layer_offset =
-            ffn_rms_offset + static_cast<size_t>(layer_idx) * dim;
+        const size_t attn_rms_layer_offset = attn_rms_offset + static_cast<size_t>(layer_idx) * dim;
+        const size_t wq_layer_offset = wq_offset + static_cast<size_t>(layer_idx) * dim * dim;
+        const size_t wk_layer_offset = wk_offset + static_cast<size_t>(layer_idx) * kv_dim * dim;
+        const size_t wv_layer_offset = wv_offset + static_cast<size_t>(layer_idx) * kv_dim * dim;
+        const size_t wo_layer_offset = wo_offset + static_cast<size_t>(layer_idx) * dim * dim;
+        const size_t ffn_rms_layer_offset = ffn_rms_offset + static_cast<size_t>(layer_idx) * dim;
         const size_t w1_layer_offset =
             w1_offset + static_cast<size_t>(layer_idx) * hidden_dim * dim;
         const size_t w2_layer_offset =
@@ -484,13 +475,11 @@ void LlamaModelBase::create_param_layers() {
     llama_layers_->cls_layer_ = std::make_shared<op::MatmulLayer>(device_type_, vocab_size, dim);
     if (config_->is_shared_weight_) {
         // Tie word embeddings: LM head shares the same weight matrix as nn.Embedding.
-        llama_layers_->cls_layer_->set_weight(0, {vocab_size, dim},
-                                              raw_model_data_->weight(embedding_offset),
-                                              cpu_device_type);
+        llama_layers_->cls_layer_->set_weight(
+            0, {vocab_size, dim}, raw_model_data_->weight(embedding_offset), cpu_device_type);
     } else {
         llama_layers_->cls_layer_->set_weight(0, {vocab_size, dim},
-                                              raw_model_data_->weight(cls_offset),
-                                              cpu_device_type);
+                                              raw_model_data_->weight(cls_offset), cpu_device_type);
     }
 }
 

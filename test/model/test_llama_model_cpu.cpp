@@ -1,10 +1,10 @@
-#include <filesystem>
-#include <optional>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <memory>
 #include <model/llama2.h>
 #include <model/llama3.h>
+#include <filesystem>
+#include <memory>
+#include <optional>
 
 namespace {
 struct LlamaTestAsset {

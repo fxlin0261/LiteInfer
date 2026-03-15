@@ -9,8 +9,7 @@ __device__ void rope_calc(float fcr, float fci, float* vec, int32_t idx) {
 }
 
 __global__ void rope_kernel_cu_fp32(bool use_half_split, int pos, int dim, int kv_dim,
-                                    int head_size,
-                                    const float* input_q, const float* input_k,
+                                    int head_size, const float* input_q, const float* input_k,
                                     const float* sin_cache, const float* cos_cache) {
     const int linear_idx = threadIdx.x + blockDim.x * blockIdx.x;
     if (use_half_split) {
@@ -106,14 +105,12 @@ void rope_kernel_cu(base::ModelType model_type, int32_t dim, int32_t kv_dim, int
     if (stream) {
         cudaStream_t stream_ = static_cast<cudaStream_t>(stream);
         rope_kernel_cu_fp32<<<blocks, threads, 0, stream_>>>(
-            use_half_split, pos, dim, kv_dim, head_size, input_q.ptr<float>(),
-            input_k.ptr<float>(),
+            use_half_split, pos, dim, kv_dim, head_size, input_q.ptr<float>(), input_k.ptr<float>(),
             sin_cache.ptr<float>(), cos_cache.ptr<float>());
     } else {
         rope_kernel_cu_fp32<<<blocks, threads>>>(use_half_split, pos, dim, kv_dim, head_size,
                                                  input_q.ptr<float>(), input_k.ptr<float>(),
-                                                 sin_cache.ptr<float>(),
-                                                 cos_cache.ptr<float>());
+                                                 sin_cache.ptr<float>(), cos_cache.ptr<float>());
     }
 }
 }  // namespace kernel

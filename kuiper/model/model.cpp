@@ -112,8 +112,7 @@ base::Status Model::read_model_file() {
     if (is_quant_model_) {
         model_header_bytes += sizeof(group_size_);
     }
-    raw_model_data_->weight_data =
-        static_cast<int8_t*>(raw_model_data_->data) + model_header_bytes;
+    raw_model_data_->weight_data = static_cast<int8_t*>(raw_model_data_->data) + model_header_bytes;
     if (raw_model_data_ == nullptr) {
         LOG(ERROR);
         return error::ModelParseError("Failed to map the weight file " + model_path_ +
@@ -253,8 +252,8 @@ tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
     if (is_prompt) {
         index = pos;
     }
-    const int32_t input_dim = base::UsesQwen3Layout(model_type_) ? config_->hidden_dim_
-                                                                 : config_->dim_;
+    const int32_t input_dim =
+        base::UsesQwen3Layout(model_type_) ? config_->hidden_dim_ : config_->dim_;
     // Prompt stage:
     // input_embeddings shape is [token_num, input_dim], and we slice row `index`.
     // Decode stage:
