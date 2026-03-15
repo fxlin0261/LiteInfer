@@ -1,6 +1,4 @@
 #include "tensor/tensor.h"
-#include <cuda_device_runtime_api.h>
-#include <cuda_runtime.h>
 #include <glog/logging.h>
 #include <numeric>
 

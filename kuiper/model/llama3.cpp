@@ -1,5 +1,4 @@
 #include "model/llama3.h"
-#include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <op/matmul.h>
 #include <op/mha.h>
@@ -7,7 +6,9 @@
 #include <sentencepiece_processor.h>
 #include <utility>
 #include "../op/kernels/cpu/rope_kernel.h"
+#if KUIPER_ENABLE_CUDA
 #include "../op/kernels/cuda/rope_kernel.cuh"
+#endif
 #include "base/tick.h"
 namespace model {
 
@@ -116,6 +117,7 @@ base::Status LLamaModel::init(base::DeviceType device_type) {
 
     device_type_ = device_type;
     if (device_type == DeviceType::kDeviceCUDA) {
+#if KUIPER_ENABLE_CUDA
         // 指定使用第 0 张 GPU
         cudaSetDevice(0);
         // 创建一个 CUDA 配置对象，保存 CUDA 相关资源
@@ -127,6 +129,9 @@ base::Status LLamaModel::init(base::DeviceType device_type) {
         if (err != cudaSuccess) {
             return error::InternalError("The cuda hanle create failed.");
         }
+#else
+        return error::InternalError("This build does not include CUDA support.");
+#endif
     }
     // 这一步是“正式加载模型”的入口。它会从模型文件里解析配置、权重，并创建各层对象
     Status read_status = gen_model_from_file();
@@ -146,10 +151,14 @@ base::Status LLamaModel::init(base::DeviceType device_type) {
                                        get_buffer(ModelBufferType::kSinCache).ptr<float>(),
                                        get_buffer(ModelBufferType::kCosCache).ptr<float>());
     } else {
+#if KUIPER_ENABLE_CUDA
         CHECK_NE(cuda_config_, nullptr);
         kernel::sin_cos_cache_calc_cu(config_->head_size_, config_->seq_len_,
                                       get_buffer(ModelBufferType::kSinCache),
                                       get_buffer(ModelBufferType::kCosCache), cuda_config_->stream);
+#else
+        return error::InternalError("This build does not include CUDA support.");
+#endif
     }
     // 这里创建的是采样器。当前实现用的是 ArgmaxSampler，也就是每次从 logits 里直接选概率最大的
     // token。 所以这个项目目前默认不是 top-k / top-p 随机采样，而是更确定性的 greedy decoding

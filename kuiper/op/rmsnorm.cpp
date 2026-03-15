@@ -1,5 +1,4 @@
 #include "op/rmsnorm.h"
-#include <cuda_runtime_api.h>
 #include <armadillo>
 #include "kernels/cpu/rmsnorm_kernel.h"
 #include "kernels/kernels_interface.h"

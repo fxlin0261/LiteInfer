@@ -1,6 +1,5 @@
 #ifdef QWEN3_SUPPORT
 #include "model/qwen3.h"
-#include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <op/matmul.h>
 #include <op/mha.h>
@@ -8,7 +7,9 @@
 #include <sentencepiece_processor.h>
 #include <utility>
 #include "../op/kernels/cpu/rope_kernel.h"
+#if KUIPER_ENABLE_CUDA
 #include "../op/kernels/cuda/rope_kernel.cuh"
+#endif
 #include "base/tick.h"
 namespace model {
 
@@ -116,6 +117,7 @@ base::Status Qwen3Model::init(base::DeviceType device_type) {
 
     device_type_ = device_type;
     if (device_type == DeviceType::kDeviceCUDA) {
+#if KUIPER_ENABLE_CUDA
         cudaSetDevice(0);
         cuda_config_ = std::make_shared<kernel::CudaConfig>();
         cudaStreamCreate(&cuda_config_->stream);
@@ -123,6 +125,9 @@ base::Status Qwen3Model::init(base::DeviceType device_type) {
         if (err != cudaSuccess) {
             return error::InternalError("The cuda hanle create failed.");
         }
+#else
+        return error::InternalError("This build does not include CUDA support.");
+#endif
     }
 
     Status read_status = gen_model_from_file();
@@ -135,10 +140,14 @@ base::Status Qwen3Model::init(base::DeviceType device_type) {
                                        get_buffer(ModelBufferType::kSinCache).ptr<float>(),
                                        get_buffer(ModelBufferType::kCosCache).ptr<float>());
     } else {
+#if KUIPER_ENABLE_CUDA
         CHECK_NE(cuda_config_, nullptr);
         kernel::sin_cos_cache_calc_cu(config_->head_size_, config_->seq_len_,
                                       get_buffer(ModelBufferType::kSinCache),
                                       get_buffer(ModelBufferType::kCosCache), cuda_config_->stream);
+#else
+        return error::InternalError("This build does not include CUDA support.");
+#endif
     }
 
     sampler_ = std::make_unique<sampler::ArgmaxSampler>(device_type_);

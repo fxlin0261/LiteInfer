@@ -7,6 +7,14 @@
 #include "base/base.h"
 #include "model/qwen2.h"
 
+namespace {
+#if KUIPER_ENABLE_CUDA
+constexpr auto kDefaultDeviceType = base::DeviceType::kDeviceCUDA;
+#else
+constexpr auto kDefaultDeviceType = base::DeviceType::kDeviceCPU;
+#endif
+}  // namespace
+
 // 聊天消息结构体
 struct ChatMessage {
   std::string role;     // 角色: system, user, assistant
@@ -31,7 +39,7 @@ class ChatAssistant {
       model_ = std::make_unique<model::Qwen2Model>(base::TokenizerType::kEncodeBpe, tokenizer_path_,
                                                    model_path_, false);
 
-      auto init_status = model_->init(base::DeviceType::kDeviceCUDA);
+      auto init_status = model_->init(kDefaultDeviceType);
       if (!init_status) {
         LOG(ERROR) << "模型初始化失败: " << init_status.get_err_msg();
         return false;

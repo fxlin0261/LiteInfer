@@ -1,5 +1,4 @@
 #include "../cpu/mha_kernel.h"
-#include <cuda_runtime_api.h>
 #include "../kernels_interface.h"
 namespace kernel {
 void mha_kernel(int32_t pos, int32_t head_num, int32_t layer_index, int32_t seq_len, int32_t kv_dim,

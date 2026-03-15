@@ -1,6 +1,9 @@
-#include <cuda_runtime_api.h>
 #include "base/alloc.h"
+#include "base/cuda_config.h"
+
 namespace base {
+
+#if KUIPER_ENABLE_CUDA
 
 CUDADeviceAllocator::CUDADeviceAllocator() : DeviceAllocator(DeviceType::kDeviceCUDA) {}
 
@@ -111,5 +114,24 @@ void CUDADeviceAllocator::release(void* ptr) const {
   CHECK(state == cudaSuccess) << "Error: CUDA error when release memory on device";
 }
 std::shared_ptr<CUDADeviceAllocator> CUDADeviceAllocatorFactory::instance = nullptr;
+
+#else
+
+CUDADeviceAllocator::CUDADeviceAllocator() : DeviceAllocator(DeviceType::kDeviceCUDA) {}
+
+void* CUDADeviceAllocator::allocate(size_t byte_size) const {
+  LOG(FATAL) << "CUDA allocation requested in a CPU-only build.";
+  return nullptr;
+}
+
+void CUDADeviceAllocator::release(void* ptr) const {
+  if (ptr) {
+    LOG(FATAL) << "CUDA release requested in a CPU-only build.";
+  }
+}
+
+std::shared_ptr<CUDADeviceAllocator> CUDADeviceAllocatorFactory::instance = nullptr;
+
+#endif
 
 }  // namespace base

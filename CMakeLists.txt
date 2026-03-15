@@ -1,18 +1,32 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(KuiperLLama LANGUAGES CXX CUDA)
+project(KuiperLLama LANGUAGES CXX)
+
+include(CheckLanguage)
+check_language(CUDA)
+if(CMAKE_CUDA_COMPILER)
+  enable_language(CUDA)
+  set(KUIPER_WITH_CUDA ON)
+else()
+  set(KUIPER_WITH_CUDA OFF)
+  message(STATUS "CUDA compiler not found; building CPU-only.")
+endif()
 
 include(CTest)
-include(cmake/cuda.cmake)
+if(KUIPER_WITH_CUDA)
+  include(cmake/cuda.cmake)
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CUDA_STANDARD 14)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_EXTENSIONS OFF)
+if(KUIPER_WITH_CUDA)
+  set(CMAKE_CUDA_STANDARD 14)
+  set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+  set(CMAKE_CUDA_EXTENSIONS OFF)
+endif()
 
 option(USE_CPM "Use CPM for dependency management" OFF)
 option(LLAMA3_SUPPORT "Enable Llama 3 tokenizer/model support" OFF)
@@ -103,7 +117,36 @@ if(NOT TARGET armadillo AND NOT TARGET Armadillo::Armadillo)
 endif()
 
 if(NOT TARGET sentencepiece::sentencepiece AND NOT TARGET sentencepiece AND NOT TARGET sentencepiece-static)
-  find_package(sentencepiece REQUIRED)
+  find_package(sentencepiece QUIET)
+endif()
+
+if(NOT TARGET sentencepiece::sentencepiece AND NOT TARGET sentencepiece AND NOT TARGET sentencepiece-static)
+  set(KUIPER_SENTENCEPIECE_PREFIX_HINTS
+    /opt/homebrew
+    /opt/homebrew/opt/sentencepiece
+    /usr/local
+    /usr/local/opt/sentencepiece
+  )
+  find_path(SENTENCEPIECE_INCLUDE_DIR
+    sentencepiece_processor.h
+    HINTS ${KUIPER_SENTENCEPIECE_PREFIX_HINTS}
+    PATH_SUFFIXES include
+  )
+  find_library(SENTENCEPIECE_LIBRARY
+    NAMES sentencepiece
+    HINTS ${KUIPER_SENTENCEPIECE_PREFIX_HINTS}
+    PATH_SUFFIXES lib
+  )
+
+  if(SENTENCEPIECE_INCLUDE_DIR AND SENTENCEPIECE_LIBRARY)
+    add_library(sentencepiece UNKNOWN IMPORTED)
+    set_target_properties(sentencepiece PROPERTIES
+      IMPORTED_LOCATION "${SENTENCEPIECE_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${SENTENCEPIECE_INCLUDE_DIR}"
+    )
+  else()
+    message(FATAL_ERROR "Unable to find sentencepiece headers and library.")
+  endif()
 endif()
 
 if(KUIPER_ENABLE_BPE_TOKENIZERS)
@@ -153,8 +196,13 @@ endif()
 
 file(GLOB_RECURSE LLAMA_SOURCES CONFIGURE_DEPENDS
   "${PROJECT_SOURCE_DIR}/kuiper/*.cpp"
-  "${PROJECT_SOURCE_DIR}/kuiper/*.cu"
 )
+if(KUIPER_WITH_CUDA)
+  file(GLOB_RECURSE KUIPER_CUDA_SOURCES CONFIGURE_DEPENDS
+    "${PROJECT_SOURCE_DIR}/kuiper/*.cu"
+  )
+  list(APPEND LLAMA_SOURCES ${KUIPER_CUDA_SOURCES})
+endif()
 
 add_library(llama SHARED ${LLAMA_SOURCES})
 add_library(kuiper::llama ALIAS llama)
@@ -163,11 +211,18 @@ target_compile_features(llama PUBLIC cxx_std_17)
 target_include_directories(llama PUBLIC "${PROJECT_SOURCE_DIR}/kuiper")
 target_link_libraries(llama
   PUBLIC
-    ${KUIPER_CUDART_TARGET}
     glog::glog
     kuiper_armadillo
     kuiper_sentencepiece
 )
+
+if(KUIPER_WITH_CUDA)
+  target_link_libraries(llama PUBLIC ${KUIPER_CUDART_TARGET})
+  target_compile_definitions(llama PUBLIC KUIPER_ENABLE_CUDA=1)
+  set_target_properties(llama PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+else()
+  target_compile_definitions(llama PUBLIC KUIPER_ENABLE_CUDA=0)
+endif()
 
 if(KUIPER_MODEL_DEFINITIONS)
   target_compile_definitions(llama PUBLIC ${KUIPER_MODEL_DEFINITIONS})
@@ -181,8 +236,6 @@ if(KUIPER_ENABLE_BPE_TOKENIZERS)
       nlohmann_json::nlohmann_json
   )
 endif()
-
-set_target_properties(llama PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 if(WIN32)
   set_target_properties(llama PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)

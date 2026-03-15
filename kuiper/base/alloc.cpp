@@ -1,5 +1,7 @@
 #include "base/alloc.h"
-#include <cuda_runtime_api.h>
+#include "base/cuda_config.h"
+#include <cstring>
+
 namespace base {
 void DeviceAllocator::memcpy(const void* src_ptr, void* dest_ptr, size_t byte_size,
                              MemcpyKind memcpy_kind, void* stream, bool need_sync) const {
@@ -9,13 +11,18 @@ void DeviceAllocator::memcpy(const void* src_ptr, void* dest_ptr, size_t byte_si
         return;
     }
 
-    cudaStream_t stream_ = nullptr;
-    if (stream) {
-        stream_ = static_cast<CUstream_st*>(stream);
-    }
     if (memcpy_kind == MemcpyKind::kMemcpyCPU2CPU) {
         std::memcpy(dest_ptr, src_ptr, byte_size);
-    } else if (memcpy_kind == MemcpyKind::kMemcpyCPU2CUDA) {
+        return;
+    }
+
+#if KUIPER_ENABLE_CUDA
+    cudaStream_t stream_ = nullptr;
+    if (stream) {
+        stream_ = static_cast<cudaStream_t>(stream);
+    }
+
+    if (memcpy_kind == MemcpyKind::kMemcpyCPU2CUDA) {
         if (!stream_) {
             cudaMemcpy(dest_ptr, src_ptr, byte_size, cudaMemcpyHostToDevice);
         } else {
@@ -39,6 +46,9 @@ void DeviceAllocator::memcpy(const void* src_ptr, void* dest_ptr, size_t byte_si
     if (need_sync) {
         cudaDeviceSynchronize();
     }
+#else
+    LOG(FATAL) << "CUDA memcpy requested in a CPU-only build.";
+#endif
 }
 
 void DeviceAllocator::memset_zero(void* ptr, size_t byte_size, void* stream, bool need_sync) {
@@ -46,6 +56,7 @@ void DeviceAllocator::memset_zero(void* ptr, size_t byte_size, void* stream, boo
     if (device_type_ == base::DeviceType::kDeviceCPU) {
         std::memset(ptr, 0, byte_size);
     } else {
+#if KUIPER_ENABLE_CUDA
         if (stream) {
             cudaStream_t stream_ = static_cast<cudaStream_t>(stream);
             cudaMemsetAsync(ptr, 0, byte_size, stream_);
@@ -55,6 +66,9 @@ void DeviceAllocator::memset_zero(void* ptr, size_t byte_size, void* stream, boo
         if (need_sync) {
             cudaDeviceSynchronize();
         }
+#else
+        LOG(FATAL) << "CUDA memset requested in a CPU-only build.";
+#endif
     }
 }
 }  // namespace base

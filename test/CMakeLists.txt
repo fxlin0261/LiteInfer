@@ -1,3 +1,8 @@
+if(NOT KUIPER_WITH_CUDA)
+  message(STATUS "Skipping test target because the current test suite requires CUDA.")
+  return()
+endif()
+
 file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cu"
