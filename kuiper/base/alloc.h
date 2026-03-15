@@ -14,6 +14,7 @@ enum class MemcpyKind {
 class DeviceAllocator {
 public:
     explicit DeviceAllocator(DeviceType device_type) : device_type_(device_type) {}
+    virtual ~DeviceAllocator() = default;
     virtual DeviceType device_type() const { return device_type_; }
 
     virtual void release(void* ptr) const = 0;

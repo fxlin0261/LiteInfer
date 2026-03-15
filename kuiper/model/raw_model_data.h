@@ -4,7 +4,7 @@
 #include <cstdint>
 namespace model {
 struct RawModelData {
-    ~RawModelData();
+    virtual ~RawModelData();
     int32_t fd = -1;
     size_t file_size = 0;
     void* data = nullptr;

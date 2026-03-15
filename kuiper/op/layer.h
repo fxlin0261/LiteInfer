@@ -26,6 +26,7 @@ class BaseLayer {
  public:
   explicit BaseLayer(base::DeviceType device_type, LayerType layer_type, base::DataType data_type,
                      std::string layer_name = "");
+  virtual ~BaseLayer() = default;
 
   base::DataType data_type() const;
 

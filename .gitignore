@@ -1,11 +1,13 @@
 # Caches
 .cache/
+__pycache__/
 
 # Build outputs
 build/
 cmake-build-*/
 build-local-*/
 build-models-clean/
+local_models/
 
 # Editor metadata
 .vscode/

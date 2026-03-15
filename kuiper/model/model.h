@@ -16,6 +16,7 @@ class Model {
 public:
     explicit Model(base::TokenizerType tokenizer_type, base::ModelType model_type,
                    std::string token_path, std::string model_path, bool is_quant_model);
+    virtual ~Model() = default;
 
     virtual base::Status init(base::DeviceType device_type) = 0;
 
