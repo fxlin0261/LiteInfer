@@ -48,9 +48,9 @@ enum class DataType : uint8_t {
 
 enum class ModelType : uint8_t {
     kModelTypeUnknown = 0,
-    kModelTypeLLama = 1,
-    kModelTypeLLama2 = kModelTypeLLama,
-    kModelTypeLLama3 = 2,
+    kModelTypeLlama = 1,
+    kModelTypeLlama2 = kModelTypeLlama,
+    kModelTypeLlama3 = 2,
     kModelTypeQwen2 = 3,
     kModelTypeQwen3 = 4,
 };
@@ -95,9 +95,9 @@ enum class TokenizerType {
 };
 
 inline bool IsLlamaModel(ModelType model_type) {
-    return model_type == ModelType::kModelTypeLLama ||
-           model_type == ModelType::kModelTypeLLama2 ||
-           model_type == ModelType::kModelTypeLLama3;
+    return model_type == ModelType::kModelTypeLlama ||
+           model_type == ModelType::kModelTypeLlama2 ||
+           model_type == ModelType::kModelTypeLlama3;
 }
 
 inline bool IsQwenModel(ModelType model_type) {
@@ -108,7 +108,7 @@ inline bool IsQwenModel(ModelType model_type) {
 inline bool UsesQwenRoPE(ModelType model_type) { return IsQwenModel(model_type); }
 
 inline bool UsesLlama3RoPE(ModelType model_type) {
-    return model_type == ModelType::kModelTypeLLama3;
+    return model_type == ModelType::kModelTypeLlama3;
 }
 
 inline bool UsesHalfSplitRoPE(ModelType model_type) {
@@ -131,11 +131,6 @@ inline float RoPETheta(ModelType model_type) {
 
 inline float RmsNormEpsilon(ModelType model_type) {
     return IsQwenModel(model_type) ? 1e-6f : 1e-5f;
-}
-
-inline ModelType ResolveLlamaModelType(TokenizerType tokenizer_type) {
-    return tokenizer_type == TokenizerType::kEncodeBpe ? ModelType::kModelTypeLLama3
-                                                       : ModelType::kModelTypeLLama2;
 }
 
 class Status {

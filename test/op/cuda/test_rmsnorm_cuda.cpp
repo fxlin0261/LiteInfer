@@ -7,7 +7,7 @@
 
 // 测试默认流下，CUDA RMSNorm 和 CPU 结果是否一致。
 TEST(test_rmsnorm_cu, rmsnorm_nostream) {
-  const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeLLama2);
+  const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeLlama2);
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
 
@@ -112,7 +112,7 @@ TEST(test_rmsnorm_cu_dim, rmsnorm_stream) {
 
 // 测试自定义流下，CUDA RMSNorm 和 CPU 结果是否一致。
 TEST(test_rmsnorm_cu, rmsnorm_stream) {
-  const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeLLama2);
+  const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeLlama2);
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
 
@@ -152,7 +152,7 @@ TEST(test_rmsnorm_cu, rmsnorm_stream) {
 
 // 测试更大数据量下，自定义流的 RMSNorm 是否仍然正确。
 TEST(test_rmsnorm_cu, rmsnorm_stream2) {
-  const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeLLama2);
+  const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeLlama2);
   auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
   auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
 

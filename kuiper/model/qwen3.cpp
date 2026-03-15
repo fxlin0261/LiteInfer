@@ -407,12 +407,12 @@ base::Status Qwen3Model::create_layers() {
     create_nonparam_layers();
 
     if (!qwen_layers_->embedding_layer_) {
-        return error::InternalError("Create the embedding layer for the llama model failed!");
+        return error::InternalError("Create the embedding layer for the qwen3 model failed!");
     }
 
     if (qwen_layers_->rmsnorm_layers_.size() != 4 * config_->layer_num_ + 1) {
         // input norm
-        return error::InternalError("Create the rmsnorm layers for the llama model failed!");
+        return error::InternalError("Create the rmsnorm layers for the qwen3 model failed!");
     }
 
     if (qwen_layers_->wq_layers_.size() != config_->layer_num_ ||
@@ -421,7 +421,7 @@ base::Status Qwen3Model::create_layers() {
         qwen_layers_->wo_layers_.size() != config_->layer_num_) {
         return error::InternalError(
             "Create the matmul layer in the attention and ffn attention layers for "
-            "the llama model "
+            "the qwen3 model "
             "failed.");
     }
 
@@ -430,7 +430,7 @@ base::Status Qwen3Model::create_layers() {
             !qwen_layers_->wv_layers_.at(i) || !qwen_layers_->wo_layers_.at(i)) {
             return error::InternalError(
                 "Create the matmul layer in the attention and ffn attention layers for "
-                "the llama model "
+                "the qwen3 model "
                 "failed.");
         }
     }
@@ -439,7 +439,7 @@ base::Status Qwen3Model::create_layers() {
         qwen_layers_->w2_layers_.size() != config_->layer_num_ ||
         qwen_layers_->w3_layers_.size() != config_->layer_num_) {
         return error::InternalError(
-            "Create the matmul layer in the feedforward layers for the llama model "
+            "Create the matmul layer in the feedforward layers for the qwen3 model "
             "failed.");
     }
 
@@ -447,25 +447,25 @@ base::Status Qwen3Model::create_layers() {
         if (!qwen_layers_->w1_layers_.at(i) || !qwen_layers_->w2_layers_.at(i) ||
             !qwen_layers_->w3_layers_.at(i)) {
             return error::InternalError(
-                "Create the matmul layer in the feedforward layers for the llama model "
+                "Create the matmul layer in the feedforward layers for the qwen3 model "
                 "failed.");
         }
     }
 
     if (!qwen_layers_->rope_layer_) {
-        return error::InternalError("Create the rope layer for the llama model failed!");
+        return error::InternalError("Create the rope layer for the qwen3 model failed!");
     }
 
     if (!qwen_layers_->add_layer_) {
-        return error::InternalError("Create the add layer for the llama model failed!");
+        return error::InternalError("Create the add layer for the qwen3 model failed!");
     }
 
     if (!qwen_layers_->mha_layer_) {
-        return error::InternalError("Create the mha layer for the llama model failed!");
+        return error::InternalError("Create the mha layer for the qwen3 model failed!");
     }
 
     if (!qwen_layers_->swiglu_layer_) {
-        return error::InternalError("Create the SwiGLU layer for the llama model failed!");
+        return error::InternalError("Create the SwiGLU layer for the qwen3 model failed!");
     }
     return error::Success();
 }
@@ -476,7 +476,7 @@ void Qwen3Model::attention_rms(int32_t layer_idx, const tensor::Tensor& input) c
     tensor::Tensor rmsnorm_output = get_buffer(ModelBufferType::kOutputRMSNorm);
     std::shared_ptr<op::Layer> rmsnorm_layer = qwen_layers_->rmsnorm_layers_.at(layer_idx);
     if (!rmsnorm_layer) {
-        LOG(FATAL) << "The attention rmsnorm layer is a null pointer in the llama2 model";
+        LOG(FATAL) << "The attention rmsnorm layer is a null pointer in the qwen3 model";
     }
     STATUS_CHECK(rmsnorm_layer->forward(input, rmsnorm_output));
 }
@@ -620,7 +620,7 @@ op::EmbeddingOutput Qwen3Model::embedding(const std::vector<int>& tokens) const 
     auto input_token_num =
         tensor::Tensor(base::DataType::kDataTypeInt32, static_cast<int32_t>(tokens.size()));
     LOG_IF(FATAL, !qwen_layers_->embedding_layer_)
-        << "The embedding layer in the llama2 model is null pointer.";
+        << "The embedding layer in the qwen3 model is null pointer.";
     STATUS_CHECK(
         qwen_layers_->embedding_layer_->forward(input_tokens, input_token_num, input_embeddings));
 

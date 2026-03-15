@@ -39,7 +39,7 @@ public:
 
 class FakeModel final : public model::Model {
 public:
-    explicit FakeModel(base::ModelType model_type = base::ModelType::kModelTypeLLama2,
+    explicit FakeModel(base::ModelType model_type = base::ModelType::kModelTypeLlama2,
                        base::TokenizerType tokenizer_type = base::TokenizerType::kEncodeSpe)
         : Model(tokenizer_type, model_type, "token.model", "model.bin", false) {
         config_ = std::make_unique<model::TransformerConfig>();
@@ -247,7 +247,7 @@ TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token)
         EXPECT_FLOAT_EQ(generation_input.index<float>(3), 4.f);
     };
 
-    run_case(base::ModelType::kModelTypeLLama2, base::TokenizerType::kEncodeSpe);
+    run_case(base::ModelType::kModelTypeLlama2, base::TokenizerType::kEncodeSpe);
     run_case(base::ModelType::kModelTypeQwen3, base::TokenizerType::kEncodeBpe);
 }
 

@@ -5,6 +5,7 @@
 build/
 cmake-build-*/
 build-local-*/
+build-models-clean/
 
 # Editor metadata
 .vscode/

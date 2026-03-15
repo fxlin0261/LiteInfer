@@ -1,8 +1,8 @@
-# KuiperLLama 动手自制大模型推理框架，支持LLama2/3和Qwen2.5
-> News：新课发布，《动手自制大模型推理框架》，全手写cuda算子，课程框架支持LLama2和3.x以及Qwen2.5模型
+# KuiperLlama 动手自制大模型推理框架，支持Llama2/3和Qwen2.5
+> News：新课发布，《动手自制大模型推理框架》，全手写cuda算子，课程框架支持Llama2和3.x以及Qwen2.5模型
 
 Hi，各位朋友们好！我是 KuiperInfer 的作者。KuiperInfer 作为一门开源课程，迄今已经在 GitHub 上已斩获 2.5k star。
-如今在原课程的基础上，**我们全新推出了《动手自制大模型推理框架》， 新课程支持Llama系列大模型（包括最新的LLama3.2）以及Qwen2.5系列大模型，同时支持 Cuda 加速和 Int8 量化**，自推出以来便广受好评。
+如今在原课程的基础上，**我们全新推出了《动手自制大模型推理框架》， 新课程支持Llama系列大模型（包括最新的Llama3.2）以及Qwen2.5系列大模型，同时支持 Cuda 加速和 Int8 量化**，自推出以来便广受好评。
 
 ## 《动手自制大模型推理框架》课程目录：
 https://tvle9mq8jh.feishu.cn/docx/AGb0dpqwfohQ9oxx4QycqbCjnJh
@@ -11,7 +11,7 @@ https://tvle9mq8jh.feishu.cn/docx/AGb0dpqwfohQ9oxx4QycqbCjnJh
 1. 采用最新的C++ 20标准去写代码，统一、美观的代码风格，良好的错误处理；
 2. 优秀的项目管理形式，我们采用CMake+Git的方式管理项目，接轨大厂；
 3. 授人以渔，教大家怎么设计一个现代C++项目，同时教大家怎么用单元测试和Benchmark去测试验证自己的项目； 
-4. CPU算子和CUDA双后端实现，对时新的大模型（LLama3和Qwen系列）有非常好的支持。
+4. CPU算子和CUDA双后端实现，对时新的大模型（Llama3和Qwen系列）有非常好的支持。
 
 
 **如果你对大模型推理感兴趣，想要深入了解并掌握相关技术，想在校招、秋招面试当中脱颖而出，那么这门《动手自制大模型推理框架》课程绝对不容错过。快来加入我们，一起开启学习之旅吧！
@@ -22,7 +22,7 @@ https://tvle9mq8jh.feishu.cn/docx/AGb0dpqwfohQ9oxx4QycqbCjnJh
 
 
 ## 《动手自制大模型推理框架》课程项目运行效果
-> LLama1.1b fp32模型，视频无加速，运行平台为Nvidia 3060 laptop，速度为60.34 token/s
+> Llama1.1b fp32模型，视频无加速，运行平台为Nvidia 3060 laptop，速度为60.34 token/s
 
 ![](./docs/assets/do.gif)
 
@@ -38,22 +38,22 @@ https://tvle9mq8jh.feishu.cn/docx/AGb0dpqwfohQ9oxx4QycqbCjnJh
 
 
 ## 模型下载地址
-1. LLama2 https://pan.baidu.com/s/1PF5KqvIvNFR8yDIY1HmTYA?pwd=ma8r 或 https://huggingface.co/fushenshen/lession_model/tree/main
+1. Llama2 https://pan.baidu.com/s/1PF5KqvIvNFR8yDIY1HmTYA?pwd=ma8r 或 https://huggingface.co/fushenshen/lession_model/tree/main
 
-2. Tiny LLama 
-- TinyLLama模型 https://huggingface.co/karpathy/tinyllamas/tree/main
-- TinyLLama分词器 https://huggingface.co/yahma/llama-7b-hf/blob/main/tokenizer.model
+2. Tiny Llama 
+- TinyLlama模型 https://huggingface.co/karpathy/tinyllamas/tree/main
+- TinyLlama分词器 https://huggingface.co/yahma/llama-7b-hf/blob/main/tokenizer.model
 
-3. Qwen2.5/LLama
+3. Qwen2.5/Llama
    
    请参考本项目配套课程，课程参加方式请看本文开头。
 
 
 ## 模型导出
 ```shell
-python3 models/llama/export_llama.py llama2_7b.bin --meta-llama path/to/llama/model/7B
+python3 models/llama/export_llama2.py llama2_7b.bin --meta-llama path/to/llama/model/7B
 # 使用--hf标签从hugging face中加载模型， 指定--version3可以导出量化模型
-# 其他使用方法请看export_llama.py中的命令行参数实例
+# 其他使用方法请看export_llama2.py中的命令行参数实例
 ```
 
 
@@ -70,11 +70,11 @@ python3 models/llama/export_llama.py llama2_7b.bin --meta-llama path/to/llama/mo
 
 ## 生成文本的方法
 ```shell
-./models/llama_infer llama2_7b.bin tokenizer.model
+./build/models/llama2_infer llama2_7b.bin tokenizer.model
 
 ```
 
-# LLama3.2 推理
+# Llama3.2 推理
 
 - 以 meta-llama/Llama-3.2-1B 为例，huggingface 上下载模型：
 ```shell
@@ -84,7 +84,7 @@ huggingface-cli download --resume-download meta-llama/Llama-3.2-1B --local-dir m
 ```
 - 导出模型：
 ```shell
-python3 models/llama3/export_llama3.py Llama-3.2-1B.bin --hf=meta-llama/Llama-3.2-1B
+python3 models/llama/export_llama3.py Llama-3.2-1B.bin --hf=meta-llama/Llama-3.2-1B
 ```
 - 编译：
 ```shell
@@ -96,9 +96,9 @@ make -j16
 ```
 - 运行：
 ```shell
-./build/models/llama_infer Llama-3.2-1B.bin meta-llama/Llama-3.2-1B/tokenizer.json
+./build/models/llama3_infer Llama-3.2-1B.bin meta-llama/Llama-3.2-1B/tokenizer.json
 # 和 huggingface 推理的结果进行对比
-python3 models/llama3/hf_infer_llama3.py
+python3 models/llama/hf_infer_llama3.py
 ```
 
 # Qwen2.5 推理
@@ -111,7 +111,7 @@ huggingface-cli download --resume-download Qwen/Qwen2.5-0.5B --local-dir Qwen/Qw
 ```
 - 导出模型：
 ```shell
-python3 models/qwen2/export_qwen2.py Qwen2.5-0.5B.bin --hf=Qwen/Qwen2.5-0.5B
+python3 models/qwen/export_qwen2.py Qwen2.5-0.5B.bin --hf=Qwen/Qwen2.5-0.5B
 ```
 - 编译：
 ```shell
@@ -123,13 +123,13 @@ make -j16
 ```
 - 运行：
 ```shell
-./build/models/qwen_infer Qwen2.5-0.5B.bin Qwen/Qwen2.5-0.5B/tokenizer.json
+./build/models/qwen2_infer Qwen2.5-0.5B.bin Qwen/Qwen2.5-0.5B/tokenizer.json
 # 和 huggingface 推理的结果进行对比
-python3 models/qwen2/hf_infer_qwen2.py
+python3 models/qwen/hf_infer_qwen2.py
 ```
 
 ## Qwen3推理
 和上面同理，我们先从huggingface仓库中将模型下载到本地。
-1. models/qwen3/export_qwen3_pth.py中导出为pth，模型的输入`model_name`和输出地址`output_file`依次需要填写；
+1. models/qwen/export_qwen3_pth.py中导出为pth，模型的输入`model_name`和输出地址`output_file`依次需要填写；
 2. 导出pth格式的模型后，再用同文件夹下的export_qwen3_bin.py导出qwen.bin；
 3. 重新编译项目即可，不再需要用模型宏切换构建配置；其他步骤都一样。

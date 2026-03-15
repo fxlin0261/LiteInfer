@@ -28,11 +28,10 @@ import torch
 from torch import nn
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-MODELS_DIR = SCRIPT_DIR.parent
-if str(MODELS_DIR) not in sys.path:
-    sys.path.insert(0, str(MODELS_DIR))
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
-from shared.llama_model import ModelArgs, Transformer
+from llama_model import ModelArgs, Transformer
 
 
 # -----------------------------------------------------------------------------
@@ -548,7 +547,8 @@ def load_hf_model(model_path):
     # convert LlamaConfig to ModelArgs
     config = ModelArgs()
     config_path = None
-    for candidate in (Path.cwd() / "config.json", SCRIPT_DIR / "config.json"):
+    for candidate in (Path.cwd() / "llama2_config.json", SCRIPT_DIR / "llama2_config.json",
+                      Path.cwd() / "config.json", SCRIPT_DIR / "config.json"):
         if candidate.exists():
             config_path = candidate
             break
