@@ -11,7 +11,6 @@ public:
         : LlamaModelBase(base::TokenizerType::kEncodeSpe, base::ModelType::kModelTypeLlama2,
                          std::move(token_path), std::move(model_path), is_quant_model) {}
 };
-
 }  // namespace model
 
 #endif

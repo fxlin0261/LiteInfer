@@ -12,6 +12,45 @@
 #include "base/tick.h"
 namespace model {
 
+namespace {
+
+base::Status init_cuda_config(std::shared_ptr<kernel::CudaConfig>& cuda_config) {
+#if KUIPER_ENABLE_CUDA
+    cudaSetDevice(0);
+    cuda_config = std::make_shared<kernel::CudaConfig>();
+    cudaStreamCreate(&cuda_config->stream);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        return base::error::InternalError("The cuda hanle create failed.");
+    }
+    return base::error::Success();
+#else
+    UNUSED(cuda_config);
+    return base::error::InternalError("This build does not include CUDA support.");
+#endif
+}
+
+base::Status init_sin_cos_cache(base::ModelType model_type, int32_t head_size, int32_t seq_len,
+                                const tensor::Tensor& sin_cache, const tensor::Tensor& cos_cache,
+                                const std::shared_ptr<kernel::CudaConfig>& cuda_config) {
+#if KUIPER_ENABLE_CUDA
+    CHECK_NE(cuda_config, nullptr);
+    kernel::sin_cos_cache_calc_cu(model_type, head_size, seq_len, sin_cache, cos_cache,
+                                  cuda_config->stream);
+    return base::error::Success();
+#else
+    UNUSED(model_type);
+    UNUSED(head_size);
+    UNUSED(seq_len);
+    UNUSED(sin_cache);
+    UNUSED(cos_cache);
+    UNUSED(cuda_config);
+    return base::error::InternalError("This build does not include CUDA support.");
+#endif
+}
+
+}  // namespace
+
 void LlamaLayers::to_cuda(std::shared_ptr<kernel::CudaConfig> config) {
     if (add_layer_) {
         add_layer_->set_cuda_config(config);
@@ -118,21 +157,10 @@ base::Status LlamaModelBase::init(base::DeviceType device_type) {
 
     device_type_ = device_type;
     if (device_type == DeviceType::kDeviceCUDA) {
-#if KUIPER_ENABLE_CUDA
-        // 指定使用第 0 张 GPU
-        cudaSetDevice(0);
-        // 创建一个 CUDA 配置对象，保存 CUDA 相关资源
-        cuda_config_ = std::make_shared<kernel::CudaConfig>();
-        // stream 可以理解成 GPU 上的一条执行队列，后续 kernel 可以放到这个 stream 里异步执行
-        cudaStreamCreate(&cuda_config_->stream);
-        // 检查刚才 CUDA 操作是否成功
-        cudaError_t err = cudaGetLastError();
-        if (err != cudaSuccess) {
-            return error::InternalError("The cuda hanle create failed.");
+        auto cuda_status = init_cuda_config(cuda_config_);
+        if (!cuda_status) {
+            return cuda_status;
         }
-#else
-        return error::InternalError("This build does not include CUDA support.");
-#endif
     }
     // 这一步是“正式加载模型”的入口。它会从模型文件里解析配置、权重，并创建各层对象
     Status read_status = gen_model_from_file();
@@ -152,14 +180,13 @@ base::Status LlamaModelBase::init(base::DeviceType device_type) {
                                        get_buffer(ModelBufferType::kSinCache).ptr<float>(),
                                        get_buffer(ModelBufferType::kCosCache).ptr<float>());
     } else {
-#if KUIPER_ENABLE_CUDA
-        CHECK_NE(cuda_config_, nullptr);
-        kernel::sin_cos_cache_calc_cu(model_type_, config_->head_size_, config_->seq_len_,
-                                      get_buffer(ModelBufferType::kSinCache),
-                                      get_buffer(ModelBufferType::kCosCache), cuda_config_->stream);
-#else
-        return error::InternalError("This build does not include CUDA support.");
-#endif
+        auto cache_status =
+            init_sin_cos_cache(model_type_, config_->head_size_, config_->seq_len_,
+                               get_buffer(ModelBufferType::kSinCache),
+                               get_buffer(ModelBufferType::kCosCache), cuda_config_);
+        if (!cache_status) {
+            return cache_status;
+        }
     }
     // 这里创建的是采样器。当前实现用的是 ArgmaxSampler，也就是每次从 logits 里直接选概率最大的
     // token。 所以这个项目目前默认不是 top-k / top-p 随机采样，而是更确定性的 greedy decoding

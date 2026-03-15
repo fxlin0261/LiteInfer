@@ -26,106 +26,75 @@ namespace {
 [[noreturn]] void cuda_kernel_unavailable(const char* kernel_name) {
     LOG(FATAL) << kernel_name << " requires CUDA, but this build was compiled without CUDA support.";
 }
+
+template <typename Kernel>
+Kernel select_kernel(base::DeviceType device_type, Kernel cpu_kernel, Kernel cuda_kernel,
+                     const char* cuda_kernel_name, const char* error_message) {
+    if (device_type == base::DeviceType::kDeviceCPU && cpu_kernel != nullptr) {
+        return cpu_kernel;
+    }
+    if (device_type == base::DeviceType::kDeviceCUDA) {
+        if (cuda_kernel != nullptr) {
+            return cuda_kernel;
+        }
+        cuda_kernel_unavailable(cuda_kernel_name);
+    }
+    LOG(FATAL) << error_message;
+    return nullptr;
+}
+
+#if KUIPER_ENABLE_CUDA
+constexpr AddKernel kAddKernelCuda = add_kernel_cu;
+constexpr EmbeddingKernel kEmbeddingKernelCuda = emb_kernel_cu;
+constexpr MatmulKernel kMatmulKernelCuda = matmul_kernel_cu;
+constexpr MatmulKernelQuant kMatmulKernelQuant8Cuda = matmul_kernel_cu_qint8;
+constexpr MHAKernel kMhaKernelCuda = mha_kernel_cu;
+constexpr RoPEKernel kRoPEKernelCuda = rope_kernel_cu;
+constexpr SwigluKernel kSwigluKernelCuda = swiglu_kernel_cu;
+constexpr RMSNormKernel kRmsNormKernelCuda = rmsnorm_kernel_cu;
+constexpr RMSNormKernelDim kRmsNormDimKernelCuda = rmsnorm_kernel_cu_dim;
+#else
+constexpr AddKernel kAddKernelCuda = nullptr;
+constexpr EmbeddingKernel kEmbeddingKernelCuda = nullptr;
+constexpr MatmulKernel kMatmulKernelCuda = nullptr;
+constexpr MatmulKernelQuant kMatmulKernelQuant8Cuda = nullptr;
+constexpr MHAKernel kMhaKernelCuda = nullptr;
+constexpr RoPEKernel kRoPEKernelCuda = nullptr;
+constexpr SwigluKernel kSwigluKernelCuda = nullptr;
+constexpr RMSNormKernel kRmsNormKernelCuda = nullptr;
+constexpr RMSNormKernelDim kRmsNormDimKernelCuda = nullptr;
+#endif
 }  // namespace
 
 AddKernel get_add_kernel(base::DeviceType device_type) {
-    if (device_type == base::DeviceType::kDeviceCPU) {
-        return add_kernel_cpu;
-#if KUIPER_ENABLE_CUDA
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        return add_kernel_cu;
-#else
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        cuda_kernel_unavailable("add_kernel_cu");
-        return nullptr;
-#endif
-    } else {
-        LOG(FATAL) << "Unknown device type for get a add kernel.";
-        return nullptr;
-    }
+    return select_kernel(device_type, add_kernel_cpu, kAddKernelCuda, "add_kernel_cu",
+                         "Unknown device type for get a add kernel.");
 }
 
 EmbeddingKernel get_emb_kernel(base::DeviceType device_type) {
-    if (device_type == base::DeviceType::kDeviceCPU) {
-        return emb_kernel_normal;
-#if KUIPER_ENABLE_CUDA
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        return emb_kernel_cu;
-#else
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        cuda_kernel_unavailable("emb_kernel_cu");
-        return nullptr;
-#endif
-    } else {
-        LOG(FATAL) << "Unknown device type for get an embedding kernel.";
-        return nullptr;
-    }
+    return select_kernel(device_type, emb_kernel_normal, kEmbeddingKernelCuda, "emb_kernel_cu",
+                         "Unknown device type for get an embedding kernel.");
 }
 
 MatmulKernel get_matmul_kernel(base::DeviceType device_type) {
-    if (device_type == base::DeviceType::kDeviceCPU) {
-        return matmul_kernel_cpu;
-#if KUIPER_ENABLE_CUDA
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        return matmul_kernel_cu;
-#else
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        cuda_kernel_unavailable("matmul_kernel_cu");
-        return nullptr;
-#endif
-    } else {
-        LOG(FATAL) << "Unknown device type for get an matmul kernel.";
-        return nullptr;
-    }
+    return select_kernel(device_type, matmul_kernel_cpu, kMatmulKernelCuda, "matmul_kernel_cu",
+                         "Unknown device type for get an matmul kernel.");
 }
 
 MatmulKernelQuant get_matmul_kernel_quant8(base::DeviceType device_type) {
-#if KUIPER_ENABLE_CUDA
-    if (device_type == base::DeviceType::kDeviceCUDA) {
-        return matmul_kernel_cu_qint8;
-    } else {
-        LOG(FATAL) << "Unknown device type for get an matmul kernel.";
-        return nullptr;
-    }
-#else
-    (void)device_type;
-    cuda_kernel_unavailable("matmul_kernel_cu_qint8");
-    return nullptr;
-#endif
+    return select_kernel<MatmulKernelQuant>(device_type, nullptr, kMatmulKernelQuant8Cuda,
+                                            "matmul_kernel_cu_qint8",
+                                            "Unknown device type for get an matmul kernel.");
 }
 
 MHAKernel get_mha_kernel(base::DeviceType device_type) {
-    if (device_type == base::DeviceType::kDeviceCPU) {
-        return mha_kernel;
-#if KUIPER_ENABLE_CUDA
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        return mha_kernel_cu;
-#else
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        cuda_kernel_unavailable("mha_kernel_cu");
-        return nullptr;
-#endif
-    } else {
-        LOG(FATAL) << "Unknown device type for get an mha kernel.";
-        return nullptr;
-    }
+    return select_kernel(device_type, mha_kernel, kMhaKernelCuda, "mha_kernel_cu",
+                         "Unknown device type for get an mha kernel.");
 }
 
 RoPEKernel get_rope_kernel(base::DeviceType device_type) {
-    if (device_type == base::DeviceType::kDeviceCPU) {
-        return rope_kernel_cpu;
-#if KUIPER_ENABLE_CUDA
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        return rope_kernel_cu;
-#else
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        cuda_kernel_unavailable("rope_kernel_cu");
-        return nullptr;
-#endif
-    } else {
-        LOG(FATAL) << "Unknown device type for get a rope kernel.";
-        return nullptr;
-    }
+    return select_kernel(device_type, rope_kernel_cpu, kRoPEKernelCuda, "rope_kernel_cu",
+                         "Unknown device type for get a rope kernel.");
 }
 
 ScaleKernel get_scale_kernel(base::DeviceType device_type) {
@@ -147,52 +116,20 @@ SoftmaxInplaceKernel get_softmax_kernel(base::DeviceType device_type) {
 }
 
 SwigluKernel get_swiglu_kernel(base::DeviceType device_type, void* stream) {
-    if (device_type == base::DeviceType::kDeviceCPU) {
-        return swiglu_kernel_cpu;
-#if KUIPER_ENABLE_CUDA
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        return swiglu_kernel_cu;
-#else
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        cuda_kernel_unavailable("swiglu_kernel_cu");
-        return nullptr;
-#endif
-    } else {
-        LOG(FATAL) << "Unknown device type for get a swiglu kernel.";
-        return nullptr;
-    }
+    UNUSED(stream);
+    return select_kernel(device_type, swiglu_kernel_cpu, kSwigluKernelCuda, "swiglu_kernel_cu",
+                         "Unknown device type for get a swiglu kernel.");
 }
 
 RMSNormKernel get_rmsnorm_kernel(base::DeviceType device_type) {
-    if (device_type == base::DeviceType::kDeviceCPU) {
-        return rmsnorm_kernel_cpu;
-#if KUIPER_ENABLE_CUDA
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        return rmsnorm_kernel_cu;
-#else
-    } else if (device_type == base::DeviceType::kDeviceCUDA) {
-        cuda_kernel_unavailable("rmsnorm_kernel_cu");
-        return nullptr;
-#endif
-    } else {
-        LOG(FATAL) << "Unknown device type for get a rmsnorm kernel.";
-        return nullptr;
-    }
+    return select_kernel(device_type, rmsnorm_kernel_cpu, kRmsNormKernelCuda,
+                         "rmsnorm_kernel_cu", "Unknown device type for get a rmsnorm kernel.");
 }
 
 RMSNormKernelDim get_rmsnorm_dim_kernel(base::DeviceType device_type) {
-#if KUIPER_ENABLE_CUDA
-    if (device_type == base::DeviceType::kDeviceCUDA) {
-        return rmsnorm_kernel_cu_dim;
-    } else {
-        LOG(FATAL) << "Unknown device type for get a rmsnorm dim kernel.";
-        return nullptr;
-    }
-#else
-    (void)device_type;
-    cuda_kernel_unavailable("rmsnorm_kernel_cu_dim");
-    return nullptr;
-#endif
+    return select_kernel<RMSNormKernelDim>(device_type, nullptr, kRmsNormDimKernelCuda,
+                                           "rmsnorm_kernel_cu_dim",
+                                           "Unknown device type for get a rmsnorm dim kernel.");
 }
 
 ScaleSumKernel get_scale_sum_kernel(base::DeviceType device_type) {

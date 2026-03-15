@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 
 project(KuiperLlama LANGUAGES CXX)
 
+if(POLICY CMP0169)
+  cmake_policy(SET CMP0169 OLD)
+  set(CMAKE_POLICY_DEFAULT_CMP0169 OLD)
+endif()
+
 include(CheckLanguage)
 check_language(CUDA)
 if(CMAKE_CUDA_COMPILER)
@@ -31,7 +36,42 @@ endif()
 option(USE_CPM "Use CPM for dependency management" OFF)
 set(KUIPER_ENABLE_BPE_TOKENIZERS ON)
 
+function(kuiper_maybe_disable_third_party_warnings)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    return()
+  endif()
+
+  foreach(target_name IN LISTS ARGN)
+    if(TARGET ${target_name})
+      get_target_property(target_is_imported ${target_name} IMPORTED)
+      if(NOT target_is_imported)
+        target_compile_options(
+          ${target_name}
+          PRIVATE "-Wno-#pragma-messages" -Wno-unused-const-variable
+                  -Wno-inconsistent-missing-override
+        )
+      endif()
+    endif()
+  endforeach()
+endfunction()
+
 if(USE_CPM)
+  if(DEFINED CMAKE_POLICY_VERSION_MINIMUM)
+    set(KUIPER_PREV_POLICY_VERSION_MINIMUM "${CMAKE_POLICY_VERSION_MINIMUM}")
+    set(KUIPER_RESTORE_POLICY_VERSION_MINIMUM ON)
+  else()
+    set(KUIPER_RESTORE_POLICY_VERSION_MINIMUM OFF)
+  endif()
+  set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
+
+  if(DEFINED CMAKE_WARN_DEPRECATED)
+    set(KUIPER_PREV_WARN_DEPRECATED "${CMAKE_WARN_DEPRECATED}")
+    set(KUIPER_RESTORE_WARN_DEPRECATED ON)
+  else()
+    set(KUIPER_RESTORE_WARN_DEPRECATED OFF)
+  endif()
+  set(CMAKE_WARN_DEPRECATED OFF)
+
   include(cmake/CPM.cmake)
 
   if(BUILD_TESTING)
@@ -80,6 +120,18 @@ if(USE_CPM)
       GITHUB_REPOSITORY nlohmann/json
       VERSION 3.11.3
     )
+  endif()
+
+  if(KUIPER_RESTORE_WARN_DEPRECATED)
+    set(CMAKE_WARN_DEPRECATED "${KUIPER_PREV_WARN_DEPRECATED}")
+  else()
+    unset(CMAKE_WARN_DEPRECATED)
+  endif()
+
+  if(KUIPER_RESTORE_POLICY_VERSION_MINIMUM)
+    set(CMAKE_POLICY_VERSION_MINIMUM "${KUIPER_PREV_POLICY_VERSION_MINIMUM}")
+  else()
+    unset(CMAKE_POLICY_VERSION_MINIMUM)
   endif()
 endif()
 
@@ -150,6 +202,12 @@ if(KUIPER_ENABLE_BPE_TOKENIZERS)
     find_package(nlohmann_json REQUIRED)
   endif()
 endif()
+
+kuiper_maybe_disable_third_party_warnings(
+  glog_internal
+  sentencepiece_train
+  sentencepiece_train-static
+)
 
 add_library(kuiper_sentencepiece INTERFACE)
 if(TARGET sentencepiece::sentencepiece)

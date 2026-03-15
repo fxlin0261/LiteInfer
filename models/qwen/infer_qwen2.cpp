@@ -3,14 +3,6 @@
 #include <glog/logging.h>
 #include "model/qwen2.h"
 
-namespace {
-#if KUIPER_ENABLE_CUDA
-constexpr auto kDefaultDeviceType = base::DeviceType::kDeviceCUDA;
-#else
-constexpr auto kDefaultDeviceType = base::DeviceType::kDeviceCPU;
-#endif
-}  // namespace
-
 int32_t generate(const model::Qwen2Model& model, const std::string& sentence, int total_steps,
                  bool need_output = false) {
     auto tokens = model.encode(sentence);
@@ -66,7 +58,7 @@ int main(int argc, char* argv[]) {
 
     model::Qwen2Model model(base::TokenizerType::kEncodeBpe, tokenizer_path, checkpoint_path,
                             false);
-    auto init_status = model.init(kDefaultDeviceType);
+    auto init_status = model.init(base::DefaultDeviceType());
     if (!init_status) {
         LOG(FATAL) << "The model init failed, the error code is: " << init_status.get_err_code();
     }

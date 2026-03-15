@@ -3,14 +3,6 @@
 #include <glog/logging.h>
 #include "model/llama3.h"
 
-namespace {
-#if KUIPER_ENABLE_CUDA
-constexpr auto kDefaultDeviceType = base::DeviceType::kDeviceCUDA;
-#else
-constexpr auto kDefaultDeviceType = base::DeviceType::kDeviceCPU;
-#endif
-}  // namespace
-
 int32_t generate(const model::Llama3Model& model, const std::string& sentence, int total_steps,
                  bool need_output = false) {
     // 这里先把文本 sentence 编码成 token id 序列。prompt_len 是提示词长度。如果一个 token
@@ -69,7 +61,7 @@ int main(int argc, char* argv[]) {
     const char* tokenizer_path = argv[2];
 
     model::Llama3Model model(tokenizer_path, checkpoint_path, false);
-    auto init_status = model.init(kDefaultDeviceType);
+    auto init_status = model.init(base::DefaultDeviceType());
     if (!init_status) {
         LOG(FATAL) << "The model init failed, the error code is: " << init_status.get_err_code();
     }

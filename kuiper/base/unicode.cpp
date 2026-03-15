@@ -1,14 +1,8 @@
-#if defined(_MSC_VER)
-#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
-#endif
-
 #include "base/unicode.h"
 #include <algorithm>
 #include <cassert>
-#include <codecvt>
 #include <cstddef>
 #include <cstdint>
-#include <locale>
 #include <map>
 #include <regex>
 #include <stdexcept>
@@ -203,9 +197,34 @@ static std::unordered_map<std::string, uint8_t> unicode_utf8_to_byte_map() {
     return map;
 }
 
+static inline void unicode_append_wchar(std::wstring& result, uint32_t cp) {
+    if (cp > 0x10FFFF || (0xD800 <= cp && cp <= 0xDFFF)) {
+        throw std::invalid_argument("invalid codepoint");
+    }
+
+    if constexpr (sizeof(wchar_t) >= 4) {
+        result.push_back(static_cast<wchar_t>(cp));
+        return;
+    }
+
+    if (cp <= 0xFFFF) {
+        result.push_back(static_cast<wchar_t>(cp));
+        return;
+    }
+
+    cp -= 0x10000;
+    result.push_back(static_cast<wchar_t>(0xD800 + (cp >> 10)));
+    result.push_back(static_cast<wchar_t>(0xDC00 + (cp & 0x3FF)));
+}
+
 static inline std::wstring unicode_wstring_from_utf8(const std::string& s) {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
-    return conv.from_bytes(s);
+    const auto cps = unicode_cpts_from_utf8(s);
+    std::wstring result;
+    result.reserve(cps.size());
+    for (const auto cp : cps) {
+        unicode_append_wchar(result, cp);
+    }
+    return result;
 }
 
 static std::vector<std::string> unicode_byte_encoding_process(
