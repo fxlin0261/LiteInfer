@@ -53,8 +53,8 @@ public:
 
 private:
     mutable std::map<int, size_t> no_busy_cnt_;
-    mutable std::map<int, std::vector<CudaMemoryBuffer>> big_buffers_map_;
-    mutable std::map<int, std::vector<CudaMemoryBuffer>> cuda_buffers_map_;
+    mutable std::map<int, std::vector<CudaMemoryBuffer>> big_runtime_tensors_map_;
+    mutable std::map<int, std::vector<CudaMemoryBuffer>> cuda_runtime_tensors_map_;
 };
 
 class CPUDeviceAllocatorFactory {

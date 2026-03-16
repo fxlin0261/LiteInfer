@@ -271,7 +271,7 @@ add_library(liteinfer_runtime SHARED ${LITEINFER_SOURCES})
 add_library(liteinfer::runtime ALIAS liteinfer_runtime)
 
 target_compile_features(liteinfer_runtime PUBLIC cxx_std_17)
-target_include_directories(liteinfer_runtime PUBLIC "${PROJECT_SOURCE_DIR}/kuiper")
+target_include_directories(liteinfer_runtime PUBLIC "${PROJECT_SOURCE_DIR}/liteinfer")
 target_link_libraries(liteinfer_runtime PUBLIC glog::glog absl::status liteinfer_armadillo liteinfer_sentencepiece)
 
 if(LITEINFER_WITH_CUDA)

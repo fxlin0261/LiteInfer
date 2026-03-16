@@ -81,9 +81,9 @@ public:
     void set_tokenizer_layer_for_test(std::unique_ptr<op::TokenizerLayerBase> layer) {
         tokenizer_layer_ = std::move(layer);
     }
-    base::Status insert_buffer_for_test(model::ModelBufferType buffer_idx,
+    base::Status insert_runtime_tensor_for_test(model::RuntimeTensorType tensor_idx,
                                         const tensor::Tensor& tensor) {
-        return insert_buffer(buffer_idx, tensor);
+        return insert_runtime_tensor(tensor_idx, tensor);
     }
     base::Status generate_model_infos_for_test(const model::ModelConfig& config) {
         return generate_model_infos(config);
@@ -217,16 +217,16 @@ TEST(test_model_core, generate_model_infos_rejects_invalid_model_config) {
     expect_invalid(zero_vocab, "vocab_size must be non-zero");
 }
 
-TEST(test_model_core, insert_buffer_rejects_empty_tensor_and_duplicates) {
+TEST(test_model_core, insert_runtime_tensor_rejects_empty_tensor_and_duplicates) {
     FakeModel model;
     tensor::Tensor empty;
-    auto status = model.insert_buffer_for_test(model::ModelBufferType::kInputTokens, empty);
+    auto status = model.insert_runtime_tensor_for_test(model::RuntimeTensorType::kInputTokens, empty);
     EXPECT_FALSE(status.ok());
     EXPECT_EQ(status.code(), base::StatusCode::kInvalidArgument);
     std::vector<int32_t> token_data{1, 2, 3};
     auto tensor = make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_data.data());
-    ASSERT_TRUE(model.insert_buffer_for_test(model::ModelBufferType::kInputTokens, tensor).ok());
-    status = model.insert_buffer_for_test(model::ModelBufferType::kInputTokens, tensor);
+    ASSERT_TRUE(model.insert_runtime_tensor_for_test(model::RuntimeTensorType::kInputTokens, tensor).ok());
+    status = model.insert_runtime_tensor_for_test(model::RuntimeTensorType::kInputTokens, tensor);
     EXPECT_FALSE(status.ok());
     EXPECT_EQ(status.code(), base::StatusCode::kAlreadyExists);
 }
@@ -291,9 +291,9 @@ TEST(test_model_core, slice_kv_cache_returns_tensor_views_into_backing_storage) 
     std::iota(value_cache.begin(), value_cache.end(), 100.f);
     auto key_tensor = make_cpu_tensor(base::DataType::kDataTypeFp32, {24}, key_cache.data());
     auto value_tensor = make_cpu_tensor(base::DataType::kDataTypeFp32, {24}, value_cache.data());
-    ASSERT_TRUE(model.insert_buffer_for_test(model::ModelBufferType::kKeyCache, key_tensor).ok());
+    ASSERT_TRUE(model.insert_runtime_tensor_for_test(model::RuntimeTensorType::kKeyCache, key_tensor).ok());
     ASSERT_TRUE(
-        model.insert_buffer_for_test(model::ModelBufferType::kValueCache, value_tensor).ok());
+        model.insert_runtime_tensor_for_test(model::RuntimeTensorType::kValueCache, value_tensor).ok());
     auto [key_view, value_view] = model.slice_kv_cache(1, 2);
     ASSERT_EQ(key_view.size(), 3U);
     ASSERT_EQ(value_view.size(), 3U);

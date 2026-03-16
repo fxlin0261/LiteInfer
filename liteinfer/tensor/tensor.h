@@ -37,7 +37,7 @@ public:
     template <typename T>
     const T* ptr() const;
     void reshape(const std::vector<int32_t>& dims);
-    std::shared_ptr<base::Buffer> get_buffer() const;
+    std::shared_ptr<base::Buffer> get_runtime_tensor() const;
     size_t size() const;
     size_t byte_size() const;
     int32_t dims_size() const;

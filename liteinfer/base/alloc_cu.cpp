@@ -11,7 +11,7 @@ void* CUDADeviceAllocator::allocate(size_t byte_size) const {
     cudaError_t state = cudaGetDevice(&id);
     CHECK(state == cudaSuccess);
     if (byte_size > 1024 * 1024) {
-        auto& big_buffers = big_buffers_map_[id];
+        auto& big_buffers = big_runtime_tensors_map_[id];
         int sel_id = -1;
         for (int i = 0; i < big_buffers.size(); i++) {
             if (big_buffers[i].byte_size >= byte_size && !big_buffers[i].busy &&
@@ -42,7 +42,7 @@ void* CUDADeviceAllocator::allocate(size_t byte_size) const {
         return ptr;
     }
 
-    auto& cuda_buffers = cuda_buffers_map_[id];
+    auto& cuda_buffers = cuda_runtime_tensors_map_[id];
     for (int i = 0; i < cuda_buffers.size(); i++) {
         if (cuda_buffers[i].byte_size >= byte_size && !cuda_buffers[i].busy) {
             cuda_buffers[i].busy = true;
@@ -69,11 +69,11 @@ void CUDADeviceAllocator::release(void* ptr) const {
     if (!ptr) {
         return;
     }
-    if (cuda_buffers_map_.empty()) {
+    if (cuda_runtime_tensors_map_.empty()) {
         return;
     }
     cudaError_t state = cudaSuccess;
-    for (auto& it : cuda_buffers_map_) {
+    for (auto& it : cuda_runtime_tensors_map_) {
         if (no_busy_cnt_[it.first] > 1024 * 1024 * 1024) {
             auto& cuda_buffers = it.second;
             std::vector<CudaMemoryBuffer> temp;
@@ -93,7 +93,7 @@ void CUDADeviceAllocator::release(void* ptr) const {
         }
     }
 
-    for (auto& it : cuda_buffers_map_) {
+    for (auto& it : cuda_runtime_tensors_map_) {
         auto& cuda_buffers = it.second;
         for (int i = 0; i < cuda_buffers.size(); i++) {
             if (cuda_buffers[i].data == ptr) {
@@ -102,7 +102,7 @@ void CUDADeviceAllocator::release(void* ptr) const {
                 return;
             }
         }
-        auto& big_buffers = big_buffers_map_[it.first];
+        auto& big_buffers = big_runtime_tensors_map_[it.first];
         for (int i = 0; i < big_buffers.size(); i++) {
             if (big_buffers[i].data == ptr) {
                 big_buffers[i].busy = false;

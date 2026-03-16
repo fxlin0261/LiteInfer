@@ -12,7 +12,7 @@
     } while (0)
 
 namespace model {
-enum class ModelBufferType {
+enum class RuntimeTensorType {
     kInputTokens = 0,
     kInputEmbeddings = 1,
     kOutputRMSNorm = 2,
@@ -34,50 +34,50 @@ enum class ModelBufferType {
     kCosCache = 18,
 };
 
-inline const char* ModelBufferTypeName(ModelBufferType buffer_type) {
+inline const char* RuntimeTensorTypeName(RuntimeTensorType buffer_type) {
     switch (buffer_type) {
-        case ModelBufferType::kInputTokens:
+        case RuntimeTensorType::kInputTokens:
             return "kInputTokens";
-        case ModelBufferType::kInputEmbeddings:
+        case RuntimeTensorType::kInputEmbeddings:
             return "kInputEmbeddings";
-        case ModelBufferType::kOutputRMSNorm:
+        case RuntimeTensorType::kOutputRMSNorm:
             return "kOutputRMSNorm";
-        case ModelBufferType::kKeyCache:
+        case RuntimeTensorType::kKeyCache:
             return "kKeyCache";
-        case ModelBufferType::kValueCache:
+        case RuntimeTensorType::kValueCache:
             return "kValueCache";
-        case ModelBufferType::kQuery:
+        case RuntimeTensorType::kQuery:
             return "kQuery";
-        case ModelBufferType::kInputPos:
+        case RuntimeTensorType::kInputPos:
             return "kInputPos";
-        case ModelBufferType::kScoreStorage:
+        case RuntimeTensorType::kScoreStorage:
             return "kScoreStorage";
-        case ModelBufferType::kOutputMHA:
+        case RuntimeTensorType::kOutputMHA:
             return "kOutputMHA";
-        case ModelBufferType::kAttnOutput:
+        case RuntimeTensorType::kAttnOutput:
             return "kAttnOutput";
-        case ModelBufferType::kW1Output:
+        case RuntimeTensorType::kW1Output:
             return "kW1Output";
-        case ModelBufferType::kW2Output:
+        case RuntimeTensorType::kW2Output:
             return "kW2Output";
-        case ModelBufferType::kW3Output:
+        case RuntimeTensorType::kW3Output:
             return "kW3Output";
-        case ModelBufferType::kFFNRMSNorm:
+        case RuntimeTensorType::kFFNRMSNorm:
             return "kFFNRMSNorm";
-        case ModelBufferType::kForwardOutput:
+        case RuntimeTensorType::kForwardOutput:
             return "kForwardOutput";
-        case ModelBufferType::kForwardOutputCPU:
+        case RuntimeTensorType::kForwardOutputCPU:
             return "kForwardOutputCPU";
-        case ModelBufferType::kSinCache:
+        case RuntimeTensorType::kSinCache:
             return "kSinCache";
-        case ModelBufferType::kCosCache:
+        case RuntimeTensorType::kCosCache:
             return "kCosCache";
     }
-    return "kUnknownModelBufferType";
+    return "kUnknownRuntimeTensorType";
 }
 
-inline std::ostream& operator<<(std::ostream& os, ModelBufferType buffer_type) {
-    os << ModelBufferTypeName(buffer_type);
+inline std::ostream& operator<<(std::ostream& os, RuntimeTensorType buffer_type) {
+    os << RuntimeTensorTypeName(buffer_type);
     return os;
 }
 }

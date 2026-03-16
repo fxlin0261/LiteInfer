@@ -14,7 +14,7 @@ namespace model {
 namespace {
 using FileHandle = std::unique_ptr<FILE, int (*)(FILE*)>;
 
-size_t BufferSlot(ModelBufferType buffer_idx) { return static_cast<size_t>(buffer_idx); }
+size_t RuntimeTensorSlot(RuntimeTensorType tensor_idx) { return static_cast<size_t>(tensor_idx); }
 
 class ScopedFd {
 public:
@@ -156,29 +156,29 @@ base::Status Model::set_runtime_max_seq_len(int32_t max_seq_len) {
     return base::error::Success();
 }
 
-base::Status Model::insert_buffer(ModelBufferType buffer_idx, const tensor::Tensor& tensor) {
-    auto& buffer_slot = buffers_.at(BufferSlot(buffer_idx));
-    if (!buffer_slot.is_empty()) {
-        return base::error::KeyHasExits(std::to_string(int(buffer_idx)) +
-                                        " has exits in the buffers");
+base::Status Model::insert_runtime_tensor(RuntimeTensorType tensor_idx, const tensor::Tensor& tensor) {
+    auto& tensor_slot = runtime_tensors_.at(RuntimeTensorSlot(tensor_idx));
+    if (!tensor_slot.is_empty()) {
+        return base::error::KeyHasExits(std::to_string(int(tensor_idx)) +
+                                        " has exists in the runtime tensor slots");
     }
     if (tensor.is_empty()) {
-        return base::error::InvalidArgument("The tensor is empty for inserting buffer.");
+        return base::error::InvalidArgument("The tensor is empty for inserting runtime tensor.");
     }
-    buffer_slot = tensor;
+    tensor_slot = tensor;
     return base::error::Success();
 }
 
-tensor::Tensor& Model::get_buffer(ModelBufferType buffer_idx) {
-    auto& buffer_slot = buffers_.at(BufferSlot(buffer_idx));
-    CHECK(!buffer_slot.is_empty()) << int(buffer_idx);
-    return buffer_slot;
+tensor::Tensor& Model::get_runtime_tensor(RuntimeTensorType tensor_idx) {
+    auto& tensor_slot = runtime_tensors_.at(RuntimeTensorSlot(tensor_idx));
+    CHECK(!tensor_slot.is_empty()) << int(tensor_idx);
+    return tensor_slot;
 }
 
-const tensor::Tensor& Model::get_buffer(ModelBufferType buffer_idx) const {
-    const auto& buffer_slot = buffers_.at(BufferSlot(buffer_idx));
-    CHECK(!buffer_slot.is_empty()) << int(buffer_idx);
-    return buffer_slot;
+const tensor::Tensor& Model::get_runtime_tensor(RuntimeTensorType tensor_idx) const {
+    const auto& tensor_slot = runtime_tensors_.at(RuntimeTensorSlot(tensor_idx));
+    CHECK(!tensor_slot.is_empty()) << int(tensor_idx);
+    return tensor_slot;
 }
 
 base::Status Model::read_model_file() {
@@ -363,9 +363,9 @@ std::pair<tensor::Tensor, tensor::Tensor> Model::slice_kv_cache(int32_t layer_id
     const int32_t cache_offset =
         layer_idx * config_->seq_len_ * config_->kv_dim_ + token_pos * config_->kv_dim_;
     float* key_cache_ptr =
-        const_cast<float*>(get_buffer(ModelBufferType::kKeyCache).ptr<float>(cache_offset));
+        const_cast<float*>(get_runtime_tensor(RuntimeTensorType::kKeyCache).ptr<float>(cache_offset));
     float* val_cache_ptr =
-        const_cast<float*>(get_buffer(ModelBufferType::kValueCache).ptr<float>(cache_offset));
+        const_cast<float*>(get_runtime_tensor(RuntimeTensorType::kValueCache).ptr<float>(cache_offset));
     tensor::Tensor key = MakeExternalFp32TensorView(config_->kv_dim_, key_cache_ptr, device_type_);
     tensor::Tensor val = MakeExternalFp32TensorView(config_->kv_dim_, val_cache_ptr, device_type_);
     return {key, val};

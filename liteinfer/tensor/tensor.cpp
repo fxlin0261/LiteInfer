@@ -242,7 +242,7 @@ void Tensor::reshape(const std::vector<int32_t>& dims) {
     this->size_ = new_size;
 }
 
-std::shared_ptr<base::Buffer> Tensor::get_buffer() const { return buffer_; }
+std::shared_ptr<base::Buffer> Tensor::get_runtime_tensor() const { return buffer_; }
 
 Tensor Tensor::clone() const {
     CHECK(buffer_ != nullptr && buffer_->ptr() != nullptr)

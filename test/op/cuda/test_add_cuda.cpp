@@ -12,8 +12,8 @@ TEST(test_add_cu, add1_nostream) {
     tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
     tensor::Tensor t2(base::DataType::kDataTypeFp32, size, true, alloc_cu);
     tensor::Tensor out(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-    set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.f);
-    set_value_cu(static_cast<float*>(t2.get_buffer()->ptr()), size, 3.f);
+    set_value_cu(static_cast<float*>(t1.get_runtime_tensor()->ptr()), size, 2.f);
+    set_value_cu(static_cast<float*>(t2.get_runtime_tensor()->ptr()), size, 3.f);
     kernel::get_add_kernel(base::DeviceType::kDeviceCUDA)(t1, t2, out, nullptr);
     cudaDeviceSynchronize();
     float* output = new float[size];
@@ -32,8 +32,8 @@ TEST(test_add_cu, add1_stream) {
     tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
     tensor::Tensor t2(base::DataType::kDataTypeFp32, size, true, alloc_cu);
     tensor::Tensor out(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-    set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.f);
-    set_value_cu(static_cast<float*>(t2.get_buffer()->ptr()), size, 3.f);
+    set_value_cu(static_cast<float*>(t1.get_runtime_tensor()->ptr()), size, 2.f);
+    set_value_cu(static_cast<float*>(t2.get_runtime_tensor()->ptr()), size, 3.f);
     cudaStream_t stream;
     cudaStreamCreate(&stream);
     kernel::get_add_kernel(base::DeviceType::kDeviceCUDA)(t1, t2, out, stream);
@@ -54,8 +54,8 @@ TEST(test_add_cu, add_align1) {
     tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
     tensor::Tensor t2(base::DataType::kDataTypeFp32, size, true, alloc_cu);
     tensor::Tensor out(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-    set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.1f);
-    set_value_cu(static_cast<float*>(t2.get_buffer()->ptr()), size, 3.3f);
+    set_value_cu(static_cast<float*>(t1.get_runtime_tensor()->ptr()), size, 2.1f);
+    set_value_cu(static_cast<float*>(t2.get_runtime_tensor()->ptr()), size, 3.3f);
     kernel::get_add_kernel(base::DeviceType::kDeviceCUDA)(t1, t2, out, nullptr);
     cudaDeviceSynchronize();
     float* output = new float[size];

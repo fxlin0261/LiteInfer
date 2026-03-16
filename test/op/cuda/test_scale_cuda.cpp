@@ -10,7 +10,7 @@
 //   int32_t size = 32 * 151;
 //
 //   tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-//   set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.f);
+//   set_value_cu(static_cast<float*>(t1.get_runtime_tensor()->ptr()), size, 2.f);
 //   kernel::get_scale_kernel(base::DeviceType::kDeviceCUDA)(0.5f, t1, nullptr);
 //   cudaDeviceSynchronize();
 //
@@ -26,7 +26,7 @@
 //   int32_t size = 32 * 151;
 //
 //   tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
-//   set_value_cu(static_cast<float*>(t1.get_buffer()->ptr()), size, 2.f);
+//   set_value_cu(static_cast<float*>(t1.get_runtime_tensor()->ptr()), size, 2.f);
 //   cudaStream_t stream;
 //   cudaStreamCreate(&stream);
 //   kernel::get_scale_kernel(base::DeviceType::kDeviceCUDA)(0.4f, t1, nullptr);

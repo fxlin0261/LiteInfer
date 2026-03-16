@@ -80,13 +80,13 @@ base::Status StandardDecoderModel::init(base::DeviceType device_type) {
     init_mem();
     if (device_type_ == DeviceType::kDeviceCPU) {
         kernel::sin_cos_cache_calc_cpu(model_type_, config_->head_size_, config_->seq_len_,
-                                       get_buffer(ModelBufferType::kSinCache).ptr<float>(),
-                                       get_buffer(ModelBufferType::kCosCache).ptr<float>());
+                                       get_runtime_tensor(RuntimeTensorType::kSinCache).ptr<float>(),
+                                       get_runtime_tensor(RuntimeTensorType::kCosCache).ptr<float>());
     } else {
         auto cache_status =
             detail::InitSinCosCache(model_type_, config_->head_size_, config_->seq_len_,
-                                    get_buffer(ModelBufferType::kSinCache),
-                                    get_buffer(ModelBufferType::kCosCache), cuda_config_);
+                                    get_runtime_tensor(RuntimeTensorType::kSinCache),
+                                    get_runtime_tensor(RuntimeTensorType::kCosCache), cuda_config_);
         if (!cache_status.ok()) {
             return cache_status;
         }
@@ -130,8 +130,8 @@ base::Status StandardDecoderModel::forward(const tensor::Tensor& input,
 
 op::EmbeddingOutput StandardDecoderModel::embedding(const std::vector<int>& tokens) const {
     // 将 token id 转成 decoder 输入 embedding。
-    auto input_tokens = get_buffer(ModelBufferType::kInputTokens);
-    auto input_embeddings = get_buffer(ModelBufferType::kInputEmbeddings);
+    auto input_tokens = get_runtime_tensor(RuntimeTensorType::kInputTokens);
+    auto input_embeddings = get_runtime_tensor(RuntimeTensorType::kInputEmbeddings);
     const int32_t embedding_width = residual_width();
     if (input_tokens.size() != tokens.size()) {
         input_tokens.reshape({static_cast<int32_t>(tokens.size())});
@@ -181,46 +181,46 @@ void StandardDecoderModel::init_mem() {
                              true, alloc);
     tensor::Tensor cos_cache(base::DataType::kDataTypeFp32, config_->head_size_ * config_->seq_len_,
                              true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kSinCache, sin_cache).ok());
-    CHECK(insert_buffer(ModelBufferType::kCosCache, cos_cache).ok());
-    CHECK(insert_buffer(ModelBufferType::kInputTokens, input_tokens).ok());
-    CHECK(insert_buffer(ModelBufferType::kInputEmbeddings, input_embeddings).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kSinCache, sin_cache).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kCosCache, cos_cache).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kInputTokens, input_tokens).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kInputEmbeddings, input_embeddings).ok());
     tensor::Tensor rms_output(base::DataType::kDataTypeFp32, residual_dim, true, alloc);
     tensor::Tensor mha_output(base::DataType::kDataTypeFp32, attention_dim, true, alloc);
     tensor::Tensor w2_output(base::DataType::kDataTypeFp32, residual_dim, true, alloc);
     tensor::Tensor ffn_rms_output(base::DataType::kDataTypeFp32, residual_dim, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kOutputRMSNorm, rms_output).ok());
-    CHECK(insert_buffer(ModelBufferType::kOutputMHA, mha_output).ok());
-    CHECK(insert_buffer(ModelBufferType::kW2Output, w2_output).ok());
-    CHECK(insert_buffer(ModelBufferType::kFFNRMSNorm, ffn_rms_output).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kOutputRMSNorm, rms_output).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kOutputMHA, mha_output).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kW2Output, w2_output).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kFFNRMSNorm, ffn_rms_output).ok());
     tensor::Tensor w1_output(base::DataType::kDataTypeFp32, ffn_dim, true, alloc);
     tensor::Tensor w3_output(base::DataType::kDataTypeFp32, ffn_dim, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kW1Output, w1_output).ok());
-    CHECK(insert_buffer(ModelBufferType::kW3Output, w3_output).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kW1Output, w1_output).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kW3Output, w3_output).ok());
 
     tensor::Tensor key_cache(base::DataType::kDataTypeFp32, config_->layer_num_, config_->seq_len_,
                              config_->kv_dim_, true, alloc);
     tensor::Tensor value_cache(base::DataType::kDataTypeFp32, config_->layer_num_,
                                config_->seq_len_, config_->kv_dim_, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kKeyCache, key_cache).ok());
-    CHECK(insert_buffer(ModelBufferType::kValueCache, value_cache).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kKeyCache, key_cache).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kValueCache, value_cache).ok());
     tensor::Tensor query(base::DataType::kDataTypeFp32, attention_dim, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kQuery, query).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kQuery, query).ok());
     tensor::Tensor pos_tensor(base::DataType::kDataTypeInt32, 1, true, alloc_cpu);
-    CHECK(insert_buffer(ModelBufferType::kInputPos, pos_tensor).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kInputPos, pos_tensor).ok());
 
     tensor::Tensor attn(base::DataType::kDataTypeFp32, config_->head_num_, config_->seq_len_, true,
                         alloc);
-    CHECK(insert_buffer(ModelBufferType::kScoreStorage, attn).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kScoreStorage, attn).ok());
     tensor::Tensor attn_output(base::DataType::kDataTypeFp32, residual_dim, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kAttnOutput, attn_output).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kAttnOutput, attn_output).ok());
     tensor::Tensor forward_output(base::DataType::kDataTypeFp32, config_->vocab_size_, true, alloc);
     if (device_type_ == base::DeviceType::kDeviceCUDA) {
         tensor::Tensor forward_output_cpu(base::DataType::kDataTypeFp32, config_->vocab_size_, true,
                                           alloc_cpu);
-        CHECK(insert_buffer(ModelBufferType::kForwardOutputCPU, forward_output_cpu).ok());
+        CHECK(insert_runtime_tensor(RuntimeTensorType::kForwardOutputCPU, forward_output_cpu).ok());
     }
-    CHECK(insert_buffer(ModelBufferType::kForwardOutput, forward_output).ok());
+    CHECK(insert_runtime_tensor(RuntimeTensorType::kForwardOutput, forward_output).ok());
 }
 
 base::Status StandardDecoderModel::create_layers() {
@@ -424,7 +424,7 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
 }
 
 void StandardDecoderModel::attention_rms(int32_t layer_idx, const tensor::Tensor& input) const {
-    tensor::Tensor rmsnorm_output = get_buffer(ModelBufferType::kOutputRMSNorm);
+    tensor::Tensor rmsnorm_output = get_runtime_tensor(RuntimeTensorType::kOutputRMSNorm);
     const auto& rmsnorm_layer = layers().rmsnorm_layers_.at(layer_idx);
     CHECK_NE(rmsnorm_layer, nullptr)
         << "The attention rmsnorm layer in the decoder model is null pointer.";
@@ -433,10 +433,10 @@ void StandardDecoderModel::attention_rms(int32_t layer_idx, const tensor::Tensor
 
 void StandardDecoderModel::attention_qkv(int32_t layer_idx,
                                          const tensor::Tensor& pos_tensor) const {
-    tensor::Tensor query = get_buffer(ModelBufferType::kQuery);
+    tensor::Tensor query = get_runtime_tensor(RuntimeTensorType::kQuery);
     const int32_t pos = pos_tensor.index<int32_t>(0);
     auto [key, val] = slice_kv_cache(layer_idx, pos);
-    auto rmsnorm_output = get_buffer(ModelBufferType::kOutputRMSNorm);
+    auto rmsnorm_output = get_runtime_tensor(RuntimeTensorType::kOutputRMSNorm);
     const auto& query_layer = layers().wq_layers_.at(layer_idx);
     CHECK_NE(query_layer, nullptr) << "The query layer in the decoder model is null pointer.";
     STATUS_CHECK(query_layer->forward(rmsnorm_output, query));
@@ -451,17 +451,17 @@ void StandardDecoderModel::attention_qkv(int32_t layer_idx,
     CHECK_NE(layers().rope_layer_, nullptr)
         << "The RoPE layer in the decoder model is null pointer.";
     STATUS_CHECK(layers().rope_layer_->forward(
-        query, key, pos_tensor, get_buffer(ModelBufferType::kSinCache),
-        get_buffer(ModelBufferType::kCosCache), tensor::Tensor{}));
+        query, key, pos_tensor, get_runtime_tensor(RuntimeTensorType::kSinCache),
+        get_runtime_tensor(RuntimeTensorType::kCosCache), tensor::Tensor{}));
 }
 
 void StandardDecoderModel::attention_mha(int32_t layer_idx,
                                          const tensor::Tensor& pos_tensor) const {
-    tensor::Tensor key_cache = get_buffer(ModelBufferType::kKeyCache);
-    tensor::Tensor val_cache = get_buffer(ModelBufferType::kValueCache);
-    tensor::Tensor mha_output = get_buffer(ModelBufferType::kOutputMHA);
-    tensor::Tensor score_storage = get_buffer(ModelBufferType::kScoreStorage);
-    tensor::Tensor query = get_buffer(ModelBufferType::kQuery);
+    tensor::Tensor key_cache = get_runtime_tensor(RuntimeTensorType::kKeyCache);
+    tensor::Tensor val_cache = get_runtime_tensor(RuntimeTensorType::kValueCache);
+    tensor::Tensor mha_output = get_runtime_tensor(RuntimeTensorType::kOutputMHA);
+    tensor::Tensor score_storage = get_runtime_tensor(RuntimeTensorType::kScoreStorage);
+    tensor::Tensor query = get_runtime_tensor(RuntimeTensorType::kQuery);
     const auto& mha_layer = layers().mha_layer_;
     CHECK_NE(mha_layer, nullptr)
         << "The multi head attention layer in the decoder model is null pointer.";
@@ -469,7 +469,7 @@ void StandardDecoderModel::attention_mha(int32_t layer_idx,
     std::dynamic_pointer_cast<op::MultiHeadAttention>(mha_layer)->set_pos(pos);
     std::dynamic_pointer_cast<op::MultiHeadAttention>(mha_layer)->set_layer_idx(layer_idx);
     STATUS_CHECK(mha_layer->forward(query, score_storage, key_cache, val_cache, mha_output));
-    tensor::Tensor attn_output = get_buffer(ModelBufferType::kAttnOutput);
+    tensor::Tensor attn_output = get_runtime_tensor(RuntimeTensorType::kAttnOutput);
     const auto& wo_layer = layers().wo_layers_.at(layer_idx);
     CHECK_NE(wo_layer, nullptr)
         << "The output projection layer in the decoder model is null pointer.";
@@ -479,17 +479,17 @@ void StandardDecoderModel::attention_mha(int32_t layer_idx,
 void StandardDecoderModel::feed_forward(int32_t layer_idx, const tensor::Tensor& input) const {
     CHECK_NE(layers().add_layer_, nullptr) << "The add layer in the decoder model is null pointer.";
     STATUS_CHECK(
-        layers().add_layer_->forward(input, get_buffer(ModelBufferType::kAttnOutput), input));
-    tensor::Tensor ffn_norm_output = get_buffer(ModelBufferType::kFFNRMSNorm);
+        layers().add_layer_->forward(input, get_runtime_tensor(RuntimeTensorType::kAttnOutput), input));
+    tensor::Tensor ffn_norm_output = get_runtime_tensor(RuntimeTensorType::kFFNRMSNorm);
     const auto& ffn_rmsnorm = layers().rmsnorm_layers_.at(layer_idx + config_->layer_num_);
     CHECK_NE(ffn_rmsnorm, nullptr)
         << "The feedforward rmsnorm layer in the decoder model is null pointer.";
     STATUS_CHECK(ffn_rmsnorm->forward(input, ffn_norm_output));
-    tensor::Tensor w1_output = get_buffer(ModelBufferType::kW1Output);
+    tensor::Tensor w1_output = get_runtime_tensor(RuntimeTensorType::kW1Output);
     const auto& w1_layer = layers().w1_layers_.at(layer_idx);
     CHECK_NE(w1_layer, nullptr) << "The w1 layer in the decoder model is null pointer.";
     STATUS_CHECK(w1_layer->forward(ffn_norm_output, w1_output));
-    tensor::Tensor w3_output = get_buffer(ModelBufferType::kW3Output);
+    tensor::Tensor w3_output = get_runtime_tensor(RuntimeTensorType::kW3Output);
     const auto& w3_layer = layers().w3_layers_.at(layer_idx);
     CHECK_NE(w3_layer, nullptr) << "The w3 layer in the decoder model is null pointer.";
     STATUS_CHECK(w3_layer->forward(ffn_norm_output, w3_output));
@@ -497,7 +497,7 @@ void StandardDecoderModel::feed_forward(int32_t layer_idx, const tensor::Tensor&
     CHECK_NE(layers().swiglu_layer_, nullptr)
         << "The swiglu layer in the decoder model is null pointer.";
     STATUS_CHECK(layers().swiglu_layer_->forward(w1_output, w3_output, w1_output));
-    tensor::Tensor w2_output = get_buffer(ModelBufferType::kW2Output);
+    tensor::Tensor w2_output = get_runtime_tensor(RuntimeTensorType::kW2Output);
     const auto& w2_layer = layers().w2_layers_.at(layer_idx);
     CHECK_NE(w2_layer, nullptr) << "The w2 layer in the decoder model is null pointer.";
     STATUS_CHECK(w2_layer->forward(w1_output, w2_output));
@@ -508,14 +508,14 @@ void StandardDecoderModel::cls_logits(const tensor::Tensor& input) const {
     const auto& norm = layers().rmsnorm_layers_.at(2 * config_->layer_num_);
     CHECK_NE(norm, nullptr);
     STATUS_CHECK(norm->forward(input, input));
-    tensor::Tensor forward_output = get_buffer(ModelBufferType::kForwardOutput);
+    tensor::Tensor forward_output = get_runtime_tensor(RuntimeTensorType::kForwardOutput);
     CHECK_NE(layers().cls_layer_, nullptr);
     STATUS_CHECK(layers().cls_layer_->forward(input, forward_output));
 }
 
 int32_t StandardDecoderModel::post_processing(const tensor::Tensor& pos, bool is_prompt) const {
     UNUSED(pos);
-    tensor::Tensor forward_output = get_buffer(ModelBufferType::kForwardOutput);
+    tensor::Tensor forward_output = get_runtime_tensor(RuntimeTensorType::kForwardOutput);
     const float* forward_logits = forward_output.ptr<float>();
 
     if (is_prompt) {

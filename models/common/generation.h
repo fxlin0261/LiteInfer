@@ -63,7 +63,7 @@ base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens, int
     LOG_IF(FATAL, tokens.empty()) << "The tokens is empty.";
     const int32_t prompt_len = static_cast<int32_t>(tokens.size());
     const auto prompt_embedding = model.embedding(tokens);
-    tensor::Tensor pos_tensor = model.get_buffer(model::ModelBufferType::kInputPos);
+    tensor::Tensor pos_tensor = model.get_runtime_tensor(model::RuntimeTensorType::kInputPos);
     int32_t pos = 0;
     while (pos < total_steps) {
         pos_tensor.index<int32_t>(0) = pos;

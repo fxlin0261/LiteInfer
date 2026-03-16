@@ -13,7 +13,7 @@
 #include "tensor/tensor.h"
 
 namespace model {
-constexpr size_t kModelBufferSlotCount = static_cast<size_t>(ModelBufferType::kCosCache) + 1;
+constexpr size_t kRuntimeTensorSlotCount = static_cast<size_t>(RuntimeTensorType::kCosCache) + 1;
 
 class Model {
 public:
@@ -29,8 +29,8 @@ public:
     base::ModelType model_type() const { return model_type_; }
     const std::string& token_path() const { return token_path_; }
     const std::string& model_path() const { return model_path_; }
-    virtual tensor::Tensor& get_buffer(ModelBufferType buffer_idx);
-    virtual const tensor::Tensor& get_buffer(ModelBufferType buffer_idx) const;
+    virtual tensor::Tensor& get_runtime_tensor(RuntimeTensorType tensor_idx);
+    virtual const tensor::Tensor& get_runtime_tensor(RuntimeTensorType tensor_idx) const;
     virtual bool is_sentence_ending(int32_t token_idx) const;
     virtual std::string decode(int32_t token_idx) const;
     virtual std::string decode(std::vector<int32_t> token_idxs) const;
@@ -46,7 +46,7 @@ public:
                                       bool is_prompt) const;
 
 protected:
-    virtual base::Status insert_buffer(ModelBufferType buffer_idx, const tensor::Tensor& tensor);
+    virtual base::Status insert_runtime_tensor(RuntimeTensorType tensor_idx, const tensor::Tensor& tensor);
     virtual base::Status read_model_file();
     virtual base::Status create_tokenizer_layer();
     virtual base::Status gen_model_from_file();
@@ -72,7 +72,7 @@ protected:
     std::string token_path_;
     std::string model_path_;
     std::unique_ptr<op::TokenizerLayerBase> tokenizer_layer_;
-    std::array<tensor::Tensor, kModelBufferSlotCount> buffers_;
+    std::array<tensor::Tensor, kRuntimeTensorSlotCount> runtime_tensors_;
     std::unique_ptr<sampler::Sampler> sampler_;
     std::shared_ptr<RawModelData> raw_model_data_;
     base::DeviceType device_type_ = base::DeviceType::kDeviceUnknown;

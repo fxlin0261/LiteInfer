@@ -20,8 +20,8 @@ public:
         UNUSED(sentence);
         return prompt_tokens_;
     }
-    const tensor::Tensor& get_buffer(model::ModelBufferType buffer_idx) const {
-        CHECK_EQ(buffer_idx, model::ModelBufferType::kInputPos);
+    const tensor::Tensor& get_runtime_tensor(model::RuntimeTensorType tensor_idx) const {
+        CHECK_EQ(tensor_idx, model::RuntimeTensorType::kInputPos);
         return pos_tensor_;
     }
     op::EmbeddingOutput embedding(const std::vector<int>& tokens) const {
