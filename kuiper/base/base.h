@@ -51,8 +51,6 @@ enum class ModelType : uint8_t {
     kModelTypeLlama = 1,
     kModelTypeLlama2 = kModelTypeLlama,
     kModelTypeLlama3 = 2,
-    kModelTypeQwen2 = 3,
-    kModelTypeQwen3 = 4,
 };
 
 inline size_t DataTypeSize(DataType data_type) {
@@ -99,36 +97,24 @@ inline bool IsLlamaModel(ModelType model_type) {
            model_type == ModelType::kModelTypeLlama3;
 }
 
-inline bool IsQwenModel(ModelType model_type) {
-    return model_type == ModelType::kModelTypeQwen2 || model_type == ModelType::kModelTypeQwen3;
-}
-
-inline bool UsesQwenRoPE(ModelType model_type) { return IsQwenModel(model_type); }
-
 inline bool UsesLlama3RoPE(ModelType model_type) {
     return model_type == ModelType::kModelTypeLlama3;
 }
 
 inline bool UsesHalfSplitRoPE(ModelType model_type) {
-    return UsesLlama3RoPE(model_type) || UsesQwenRoPE(model_type);
-}
-
-inline bool UsesQwen3Layout(ModelType model_type) {
-    return model_type == ModelType::kModelTypeQwen3;
+    return UsesLlama3RoPE(model_type);
 }
 
 inline float RoPETheta(ModelType model_type) {
     if (UsesLlama3RoPE(model_type)) {
         return 500000.0f;
     }
-    if (UsesQwenRoPE(model_type)) {
-        return 1000000.0f;
-    }
     return 10000.0f;
 }
 
 inline float RmsNormEpsilon(ModelType model_type) {
-    return IsQwenModel(model_type) ? 1e-6f : 1e-5f;
+    UNUSED(model_type);
+    return 1e-5f;
 }
 
 class Status {

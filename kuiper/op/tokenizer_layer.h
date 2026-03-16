@@ -75,10 +75,5 @@ protected:
     std::unique_ptr<tiktoken::tiktoken> tiktoken_;
 };
 
-class QwenTokenizerLayer : public BpeTokenizerLayer {
-public:
-    explicit QwenTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos);
-};
-
 }  // namespace op
 #endif  // KUIPER_INCLUDE_OP_TOKENIZER_LAYER_H_

@@ -90,21 +90,13 @@ public:
         return insert_buffer(buffer_idx, tensor);
     }
 
-    base::Status generate_model_infos_for_test(const model::ModelConfig& config,
-                                               int32_t immediate_dim = 0) {
-        return generate_model_infos(config, immediate_dim);
+    base::Status generate_model_infos_for_test(const model::ModelConfig& config) {
+        return generate_model_infos(config);
     }
 
     model::TransformerConfig* mutable_config() { return config_.get(); }
 
 private:
-    int32_t input_width() const override {
-        if (base::UsesQwen3Layout(model_type_)) {
-            return config_->hidden_dim_;
-        }
-        return Model::input_width();
-    }
-
     int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const override {
         UNUSED(pos);
         UNUSED(is_prompt);
@@ -163,22 +155,6 @@ TEST(test_model_core, generate_model_infos_populates_derived_fields) {
     EXPECT_TRUE(model.mutable_config()->is_shared_weight_);
 }
 
-TEST(test_model_core, generate_model_infos_keeps_qwen3_immediate_dim) {
-    FakeModel model(base::ModelType::kModelTypeQwen3, base::TokenizerType::kEncodeBpe);
-
-    model::ModelConfig config{};
-    config.dim = 8;
-    config.hidden_dim = 32;
-    config.layer_num = 2;
-    config.head_num = 4;
-    config.kv_head_num = 2;
-    config.vocab_size = 151936;
-    config.seq_len = 128;
-
-    ASSERT_TRUE(model.generate_model_infos_for_test(config, 64));
-    EXPECT_EQ(model.mutable_config()->immediate_dim_, 64);
-}
-
 TEST(test_model_core, insert_buffer_rejects_empty_tensor_and_duplicates) {
     FakeModel model;
 
@@ -216,11 +192,7 @@ TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token)
         ASSERT_TRUE(model.init(base::DeviceType::kDeviceCPU));
 
         constexpr int32_t embed_dim = 4;
-        if (base::UsesQwen3Layout(model.model_type())) {
-            model.mutable_config()->hidden_dim_ = embed_dim;
-        } else {
-            model.mutable_config()->dim_ = embed_dim;
-        }
+        model.mutable_config()->dim_ = embed_dim;
 
         std::vector<int32_t> token_ids{11, 22, 33};
         std::vector<int32_t> token_count_placeholder{0, 0, 0};
@@ -254,7 +226,7 @@ TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token)
     };
 
     run_case(base::ModelType::kModelTypeLlama2, base::TokenizerType::kEncodeSpe);
-    run_case(base::ModelType::kModelTypeQwen3, base::TokenizerType::kEncodeBpe);
+    run_case(base::ModelType::kModelTypeLlama3, base::TokenizerType::kEncodeBpe);
 }
 
 TEST(test_model_core, slice_kv_cache_returns_tensor_views_into_backing_storage) {

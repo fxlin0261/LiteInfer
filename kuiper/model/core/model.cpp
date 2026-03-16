@@ -64,14 +64,6 @@ base::Status Model::read_model_file() {
             "Failed to retrieve the configuration information from the model "
             "file.");
     }
-    int32_t immediate_dim = 0;
-    if (base::UsesQwen3Layout(model_type_)) {
-        if (fread(&immediate_dim, sizeof(int32_t), 1, file.get()) != 1) {
-            return error::ModelParseError(
-                "Failed to retrieve the qwen3 immediate size information from "
-                "the model file.");
-        }
-    }
     if (is_quant_model_) {
         if (fread(&group_size_, sizeof(int32_t), 1, file.get()) != 1) {
             return error::ModelParseError(
@@ -80,7 +72,7 @@ base::Status Model::read_model_file() {
         }
     }
 
-    auto gen_status = generate_model_infos(config, immediate_dim);
+    auto gen_status = generate_model_infos(config);
     if (!gen_status) {
         return gen_status;
     }
@@ -109,9 +101,6 @@ base::Status Model::read_model_file() {
                                       " into memory.");
     }
     size_t model_header_bytes = sizeof(ModelConfig);
-    if (base::UsesQwen3Layout(model_type_)) {
-        model_header_bytes += sizeof(int32_t);
-    }
     if (is_quant_model_) {
         model_header_bytes += sizeof(group_size_);
     }
@@ -124,7 +113,7 @@ base::Status Model::read_model_file() {
     return error::Success();
 }
 
-base::Status Model::generate_model_infos(const ModelConfig& config, int32_t immediate_dim) const {
+base::Status Model::generate_model_infos(const ModelConfig& config) const {
     config_->dim_ = config.dim;
     config_->hidden_dim_ = config.hidden_dim;
     config_->layer_num_ = config.layer_num;
@@ -135,19 +124,12 @@ base::Status Model::generate_model_infos(const ModelConfig& config, int32_t imme
     config_->kv_dim_ = (config.dim * config.kv_head_num) / config.head_num;
     config_->kv_mul_ = config.head_num / config.kv_head_num;
     config_->head_size_ = config.dim / config.head_num;
-    config_->immediate_dim_ = base::UsesQwen3Layout(model_type_) ? immediate_dim : 0;
     if (config.vocab_size > 0) {
         config_->is_shared_weight_ = true;
     } else {
         config_->is_shared_weight_ = false;
     }
 
-    // Qwen tokenizer size and embedding size is mismatched
-    // refer: https://github.com/QwenLM/Qwen2.5/issues/29
-    // if (std::abs(config.vocab_size) != config_->vocab_size_) {
-    //   return base::error::ModelParseError(
-    //       "Vocabulary size mismatch between the model file and the token list.");
-    // }
     config_->vocab_size_ = std::abs(config.vocab_size);
     return base::error::Success();
 }
@@ -160,13 +142,8 @@ base::Status Model::create_tokenizer_layer() {
         tokenizer_layer_ =
             std::make_unique<op::SentencePieceTokenizerLayer>(this->token_path_, true, false);
     } else if (tokenizer_type_ == TokenizerType::kEncodeBpe) {
-        if (use_qwen_tokenizer()) {
-            tokenizer_layer_ =
-                std::make_unique<op::QwenTokenizerLayer>(this->token_path_, false, false);
-        } else {
-            tokenizer_layer_ =
-                std::make_unique<op::BpeTokenizerLayer>(this->token_path_, true, false);
-        }
+        tokenizer_layer_ =
+            std::make_unique<op::BpeTokenizerLayer>(this->token_path_, true, false);
     }
     if (!tokenizer_layer_) {
         return error::InternalError("Create the tokenizer layer failed.");
@@ -274,6 +251,4 @@ int32_t Model::input_width() const {
     CHECK(config_ != nullptr);
     return config_->dim_;
 }
-
-bool Model::use_qwen_tokenizer() const { return false; }
 }  // namespace model

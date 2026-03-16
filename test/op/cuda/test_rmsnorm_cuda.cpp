@@ -43,7 +43,7 @@ TEST(test_rmsnorm_cu, rmsnorm_nostream) {
 
 // 测试按维度做 RMSNorm 时，输出和原地结果是否都正确。
 TEST(test_rmsnorm_cu_dim, rmsnorm_stream) {
-    const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeQwen3);
+    const float eps = base::RmsNormEpsilon(base::ModelType::kModelTypeLlama3);
     auto alloc_cu = base::CUDADeviceAllocatorFactory::get_instance();
     auto alloc_cpu = base::CPUDeviceAllocatorFactory::get_instance();
 

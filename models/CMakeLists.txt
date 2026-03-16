@@ -6,5 +6,3 @@ endfunction()
 
 kuiper_add_model_target(llama2_infer llama/infer_llama2.cpp)
 kuiper_add_model_target(llama3_infer llama/infer_llama3.cpp)
-kuiper_add_model_target(qwen2_infer qwen/infer_qwen2.cpp)
-kuiper_add_model_target(qwen3_infer qwen/infer_qwen3.cpp)
