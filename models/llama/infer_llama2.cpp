@@ -28,6 +28,7 @@ int32_t generate(const model::Llama2Model& model, const std::string& sentence, i
     std::vector<int32_t> words;
     while (pos < total_steps) {
         pos_tensor.index<int32_t>(0) = pos;
+        // 对，先完整吃完 prompt，建立 KV cache，然后才开始单 token 的自回归生成。
         if (pos < prompt_len - 1) {
             // 把当前步需要的输入向量取出来给 是个一维的
             tensor::Tensor input = model.fill_input(pos_tensor, prompt_embedding, is_prompt);
@@ -43,9 +44,11 @@ int32_t generate(const model::Llama2Model& model, const std::string& sentence, i
             break;
         }
         if (is_prompt) {
+            // prompt 阶段：下一个 token 不是模型自由生成的，而是直接取原始输入里的下一个 token
             next = tokens.at(pos + 1);
             words.push_back(next);
         } else {
+            // 生成阶段：下一个 token 才真正使用模型刚算出来的 next
             words.push_back(next);
         }
 

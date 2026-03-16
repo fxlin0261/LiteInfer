@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 #include <cstdint>
 #include <string>
-#include "base/unicode.h"
+#include "base/unicode_byte_fallback.h"
+#include "base/unicode_props.h"
+#include "base/unicode_utf8.h"
 
 TEST(test_unicode, len_utf8_reports_expected_width_from_leading_byte) {
     EXPECT_EQ(unicode_len_utf8('$'), 1U);

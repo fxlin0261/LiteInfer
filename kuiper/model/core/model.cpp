@@ -228,14 +228,16 @@ std::string Model::decode(std::vector<int32_t> token_idxs) const {
 std::pair<tensor::Tensor, tensor::Tensor> Model::slice_kv_cache(int32_t layer_idx,
                                                                 int32_t token_pos) const {
     // 返回当前层、当前位置对应的 KV cache 视图。
+    // 前两行先算偏移：这里的 KV cache 可以理解成一个大数组，逻辑 shape 类似：
     int32_t layer_offset = layer_idx * config_->seq_len_ * config_->kv_dim_;
     int32_t cache_offset = layer_offset + token_pos * config_->kv_dim_;
-
+    // 从 kKeyCache 这整块大 buffer 里，拿到偏移到 cache_offset 后的地址
+    // 从 kValueCache 里也拿到同样位置的地址
     float* key_cache_ptr =
         const_cast<float*>(get_buffer(ModelBufferType::kKeyCache).ptr<float>(cache_offset));
     float* val_cache_ptr =
         const_cast<float*>(get_buffer(ModelBufferType::kValueCache).ptr<float>(cache_offset));
-
+    // 这里构造出来的 key / val 本质上是：shape 是 [kv_dim] 数据指针直接指向 KV cache 的那段内存
     tensor::Tensor key(base::DataType::kDataTypeFp32, config_->kv_dim_, false, nullptr,
                        key_cache_ptr);
     tensor::Tensor val(base::DataType::kDataTypeFp32, config_->kv_dim_, false, nullptr,

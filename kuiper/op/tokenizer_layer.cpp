@@ -1,6 +1,7 @@
 #include "op/tokenizer_layer.h"
 #include <glog/logging.h>
-#include "base/unicode.h"
+#include "base/unicode_byte_fallback.h"
+#include "base/unicode_utf8.h"
 namespace op {
 
 std::string SentencePieceTokenizerLayer::decode(int32_t token_id) const {
@@ -111,7 +112,9 @@ std::vector<int32_t> BpeTokenizerLayer::encode(const std::string& sentence) cons
     return input_ids;
 }
 
-std::string BpeTokenizerLayer::decode(int32_t token_id) const { return ""; }
+std::string BpeTokenizerLayer::decode(int32_t token_id) const {
+    return decode(std::vector<int32_t>{token_id});
+}
 
 std::string BpeTokenizerLayer::decode(const std::vector<int32_t>& token_ids) const {
     CHECK(this->tiktoken_ != nullptr);
