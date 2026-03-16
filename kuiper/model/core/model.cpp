@@ -4,6 +4,7 @@
 #include <memory>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 namespace model {
 Model::Model(base::TokenizerType tokenizer_type, base::ModelType model_type, std::string token_path,
@@ -52,21 +53,30 @@ base::Status Model::read_model_file() {
         return error::PathNotValid("Failed to open the weight file " + model_path_ +
                                    " may be the path does not exist!");
     }
+    const auto close_fd = [&fd]() {
+        if (fd != -1) {
+            close(fd);
+            fd = -1;
+        }
+    };
 
     auto* raw_file = std::fopen(model_path_.data(), "rb");
     std::unique_ptr<FILE, int (*)(FILE*)> file(raw_file, &std::fclose);
     if (!file) {
+        close_fd();
         return error::PathNotValid("Failed to open the file. The path may be invalid.");
     }
 
     auto config = ModelConfig{};
     if (fread(&config, sizeof(ModelConfig), 1, file.get()) != 1) {
+        close_fd();
         return error::ModelParseError(
             "Failed to retrieve the configuration information from the model "
             "file.");
     }
     if (is_quant_model_) {
         if (fread(&group_size_, sizeof(int32_t), 1, file.get()) != 1) {
+            close_fd();
             return error::ModelParseError(
                 "Failed to retrieve the group size information from the model "
                 "file.");
@@ -75,7 +85,15 @@ base::Status Model::read_model_file() {
 
     auto gen_status = generate_model_infos(config);
     if (!gen_status.ok()) {
+        close_fd();
         return gen_status;
+    }
+    if (tokenizer_layer_ != nullptr && tokenizer_layer_->vocab_size() != config_->vocab_size_) {
+        close_fd();
+        return error::InvalidArgument("The tokenizer vocab size " +
+                                      std::to_string(tokenizer_layer_->vocab_size()) +
+                                      " does not match the model vocab size " +
+                                      std::to_string(config_->vocab_size_) + ".");
     }
 
     if (!is_quant_model_) {
@@ -86,13 +104,14 @@ base::Status Model::read_model_file() {
 
     struct stat sb;
     if (fstat(fd, &sb) == -1) {
-        close(fd);
+        close_fd();
         return error::ModelParseError(
             "Failed to retrieve the file size information from the model "
             "file.");
     }
     raw_model_data_->file_size = sb.st_size;
     raw_model_data_->fd = fd;
+    fd = -1;
     raw_model_data_->data =
         mmap(nullptr, raw_model_data_->file_size, PROT_READ, MAP_PRIVATE, raw_model_data_->fd, 0);
 

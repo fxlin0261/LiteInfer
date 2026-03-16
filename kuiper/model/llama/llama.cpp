@@ -5,6 +5,7 @@
 #include <op/rmsnorm.h>
 #include <sentencepiece_processor.h>
 #include <utility>
+#include "model/decoder/model_utils.h"
 #include "op/kernels/cpu/rope_kernel.h"
 #if KUIPER_ENABLE_CUDA
 #include "op/kernels/cuda/rope_kernel.cuh"
@@ -301,24 +302,25 @@ base::Status LlamaModelBase::create_param_quant_layers() {
         pos = pos + dim * hidden_dim + w3->get_scale_num() * sizeof(float);
     }
 
-    // wcls layer
-    auto cls_layer =
-        std::make_shared<op::MatmulLayer>(device_type_, config_->vocab_size_, dim, true);
-    cls_layer->set_group_size(group_size_);
-    if (config_->is_shared_weight_) {
-        // using token embedding weight
-        cls_layer->set_weight(0, {config_->vocab_size_, dim}, this->raw_model_data_->weight(pos),
+    const auto cls_and_embedding = detail::ResolveLegacyQuantizedWeightsLayout(
+        *raw_model_data_, pos, config_->vocab_size_, dim, group_size_, config_->is_shared_weight_);
+    std::shared_ptr<op::MatmulLayer> cls_layer;
+    if (cls_and_embedding.classifier_is_quantized) {
+        cls_layer = std::make_shared<op::MatmulLayer>(device_type_, config_->vocab_size_, dim, true);
+        cls_layer->set_group_size(group_size_);
+        cls_layer->set_weight(0, {config_->vocab_size_, dim}, cls_and_embedding.classifier_weight,
                               cpu_device_type);
+        pos += detail::LegacyQuantizedTensorBytes(config_->vocab_size_, dim, group_size_);
     } else {
-        // no shared
-        cls_layer->set_weight(0, {config_->vocab_size_, dim}, this->raw_model_data_->weight(pos),
+        cls_layer = std::make_shared<op::MatmulLayer>(device_type_, config_->vocab_size_, dim);
+        cls_layer->set_weight(0, {config_->vocab_size_, dim}, cls_and_embedding.classifier_weight,
                               cpu_device_type);
-        pos = pos + config_->vocab_size_ * dim + cls_layer->get_scale_num() * sizeof(float);
     }
     llama_layers_->cls_layer_ = cls_layer;
 
     // embedding layer
-    float* weight_ptr = (float*)raw_model_data_->weight(pos);
+    auto* weight_ptr =
+        reinterpret_cast<float*>(const_cast<void*>(cls_and_embedding.embedding_weight));
     llama_layers_->embedding_layer_ = std::make_shared<op::EmbeddingLayer>(
         device_type_, config_->dim_, config_->seq_len_, std::abs(config_->vocab_size_));
     llama_layers_->embedding_layer_->set_weight(0, {std::abs(config_->vocab_size_), dim},
@@ -782,7 +784,6 @@ void LlamaModelBase::feed_forward(int32_t layer_idx, const tensor::Tensor& input
     const auto& w2_layer = llama_layers_->w2_layers_.at(layer_idx);
     CHECK_NE(w2_layer, nullptr) << "The w2 layer in the feedforward block is null pointer";
     STATUS_CHECK(w2_layer->forward(w1_output, w2_output));
-    input = input + w2_output
     CHECK_NE(llama_layers_->add_layer_, nullptr)
         << "The add layer in the feedforward block is null pointer";
     STATUS_CHECK(llama_layers_->add_layer_->forward(input, w2_output, input));

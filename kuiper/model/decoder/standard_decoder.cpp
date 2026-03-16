@@ -389,16 +389,23 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
         pos += dim * hidden_dim + w3->get_scale_num() * sizeof(float);
     }
 
-    auto cls_layer =
-        std::make_shared<op::MatmulLayer>(device_type_, config_->vocab_size_, dim, true);
-    cls_layer->set_group_size(group_size_);
-    cls_layer->set_weight(0, {config_->vocab_size_, dim}, raw_model_data_->weight(pos),
-                          cpu_device_type);
-    if (!config_->is_shared_weight_) {
-        pos += config_->vocab_size_ * dim + cls_layer->get_scale_num() * sizeof(float);
+    const auto cls_and_embedding = detail::ResolveLegacyQuantizedWeightsLayout(
+        *raw_model_data_, pos, config_->vocab_size_, dim, group_size_, config_->is_shared_weight_);
+    std::shared_ptr<op::MatmulLayer> cls_layer;
+    if (cls_and_embedding.classifier_is_quantized) {
+        cls_layer = std::make_shared<op::MatmulLayer>(device_type_, config_->vocab_size_, dim, true);
+        cls_layer->set_group_size(group_size_);
+        cls_layer->set_weight(0, {config_->vocab_size_, dim}, cls_and_embedding.classifier_weight,
+                              cpu_device_type);
+        pos += detail::LegacyQuantizedTensorBytes(config_->vocab_size_, dim, group_size_);
+    } else {
+        cls_layer = std::make_shared<op::MatmulLayer>(device_type_, config_->vocab_size_, dim);
+        cls_layer->set_weight(0, {config_->vocab_size_, dim}, cls_and_embedding.classifier_weight,
+                              cpu_device_type);
     }
     layers().cls_layer_ = cls_layer;
-    auto* weight_ptr = reinterpret_cast<float*>(const_cast<void*>(raw_model_data_->weight(pos)));
+    auto* weight_ptr =
+        reinterpret_cast<float*>(const_cast<void*>(cls_and_embedding.embedding_weight));
     layers().embedding_layer_ = std::make_shared<op::EmbeddingLayer>(
         device_type_, config_->dim_, config_->seq_len_, std::abs(config_->vocab_size_));
     layers().embedding_layer_->set_weight(0, {std::abs(config_->vocab_size_), dim}, weight_ptr,

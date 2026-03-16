@@ -1,10 +1,14 @@
 #include <gtest/gtest.h>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
 #include "base/alloc.h"
+#include "model/decoder/model_utils.h"
 #include "model/core/model.h"
 
 namespace {
@@ -34,8 +38,11 @@ public:
 class FakeModel final : public model::Model {
 public:
     explicit FakeModel(base::ModelType model_type = base::ModelType::kModelTypeLlama2,
-                       base::TokenizerType tokenizer_type = base::TokenizerType::kEncodeSpe)
-        : Model(tokenizer_type, model_type, "token.model", "model.bin", false) {
+                       base::TokenizerType tokenizer_type = base::TokenizerType::kEncodeSpe,
+                       std::string token_path = "token.model",
+                       std::string model_path = "model.bin", bool is_quant_model = false)
+        : Model(tokenizer_type, model_type, std::move(token_path), std::move(model_path),
+                is_quant_model) {
         config_ = std::make_unique<model::TransformerConfig>();
     }
     base::Status init(base::DeviceType device_type) override {
@@ -81,6 +88,7 @@ public:
     base::Status generate_model_infos_for_test(const model::ModelConfig& config) {
         return generate_model_infos(config);
     }
+    base::Status read_model_file_for_test() { return read_model_file(); }
     model::TransformerConfig* mutable_config() { return config_.get(); }
 
 private:
@@ -99,6 +107,19 @@ private:
 tensor::Tensor make_cpu_tensor(base::DataType data_type, const std::vector<int32_t>& dims,
                                void* ptr) {
     return tensor::Tensor::make_external(data_type, dims, ptr, base::DeviceType::kDeviceCPU);
+}
+
+std::filesystem::path write_model_file(const model::ModelConfig& config) {
+    const auto unique_id =
+        std::chrono::steady_clock::now().time_since_epoch().count();
+    const auto path = std::filesystem::temp_directory_path() /
+                      ("kuiper-" + std::to_string(unique_id) + ".bin");
+    std::ofstream out(path, std::ios::binary);
+    EXPECT_TRUE(out.is_open());
+    out.write(reinterpret_cast<const char*>(&config), sizeof(config));
+    EXPECT_TRUE(out.good());
+    out.close();
+    return path;
 }
 }  // namespace
 
@@ -219,4 +240,46 @@ TEST(test_model_core, slice_kv_cache_returns_tensor_views_into_backing_storage) 
     value_view.index<float>(0) = -3.f;
     EXPECT_FLOAT_EQ(key_cache[19], -7.f);
     EXPECT_FLOAT_EQ(value_cache[18], -3.f);
+}
+
+TEST(test_model_core, read_model_file_rejects_tokenizer_and_model_vocab_mismatch) {
+    model::ModelConfig config{};
+    config.dim = 16;
+    config.hidden_dim = 32;
+    config.layer_num = 2;
+    config.head_num = 4;
+    config.kv_head_num = 4;
+    config.vocab_size = 4096;
+    config.seq_len = 8;
+
+    const auto model_path = write_model_file(config);
+    {
+        FakeModel model(base::ModelType::kModelTypeLlama2, base::TokenizerType::kEncodeSpe,
+                        "token.model", model_path.string());
+        model.set_tokenizer_layer_for_test(std::make_unique<FakeEncodeLayer>());
+        const auto status = model.read_model_file_for_test();
+        EXPECT_FALSE(status.ok());
+        EXPECT_EQ(status.code(), base::StatusCode::kInvalidArgument);
+        EXPECT_NE(std::string(status.message()).find("tokenizer vocab size"), std::string::npos);
+    }
+    std::filesystem::remove(model_path);
+}
+
+TEST(test_model_core, legacy_quantized_weights_layout_skips_classifier_blob_when_shared) {
+    std::vector<int8_t> weights(256, 0);
+    model::RawModelDataInt8 raw_model_data;
+    raw_model_data.weight_data = weights.data();
+
+    const auto shared_layout =
+        model::detail::ResolveLegacyQuantizedWeightsLayout(raw_model_data, 16, 8, 4, 4, true);
+    EXPECT_EQ(shared_layout.classifier_weight, weights.data() + 16);
+    EXPECT_EQ(shared_layout.embedding_weight, weights.data() + 16);
+    EXPECT_FALSE(shared_layout.classifier_is_quantized);
+
+    const auto unshared_layout =
+        model::detail::ResolveLegacyQuantizedWeightsLayout(raw_model_data, 16, 8, 4, 4, false);
+    const size_t classifier_bytes = model::detail::LegacyQuantizedTensorBytes(8, 4, 4);
+    EXPECT_EQ(unshared_layout.classifier_weight, weights.data() + 16);
+    EXPECT_EQ(unshared_layout.embedding_weight, weights.data() + 16 + classifier_bytes);
+    EXPECT_TRUE(unshared_layout.classifier_is_quantized);
 }

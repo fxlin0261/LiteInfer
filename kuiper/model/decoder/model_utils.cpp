@@ -6,6 +6,37 @@
 
 namespace model {
 namespace detail {
+size_t LegacyQuantizedTensorBytes(int32_t rows, int32_t cols, int32_t group_size) {
+    CHECK_GT(rows, 0);
+    CHECK_GT(cols, 0);
+    CHECK_GT(group_size, 0);
+    const size_t weight_elements = static_cast<size_t>(rows) * static_cast<size_t>(cols);
+    CHECK_EQ(weight_elements % static_cast<size_t>(group_size), 0U);
+    const size_t scale_count = weight_elements / static_cast<size_t>(group_size);
+    return weight_elements + scale_count * sizeof(float);
+}
+
+LegacyQuantizedWeightsLayout ResolveLegacyQuantizedWeightsLayout(
+    const RawModelData& raw_model_data, size_t offset, int32_t vocab_size, int32_t dim,
+    int32_t group_size, bool shared_classifier) {
+    CHECK_GT(vocab_size, 0);
+    CHECK_GT(dim, 0);
+    CHECK_GT(group_size, 0);
+
+    LegacyQuantizedWeightsLayout layout;
+    layout.classifier_weight = raw_model_data.weight(offset);
+    if (shared_classifier) {
+        layout.embedding_weight = layout.classifier_weight;
+        layout.classifier_is_quantized = false;
+        return layout;
+    }
+
+    layout.classifier_is_quantized = true;
+    layout.embedding_weight =
+        raw_model_data.weight(offset + LegacyQuantizedTensorBytes(vocab_size, dim, group_size));
+    return layout;
+}
+
 base::Status InitCudaConfig(std::shared_ptr<kernel::CudaConfig>& cuda_config) {
 #if KUIPER_ENABLE_CUDA
     cudaSetDevice(0);
