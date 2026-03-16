@@ -1,65 +1,8 @@
 #include <base/base.h>
 #include <base/tick.h>
 #include <glog/logging.h>
+#include "common/generation.h"
 #include "model/llama/llama.h"
-
-int32_t generate(const model::Llama2Model& model, const std::string& sentence, int total_steps,
-                 bool need_output = false) {
-    // llama2 加了BOS 没加EOS
-    // 返回一串tokens id: BOS+id
-    auto tokens = model.encode(sentence);
-    int32_t prompt_len = tokens.size();
-    LOG_IF(FATAL, tokens.empty()) << "The tokens is empty.";
-
-    int32_t pos = 0;
-    int32_t next = -1;
-    bool is_prompt = true;
-    // 返回值为op::EmbeddingOutput
-    // 也就是说：
-    // input_tokens
-    // 输入的 token id，shape 是 [token_num]
-    // input_embeddings
-    // embedding 查表后的结果，shape 是 [token_num, dim]
-    // input_token_num
-    // 表示 token 数量的 tensor，shape 是 [token_num]
-    const auto& prompt_embedding = model.embedding(tokens);
-    tensor::Tensor pos_tensor = model.get_buffer(model::ModelBufferType::kInputPos);
-
-    std::vector<int32_t> words;
-    while (pos < total_steps) {
-        pos_tensor.index<int32_t>(0) = pos;
-        // 对，先完整吃完 prompt，建立 KV cache，然后才开始单 token 的自回归生成。
-        if (pos < prompt_len - 1) {
-            // 把当前步需要的输入向量取出来给 是个一维的
-            tensor::Tensor input = model.fill_input(pos_tensor, prompt_embedding, is_prompt);
-            model.predict(input, pos_tensor, is_prompt, next);
-        } else {
-            is_prompt = false;
-            tokens = std::vector<int32_t>{next};
-            const auto& token_embedding = model.embedding(tokens);
-            tensor::Tensor input = model.fill_input(pos_tensor, token_embedding, is_prompt);
-            model.predict(input, pos_tensor, is_prompt, next);
-        }
-        if (model.is_sentence_ending(next)) {
-            break;
-        }
-        if (is_prompt) {
-            // prompt 阶段：下一个 token 不是模型自由生成的，而是直接取原始输入里的下一个 token
-            next = tokens.at(pos + 1);
-            words.push_back(next);
-        } else {
-            // 生成阶段：下一个 token 才真正使用模型刚算出来的 next
-            words.push_back(next);
-        }
-
-        pos += 1;
-    }
-    if (need_output) {
-        printf("%s ", model.decode(words).data());
-        fflush(stdout);
-    }
-    return std::min(pos, total_steps);
-}
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
@@ -70,19 +13,25 @@ int main(int argc, char* argv[]) {
     const char* tokenizer_path = argv[2];
 
     model::Llama2Model model(tokenizer_path, checkpoint_path, false);
-    auto init_status = model.init(base::DefaultDeviceType());
+    const auto init_status = model.init(base::DefaultDeviceType());
     if (!init_status.ok()) {
         LOG(FATAL) << "The model init failed, code: " << static_cast<int>(init_status.code())
                    << ", message: " << init_status.message();
     }
-    const std::string& sentence = "hello";
+    const std::string sentence = "hello";
 
-    auto start = std::chrono::steady_clock::now();
+    const auto start = std::chrono::steady_clock::now();
     printf("Generating...\n");
     fflush(stdout);
-    int steps = generate(model, sentence, 128, true);
-    auto end = std::chrono::steady_clock::now();
-    auto duration = std::chrono::duration<double>(end - start).count();
+    int32_t steps = 0;
+    const auto generate_status = app::GenerateGreedyText(model, sentence, 128, true, &steps);
+    if (!generate_status.ok()) {
+        LOG(FATAL) << "Text generation failed, code: "
+                   << static_cast<int>(generate_status.code())
+                   << ", message: " << generate_status.message();
+    }
+    const auto end = std::chrono::steady_clock::now();
+    const auto duration = std::chrono::duration<double>(end - start).count();
     printf("\nsteps/s:%lf\n", static_cast<double>(steps) / duration);
     fflush(stdout);
     return 0;

@@ -2,6 +2,7 @@ set(
   TEST_SOURCES
   support/test_main.cpp
   base/test_unicode.cpp
+  model/test_generation.cpp
   model/test_llama_model_cpu.cpp
   model/test_model_core.cpp
   model/test_model_load.cpp
@@ -29,7 +30,7 @@ if(KUIPER_WITH_CUDA)
 endif()
 
 add_executable(test_llm ${TEST_SOURCES})
-target_include_directories(test_llm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(test_llm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/models")
 target_link_libraries(test_llm PRIVATE kuiper::runtime GTest::gtest)
 
 if(KUIPER_WITH_CUDA)
