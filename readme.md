@@ -1,4 +1,4 @@
-# KuiperLLama
+# LiteInfer
 
 一个用 C++ 实现的大模型推理项目，当前支持：
 
@@ -11,7 +11,7 @@
 ## 项目结构
 
 ```text
-kuiper/
+liteinfer/
 |-- base/        # 基础设施：内存、buffer、unicode、device/cuda 配置
 |-- tokenizer/   # tokenizer 相关实现
 |-- tensor/      # 张量封装
@@ -110,6 +110,6 @@ python3 models/llama/export_llama3.py <output_bin> --hf=<hf_model_dir>
 - `models/` 下是导出脚本和推理入口
 - `test/` 下是单元测试
 - 如果只是阅读代码，建议先看：
-  - `kuiper/model/core/model.h`
-  - `kuiper/model/decoder/standard_decoder.h`
-  - `kuiper/model/llama/llama.h`
+  - `liteinfer/model/core/model.h`
+  - `liteinfer/model/decoder/standard_decoder.h`
+  - `liteinfer/model/llama/llama.h`

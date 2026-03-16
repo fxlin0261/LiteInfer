@@ -12,7 +12,7 @@ set(
   sampler/test_argmax_sampler.cpp
 )
 
-if(KUIPER_WITH_CUDA)
+if(LITEINFER_WITH_CUDA)
   list(
     APPEND
     TEST_SOURCES
@@ -31,9 +31,9 @@ endif()
 
 add_executable(test_llm ${TEST_SOURCES})
 target_include_directories(test_llm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/models")
-target_link_libraries(test_llm PRIVATE kuiper::runtime GTest::gtest)
+target_link_libraries(test_llm PRIVATE liteinfer::runtime GTest::gtest)
 
-if(KUIPER_WITH_CUDA)
+if(LITEINFER_WITH_CUDA)
   set_target_properties(test_llm PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 endif()
 

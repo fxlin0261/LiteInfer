@@ -1,5 +1,5 @@
-#ifndef KUIPER_MODELS_COMMON_GENERATION_H_
-#define KUIPER_MODELS_COMMON_GENERATION_H_
+#ifndef LITEINFER_MODELS_COMMON_GENERATION_H_
+#define LITEINFER_MODELS_COMMON_GENERATION_H_
 
 #include <algorithm>
 #include <cstdint>
@@ -131,4 +131,4 @@ base::Status GenerateGreedyText(const ModelT& model, const std::string& sentence
 }
 }  // namespace app
 
-#endif  // KUIPER_MODELS_COMMON_GENERATION_H_
+#endif  // LITEINFER_MODELS_COMMON_GENERATION_H_
