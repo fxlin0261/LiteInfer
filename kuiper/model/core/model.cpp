@@ -148,6 +148,14 @@ Model::Model(base::TokenizerType tokenizer_type, base::ModelType model_type, std
       model_path_(std::move(model_path)),
       is_quant_model_(is_quant_model) {}
 
+base::Status Model::set_runtime_max_seq_len(int32_t max_seq_len) {
+    if (max_seq_len <= 0) {
+        return base::error::InvalidArgument("The runtime max seq_len must be positive.");
+    }
+    runtime_max_seq_len_ = max_seq_len;
+    return base::error::Success();
+}
+
 base::Status Model::insert_buffer(ModelBufferType buffer_idx, const tensor::Tensor& tensor) {
     auto& buffer_slot = buffers_.at(BufferSlot(buffer_idx));
     if (!buffer_slot.is_empty()) {
@@ -234,12 +242,15 @@ base::Status Model::generate_model_infos(const ModelConfig& config) const {
         return validation_status;
     }
     auto& model_config = *config_;
+    const int32_t runtime_seq_len =
+        runtime_max_seq_len_ > 0 && runtime_max_seq_len_ < config.seq_len ? runtime_max_seq_len_
+                                                                           : config.seq_len;
     model_config.dim_ = config.dim;
     model_config.hidden_dim_ = config.hidden_dim;
     model_config.layer_num_ = config.layer_num;
     model_config.head_num_ = config.head_num;
     model_config.kv_head_num_ = config.kv_head_num;
-    model_config.seq_len_ = config.seq_len;
+    model_config.seq_len_ = runtime_seq_len;
     model_config.kv_dim_ = (config.dim * config.kv_head_num) / config.head_num;
     model_config.kv_mul_ = config.head_num / config.kv_head_num;
     model_config.head_size_ = config.dim / config.head_num;

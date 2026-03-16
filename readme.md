@@ -37,18 +37,20 @@ kuiper/
 
 ## 编译
 
+以下示例统一使用根目录下的 `build/` 作为输出目录。
+
 ### 方式一：自动拉依赖
 
 ```bash
 cmake -S . -B build -DUSE_CPM=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
+cmake --build build --parallel
 ```
 
 ### 方式二：使用本机已安装依赖
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
+cmake --build build --parallel
 ```
 
 ## 测试
@@ -70,13 +72,21 @@ ctest --test-dir build --output-on-failure -R '^test_llm$'
 ### Llama2
 
 ```bash
-./build/models/llama2_infer <model_path> <tokenizer_path>
+./build/models/llama2_infer <model_path> <tokenizer_path> [runtime_max_seq_len] [steps]
 ```
 
 ### Llama3
 
 ```bash
-./build/models/llama3_infer <model_path> <tokenizer_path>
+./build/models/llama3_infer <model_path> <tokenizer_path> [runtime_max_seq_len] [steps]
+```
+
+推理示例默认会把运行时上下文长度限制到 `8192`，避免在 CPU 上按模型头里的超长 `seq_len`
+直接分配巨大的 KV cache。做本地 smoke test 时，建议显式传一个较小步数，例如：
+
+```bash
+./build/models/llama3_infer local_models/llama3/Llama-3.2-1B.bin \
+  local_models/llama3/Llama-3.2-1B/tokenizer.json 2048 1
 ```
 
 如果不确定参数格式，可以直接运行对应可执行文件查看提示。

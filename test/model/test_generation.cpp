@@ -98,7 +98,7 @@ TEST(test_generation, single_token_prompt_switches_to_decode_path_cleanly) {
     EXPECT_EQ(result.state.words, std::vector<int32_t>({7}));
     EXPECT_EQ(model.seen_inputs(), std::vector<int32_t>({42, 7}));
     EXPECT_EQ(model.seen_positions(), std::vector<int32_t>({0, 1}));
-    EXPECT_EQ(model.seen_prompt_flags(), std::vector<int32_t>({1, 0}));
+    EXPECT_EQ(model.seen_prompt_flags(), std::vector<int32_t>({0, 0}));
 }
 
 TEST(test_generation, prompt_tokens_are_consumed_before_generated_tokens) {
@@ -113,6 +113,6 @@ TEST(test_generation, prompt_tokens_are_consumed_before_generated_tokens) {
     EXPECT_EQ(result.state.words, std::vector<int32_t>({11, 12, 52}));
     EXPECT_EQ(model.seen_inputs(), std::vector<int32_t>({10, 11, 12}));
     EXPECT_EQ(model.seen_positions(), std::vector<int32_t>({0, 1, 2}));
-    EXPECT_EQ(model.seen_prompt_flags(), std::vector<int32_t>({1, 1, 1}));
+    EXPECT_EQ(model.seen_prompt_flags(), std::vector<int32_t>({1, 1, 0}));
 }
 }  // namespace

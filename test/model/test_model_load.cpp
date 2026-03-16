@@ -88,8 +88,10 @@ TEST(test_load, create_matmul) {
                                                               base::DeviceType::kDeviceCPU);
     wq->set_input(0, tensor);
     wq->set_output(0, out_tensor);
-    wq->set_weight(0, {config.dim, config.hidden_dim}, weight_data, base::DeviceType::kDeviceCPU);
-    wq->forward();  // 完成一个计算
+    ASSERT_TRUE(
+        wq->set_weight(0, {config.dim, config.hidden_dim}, weight_data, base::DeviceType::kDeviceCPU)
+            .ok());
+    ASSERT_TRUE(wq->forward().ok());  // 完成一个计算
 
     /** python code:
      *  w = np.arange(0,128 * 16).reshape(16, 128)

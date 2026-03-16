@@ -152,6 +152,33 @@ TEST(test_model_core, generate_model_infos_populates_derived_fields) {
     EXPECT_TRUE(model.mutable_config()->is_shared_weight_);
 }
 
+TEST(test_model_core, runtime_max_seq_len_caps_model_seq_len_without_expanding_it) {
+    FakeModel model;
+    model::ModelConfig config{};
+    config.dim = 12;
+    config.hidden_dim = 48;
+    config.layer_num = 2;
+    config.head_num = 6;
+    config.kv_head_num = 3;
+    config.vocab_size = -32000;
+    config.seq_len = 131072;
+
+    ASSERT_TRUE(model.set_runtime_max_seq_len(8192).ok());
+    ASSERT_TRUE(model.generate_model_infos_for_test(config).ok());
+    EXPECT_EQ(model.mutable_config()->seq_len_, 8192);
+
+    ASSERT_TRUE(model.set_runtime_max_seq_len(262144).ok());
+    ASSERT_TRUE(model.generate_model_infos_for_test(config).ok());
+    EXPECT_EQ(model.mutable_config()->seq_len_, 131072);
+}
+
+TEST(test_model_core, runtime_max_seq_len_requires_positive_value) {
+    FakeModel model;
+    const auto status = model.set_runtime_max_seq_len(0);
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(status.code(), base::StatusCode::kInvalidArgument);
+}
+
 TEST(test_model_core, generate_model_infos_rejects_invalid_model_config) {
     auto expect_invalid = [](const model::ModelConfig& config, const char* message_fragment) {
         FakeModel model;

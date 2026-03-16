@@ -20,6 +20,7 @@ public:
     explicit Model(base::TokenizerType tokenizer_type, base::ModelType model_type,
                    std::string token_path, std::string model_path, bool is_quant_model);
     virtual ~Model() = default;
+    base::Status set_runtime_max_seq_len(int32_t max_seq_len);
     virtual base::Status init(base::DeviceType device_type) = 0;
     virtual base::Status predict(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                                  bool is_prompt, int& next) const = 0;
@@ -77,6 +78,7 @@ protected:
     base::DeviceType device_type_ = base::DeviceType::kDeviceUnknown;
     base::ModelType model_type_ = base::ModelType::kModelTypeUnknown;
     base::TokenizerType tokenizer_type_ = base::TokenizerType::kEncodeUnknown;
+    int32_t runtime_max_seq_len_ = 0;
 };
 }  // namespace model
 #endif  // KUIPER_INCLUDE_MODEL_MODEL_H_

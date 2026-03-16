@@ -42,7 +42,8 @@ std::shared_ptr<op::MatmulLayer> CreateMatmulLayer(base::DeviceType device_type,
                                                    const void* weight_ptr,
                                                    base::DeviceType weight_device) {
     auto layer = std::make_shared<op::MatmulLayer>(device_type, out_features, in_features);
-    layer->set_weight(0, {out_features, in_features}, weight_ptr, weight_device);
+    const auto status = layer->set_weight(0, {out_features, in_features}, weight_ptr, weight_device);
+    CHECK(status.ok()) << status.message();
     return layer;
 }
 
@@ -55,7 +56,8 @@ std::shared_ptr<op::MatmulLayer> CreateQuantizedMatmulLayer(base::DeviceType dev
     auto layer =
         std::make_shared<op::MatmulLayer>(device_type, out_features, in_features, true);
     layer->set_group_size(group_size);
-    layer->set_weight(0, {out_features, in_features}, weight_ptr, weight_device);
+    const auto status = layer->set_weight(0, {out_features, in_features}, weight_ptr, weight_device);
+    CHECK(status.ok()) << status.message();
     return layer;
 }
 
@@ -64,7 +66,8 @@ std::shared_ptr<op::EmbeddingLayer> CreateEmbeddingLayer(base::DeviceType device
                                                          const void* weight_ptr,
                                                          base::DeviceType weight_device) {
     auto layer = std::make_shared<op::EmbeddingLayer>(device_type, dim, seq_len, vocab_size);
-    layer->set_weight(0, {vocab_size, dim}, weight_ptr, weight_device);
+    const auto status = layer->set_weight(0, {vocab_size, dim}, weight_ptr, weight_device);
+    CHECK(status.ok()) << status.message();
     return layer;
 }
 
@@ -74,7 +77,8 @@ std::shared_ptr<op::RmsNormLayer> CreateRmsNormLayer(base::DeviceType device_typ
                                                      base::DeviceType weight_device) {
     auto layer =
         std::make_shared<op::RmsNormLayer>(device_type, dim, base::RmsNormEpsilon(model_type));
-    layer->set_weight(0, {dim}, weight_ptr, weight_device);
+    const auto status = layer->set_weight(0, {dim}, weight_ptr, weight_device);
+    CHECK(status.ok()) << status.message();
     return layer;
 }
 

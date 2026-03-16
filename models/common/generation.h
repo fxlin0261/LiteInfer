@@ -69,8 +69,9 @@ base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens, int
         pos_tensor.index<int32_t>(0) = pos;
         base::Status predict_status = base::error::Success();
         if (pos < prompt_len) {
+            const bool is_prompt_step = pos < prompt_len - 1;
             tensor::Tensor input = model.fill_input(pos_tensor, prompt_embedding, true);
-            predict_status = model.predict(input, pos_tensor, true, state.next);
+            predict_status = model.predict(input, pos_tensor, is_prompt_step, state.next);
         } else {
             tokens = std::vector<int32_t>{state.next};
             const auto token_embedding = model.embedding(tokens);

@@ -4,6 +4,7 @@
 #include <glog/logging.h>
 #include <cstdio>
 #include <cstdint>
+#include <ostream>
 #include <string>
 #define UNUSED(expr)  \
     do {              \
@@ -32,6 +33,53 @@ enum class ModelBufferType {
     kSinCache = 17,
     kCosCache = 18,
 };
+
+inline const char* ModelBufferTypeName(ModelBufferType buffer_type) {
+    switch (buffer_type) {
+        case ModelBufferType::kInputTokens:
+            return "kInputTokens";
+        case ModelBufferType::kInputEmbeddings:
+            return "kInputEmbeddings";
+        case ModelBufferType::kOutputRMSNorm:
+            return "kOutputRMSNorm";
+        case ModelBufferType::kKeyCache:
+            return "kKeyCache";
+        case ModelBufferType::kValueCache:
+            return "kValueCache";
+        case ModelBufferType::kQuery:
+            return "kQuery";
+        case ModelBufferType::kInputPos:
+            return "kInputPos";
+        case ModelBufferType::kScoreStorage:
+            return "kScoreStorage";
+        case ModelBufferType::kOutputMHA:
+            return "kOutputMHA";
+        case ModelBufferType::kAttnOutput:
+            return "kAttnOutput";
+        case ModelBufferType::kW1Output:
+            return "kW1Output";
+        case ModelBufferType::kW2Output:
+            return "kW2Output";
+        case ModelBufferType::kW3Output:
+            return "kW3Output";
+        case ModelBufferType::kFFNRMSNorm:
+            return "kFFNRMSNorm";
+        case ModelBufferType::kForwardOutput:
+            return "kForwardOutput";
+        case ModelBufferType::kForwardOutputCPU:
+            return "kForwardOutputCPU";
+        case ModelBufferType::kSinCache:
+            return "kSinCache";
+        case ModelBufferType::kCosCache:
+            return "kCosCache";
+    }
+    return "kUnknownModelBufferType";
+}
+
+inline std::ostream& operator<<(std::ostream& os, ModelBufferType buffer_type) {
+    os << ModelBufferTypeName(buffer_type);
+    return os;
+}
 }
 
 namespace base {

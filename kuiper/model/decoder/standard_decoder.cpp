@@ -331,11 +331,16 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
     const int32_t dim = config_->dim_;
     const int32_t hidden_dim = config_->hidden_dim_;
     const auto cpu_device_type = base::DeviceType::kDeviceCPU;
+    const auto set_weight_or_die =
+        [&](const auto& layer, const std::vector<int32_t>& dims, const void* weight_ptr) {
+            const auto status = layer->set_weight(0, dims, weight_ptr, cpu_device_type);
+            CHECK(status.ok()) << status.message();
+        };
 
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         auto wq = std::make_shared<op::MatmulLayer>(device_type_, dim, dim, true);
         wq->set_group_size(group_size_);
-        wq->set_weight(0, {dim, dim}, raw_model_data_->weight(pos), cpu_device_type);
+        set_weight_or_die(wq, {dim, dim}, raw_model_data_->weight(pos));
         layers().wq_layers_.push_back(wq);
         pos += dim * dim + wq->get_scale_num() * sizeof(float);
     }
@@ -343,7 +348,7 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         auto wk = std::make_shared<op::MatmulLayer>(device_type_, config_->kv_dim_, dim, true);
         wk->set_group_size(group_size_);
-        wk->set_weight(0, {config_->kv_dim_, dim}, raw_model_data_->weight(pos), cpu_device_type);
+        set_weight_or_die(wk, {config_->kv_dim_, dim}, raw_model_data_->weight(pos));
         layers().wk_layers_.push_back(wk);
         pos += config_->kv_dim_ * dim + wk->get_scale_num() * sizeof(float);
     }
@@ -351,7 +356,7 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         auto wv = std::make_shared<op::MatmulLayer>(device_type_, config_->kv_dim_, dim, true);
         wv->set_group_size(group_size_);
-        wv->set_weight(0, {config_->kv_dim_, dim}, raw_model_data_->weight(pos), cpu_device_type);
+        set_weight_or_die(wv, {config_->kv_dim_, dim}, raw_model_data_->weight(pos));
         layers().wv_layers_.push_back(wv);
         pos += config_->kv_dim_ * dim + wv->get_scale_num() * sizeof(float);
     }
@@ -359,7 +364,7 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         auto wo = std::make_shared<op::MatmulLayer>(device_type_, dim, dim, true);
         wo->set_group_size(group_size_);
-        wo->set_weight(0, {dim, dim}, raw_model_data_->weight(pos), cpu_device_type);
+        set_weight_or_die(wo, {dim, dim}, raw_model_data_->weight(pos));
         layers().wo_layers_.push_back(wo);
         pos += dim * dim + wo->get_scale_num() * sizeof(float);
     }
@@ -367,7 +372,7 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         auto w1 = std::make_shared<op::MatmulLayer>(device_type_, hidden_dim, dim, true);
         w1->set_group_size(group_size_);
-        w1->set_weight(0, {hidden_dim, dim}, raw_model_data_->weight(pos), cpu_device_type);
+        set_weight_or_die(w1, {hidden_dim, dim}, raw_model_data_->weight(pos));
         layers().w1_layers_.push_back(w1);
         pos += dim * hidden_dim + w1->get_scale_num() * sizeof(float);
     }
@@ -375,7 +380,7 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         auto w2 = std::make_shared<op::MatmulLayer>(device_type_, dim, hidden_dim, true);
         w2->set_group_size(group_size_);
-        w2->set_weight(0, {dim, hidden_dim}, raw_model_data_->weight(pos), cpu_device_type);
+        set_weight_or_die(w2, {dim, hidden_dim}, raw_model_data_->weight(pos));
         layers().w2_layers_.push_back(w2);
         pos += dim * hidden_dim + w2->get_scale_num() * sizeof(float);
     }
@@ -383,7 +388,7 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
     for (int32_t i = 0; i < config_->layer_num_; ++i) {
         auto w3 = std::make_shared<op::MatmulLayer>(device_type_, hidden_dim, dim, true);
         w3->set_group_size(group_size_);
-        w3->set_weight(0, {hidden_dim, dim}, raw_model_data_->weight(pos), cpu_device_type);
+        set_weight_or_die(w3, {hidden_dim, dim}, raw_model_data_->weight(pos));
         layers().w3_layers_.push_back(w3);
         pos += dim * hidden_dim + w3->get_scale_num() * sizeof(float);
     }
@@ -394,27 +399,24 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
     if (cls_and_embedding.classifier_is_quantized) {
         cls_layer = std::make_shared<op::MatmulLayer>(device_type_, config_->vocab_size_, dim, true);
         cls_layer->set_group_size(group_size_);
-        cls_layer->set_weight(0, {config_->vocab_size_, dim}, cls_and_embedding.classifier_weight,
-                              cpu_device_type);
+        set_weight_or_die(cls_layer, {config_->vocab_size_, dim}, cls_and_embedding.classifier_weight);
         pos += detail::LegacyQuantizedTensorBytes(config_->vocab_size_, dim, group_size_);
     } else {
         cls_layer = std::make_shared<op::MatmulLayer>(device_type_, config_->vocab_size_, dim);
-        cls_layer->set_weight(0, {config_->vocab_size_, dim}, cls_and_embedding.classifier_weight,
-                              cpu_device_type);
+        set_weight_or_die(cls_layer, {config_->vocab_size_, dim}, cls_and_embedding.classifier_weight);
     }
     layers().cls_layer_ = cls_layer;
     auto* weight_ptr =
         reinterpret_cast<float*>(const_cast<void*>(cls_and_embedding.embedding_weight));
     layers().embedding_layer_ = std::make_shared<op::EmbeddingLayer>(
         device_type_, config_->dim_, config_->seq_len_, std::abs(config_->vocab_size_));
-    layers().embedding_layer_->set_weight(0, {std::abs(config_->vocab_size_), dim}, weight_ptr,
-                                          cpu_device_type);
+    set_weight_or_die(layers().embedding_layer_, {std::abs(config_->vocab_size_), dim}, weight_ptr);
     weight_ptr += config_->vocab_size_ * dim;
 
     for (int32_t i = 0; i < 2 * config_->layer_num_ + 1; ++i) {
         auto rms_norm_layer = std::make_shared<op::RmsNormLayer>(device_type_, dim,
                                                                  base::RmsNormEpsilon(model_type_));
-        rms_norm_layer->set_weight(0, {dim}, weight_ptr, cpu_device_type);
+        set_weight_or_die(rms_norm_layer, {dim}, weight_ptr);
         layers().rmsnorm_layers_.push_back(rms_norm_layer);
         weight_ptr += dim;
     }

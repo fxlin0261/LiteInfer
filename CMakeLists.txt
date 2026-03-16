@@ -285,7 +285,6 @@ endif()
 if(KUIPER_ENABLE_BPE_TOKENIZERS)
   target_link_libraries(
     kuiper_runtime PUBLIC
-    absl::base
     re2::re2
     nlohmann_json::nlohmann_json
     kuiper_unordered_dense
