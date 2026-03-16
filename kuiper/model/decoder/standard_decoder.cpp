@@ -45,13 +45,13 @@ base::Status StandardDecoderModel::init(base::DeviceType device_type) {
     device_type_ = device_type;
     if (device_type == DeviceType::kDeviceCUDA) {
         auto cuda_status = detail::InitCudaConfig(cuda_config_);
-        if (!cuda_status) {
+        if (!cuda_status.ok()) {
             return cuda_status;
         }
     }
 
     auto read_status = gen_model_from_file();
-    if (!read_status) {
+    if (!read_status.ok()) {
         return read_status;
     }
 
@@ -65,7 +65,7 @@ base::Status StandardDecoderModel::init(base::DeviceType device_type) {
             detail::InitSinCosCache(model_type_, config_->head_size_, config_->seq_len_,
                                     get_buffer(ModelBufferType::kSinCache),
                                     get_buffer(ModelBufferType::kCosCache), cuda_config_);
-        if (!cache_status) {
+        if (!cache_status.ok()) {
             return cache_status;
         }
     }
@@ -78,7 +78,7 @@ base::Status StandardDecoderModel::predict(const tensor::Tensor& input,
                                            const tensor::Tensor& pos_tensor, bool is_prompt,
                                            int& next) const {
     auto status = forward(input, pos_tensor, next);
-    if (!status) {
+    if (!status.ok()) {
         return status;
     }
     next = post_processing(pos_tensor, is_prompt);
@@ -119,14 +119,11 @@ op::EmbeddingOutput StandardDecoderModel::embedding(const std::vector<int>& toke
         input_tokens.index<int32_t>(i) = tokens.at(i);
     }
 
-    auto input_token_num =
-        tensor::Tensor(base::DataType::kDataTypeInt32, static_cast<int32_t>(tokens.size()));
     LOG_IF(FATAL, !layers().embedding_layer_)
         << "The embedding layer in the decoder model is null pointer.";
-    STATUS_CHECK(
-        layers().embedding_layer_->forward(input_tokens, input_token_num, input_embeddings));
+    STATUS_CHECK(layers().embedding_layer_->forward(input_tokens, input_embeddings));
 
-    return op::EmbeddingOutput(input_tokens, input_embeddings, input_token_num);
+    return op::EmbeddingOutput(input_tokens, input_embeddings, static_cast<int32_t>(tokens.size()));
 }
 
 StandardDecoderLayers& StandardDecoderModel::layers() {
@@ -187,51 +184,51 @@ void StandardDecoderModel::init_mem() {
     tensor::Tensor cos_cache(base::DataType::kDataTypeFp32, config_->head_size_ * config_->seq_len_,
                              true, alloc);
 
-    CHECK(insert_buffer(ModelBufferType::kSinCache, sin_cache));
-    CHECK(insert_buffer(ModelBufferType::kCosCache, cos_cache));
-    CHECK(insert_buffer(ModelBufferType::kInputTokens, input_tokens));
-    CHECK(insert_buffer(ModelBufferType::kInputEmbeddings, input_embeddings));
+    CHECK(insert_buffer(ModelBufferType::kSinCache, sin_cache).ok());
+    CHECK(insert_buffer(ModelBufferType::kCosCache, cos_cache).ok());
+    CHECK(insert_buffer(ModelBufferType::kInputTokens, input_tokens).ok());
+    CHECK(insert_buffer(ModelBufferType::kInputEmbeddings, input_embeddings).ok());
 
     tensor::Tensor rms_output(base::DataType::kDataTypeFp32, residual_dim, true, alloc);
     tensor::Tensor mha_output(base::DataType::kDataTypeFp32, attention_dim, true, alloc);
     tensor::Tensor w2_output(base::DataType::kDataTypeFp32, residual_dim, true, alloc);
     tensor::Tensor ffn_rms_output(base::DataType::kDataTypeFp32, residual_dim, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kOutputRMSNorm, rms_output));
-    CHECK(insert_buffer(ModelBufferType::kOutputMHA, mha_output));
-    CHECK(insert_buffer(ModelBufferType::kW2Output, w2_output));
-    CHECK(insert_buffer(ModelBufferType::kFFNRMSNorm, ffn_rms_output));
+    CHECK(insert_buffer(ModelBufferType::kOutputRMSNorm, rms_output).ok());
+    CHECK(insert_buffer(ModelBufferType::kOutputMHA, mha_output).ok());
+    CHECK(insert_buffer(ModelBufferType::kW2Output, w2_output).ok());
+    CHECK(insert_buffer(ModelBufferType::kFFNRMSNorm, ffn_rms_output).ok());
 
     tensor::Tensor w1_output(base::DataType::kDataTypeFp32, ffn_dim, true, alloc);
     tensor::Tensor w3_output(base::DataType::kDataTypeFp32, ffn_dim, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kW1Output, w1_output));
-    CHECK(insert_buffer(ModelBufferType::kW3Output, w3_output));
+    CHECK(insert_buffer(ModelBufferType::kW1Output, w1_output).ok());
+    CHECK(insert_buffer(ModelBufferType::kW3Output, w3_output).ok());
 
     tensor::Tensor key_cache(base::DataType::kDataTypeFp32, config_->layer_num_, config_->seq_len_,
                              config_->kv_dim_, true, alloc);
     tensor::Tensor value_cache(base::DataType::kDataTypeFp32, config_->layer_num_,
                                config_->seq_len_, config_->kv_dim_, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kKeyCache, key_cache));
-    CHECK(insert_buffer(ModelBufferType::kValueCache, value_cache));
+    CHECK(insert_buffer(ModelBufferType::kKeyCache, key_cache).ok());
+    CHECK(insert_buffer(ModelBufferType::kValueCache, value_cache).ok());
 
     tensor::Tensor query(base::DataType::kDataTypeFp32, attention_dim, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kQuery, query));
+    CHECK(insert_buffer(ModelBufferType::kQuery, query).ok());
 
     tensor::Tensor pos_tensor(base::DataType::kDataTypeInt32, 1, true, alloc_cpu);
-    CHECK(insert_buffer(ModelBufferType::kInputPos, pos_tensor));
+    CHECK(insert_buffer(ModelBufferType::kInputPos, pos_tensor).ok());
 
     tensor::Tensor attn(base::DataType::kDataTypeFp32, config_->head_num_, config_->seq_len_, true,
                         alloc);
-    CHECK(insert_buffer(ModelBufferType::kScoreStorage, attn));
+    CHECK(insert_buffer(ModelBufferType::kScoreStorage, attn).ok());
     tensor::Tensor attn_output(base::DataType::kDataTypeFp32, residual_dim, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kAttnOutput, attn_output));
+    CHECK(insert_buffer(ModelBufferType::kAttnOutput, attn_output).ok());
 
     tensor::Tensor forward_output(base::DataType::kDataTypeFp32, config_->vocab_size_, true, alloc);
     if (device_type_ == base::DeviceType::kDeviceCUDA) {
         tensor::Tensor forward_output_cpu(base::DataType::kDataTypeFp32, config_->vocab_size_, true,
                                           alloc_cpu);
-        CHECK(insert_buffer(ModelBufferType::kForwardOutputCPU, forward_output_cpu));
+        CHECK(insert_buffer(ModelBufferType::kForwardOutputCPU, forward_output_cpu).ok());
     }
-    CHECK(insert_buffer(ModelBufferType::kForwardOutput, forward_output));
+    CHECK(insert_buffer(ModelBufferType::kForwardOutput, forward_output).ok());
 }
 
 base::Status StandardDecoderModel::create_layers() {
@@ -242,12 +239,12 @@ base::Status StandardDecoderModel::create_layers() {
 
     base::Status layer_status =
         !is_quant_model_ ? create_param_layers() : create_param_quant_layers();
-    if (!layer_status) {
+    if (!layer_status.ok()) {
         return layer_status;
     }
 
     layer_status = create_nonparam_layers();
-    if (!layer_status) {
+    if (!layer_status.ok()) {
         return layer_status;
     }
 

@@ -73,12 +73,11 @@ public:
                                     static_cast<int32_t>(tokens.size()), true, alloc);
         tensor::Tensor input_embeddings(base::DataType::kDataTypeFp32,
                                         static_cast<int32_t>(tokens.size()), 1, true, alloc);
-        tensor::Tensor input_token_num(base::DataType::kDataTypeInt32,
-                                       static_cast<int32_t>(tokens.size()), true, alloc);
         for (size_t i = 0; i < tokens.size(); ++i) {
             input_tokens.index<int32_t>(static_cast<int64_t>(i)) = tokens[i];
         }
-        return op::EmbeddingOutput(input_tokens, input_embeddings, input_token_num);
+        return op::EmbeddingOutput(input_tokens, input_embeddings,
+                                   static_cast<int32_t>(tokens.size()));
     }
 
     void set_tokenizer_layer_for_test(std::unique_ptr<op::TokenizerLayerBase> layer) {
@@ -116,9 +115,7 @@ private:
 
 tensor::Tensor make_cpu_tensor(base::DataType data_type, const std::vector<int32_t>& dims,
                                void* ptr) {
-    tensor::Tensor tensor(data_type, dims, false, nullptr, ptr);
-    tensor.set_device_type(base::DeviceType::kDeviceCPU);
-    return tensor;
+    return tensor::Tensor::make_external(data_type, dims, ptr, base::DeviceType::kDeviceCPU);
 }
 
 }  // namespace
@@ -135,7 +132,7 @@ TEST(test_model_core, generate_model_infos_populates_derived_fields) {
     config.vocab_size = -32000;
     config.seq_len = 16;
 
-    ASSERT_TRUE(model.generate_model_infos_for_test(config));
+    ASSERT_TRUE(model.generate_model_infos_for_test(config).ok());
     const auto* transformer = model.mutable_config();
     ASSERT_NE(transformer, nullptr);
     EXPECT_EQ(transformer->dim_, 12);
@@ -151,7 +148,7 @@ TEST(test_model_core, generate_model_infos_populates_derived_fields) {
     EXPECT_FALSE(transformer->is_shared_weight_);
 
     config.vocab_size = 32000;
-    ASSERT_TRUE(model.generate_model_infos_for_test(config));
+    ASSERT_TRUE(model.generate_model_infos_for_test(config).ok());
     EXPECT_TRUE(model.mutable_config()->is_shared_weight_);
 }
 
@@ -160,16 +157,16 @@ TEST(test_model_core, insert_buffer_rejects_empty_tensor_and_duplicates) {
 
     tensor::Tensor empty;
     auto status = model.insert_buffer_for_test(model::ModelBufferType::kInputTokens, empty);
-    EXPECT_FALSE(status);
-    EXPECT_EQ(status.get_err_code(), base::StatusCode::kInvalidArgument);
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(status.code(), base::StatusCode::kInvalidArgument);
 
     std::vector<int32_t> token_data{1, 2, 3};
     auto tensor = make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_data.data());
-    ASSERT_TRUE(model.insert_buffer_for_test(model::ModelBufferType::kInputTokens, tensor));
+    ASSERT_TRUE(model.insert_buffer_for_test(model::ModelBufferType::kInputTokens, tensor).ok());
 
     status = model.insert_buffer_for_test(model::ModelBufferType::kInputTokens, tensor);
-    EXPECT_FALSE(status);
-    EXPECT_EQ(status.get_err_code(), base::StatusCode::kKeyValueHasExist);
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(status.code(), base::StatusCode::kAlreadyExists);
 }
 
 TEST(test_model_core, encode_decode_and_sentence_ending_delegate_to_encode_layer) {
@@ -189,13 +186,12 @@ TEST(test_model_core, encode_decode_and_sentence_ending_delegate_to_encode_layer
 TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token) {
     auto run_case = [](base::ModelType model_type, base::TokenizerType tokenizer_type) {
         FakeModel model(model_type, tokenizer_type);
-        ASSERT_TRUE(model.init(base::DeviceType::kDeviceCPU));
+        ASSERT_TRUE(model.init(base::DeviceType::kDeviceCPU).ok());
 
         constexpr int32_t embed_dim = 4;
         model.mutable_config()->dim_ = embed_dim;
 
         std::vector<int32_t> token_ids{11, 22, 33};
-        std::vector<int32_t> token_count_placeholder{0, 0, 0};
         std::vector<float> embedding_data{
             1.f,   2.f,   3.f,   4.f,   //
             10.f,  20.f,  30.f,  40.f,  //
@@ -203,11 +199,10 @@ TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token)
         };
 
         auto input_tokens = make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_ids.data());
-        auto input_token_num =
-            make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_count_placeholder.data());
         auto input_embeddings =
             make_cpu_tensor(base::DataType::kDataTypeFp32, {3, embed_dim}, embedding_data.data());
-        op::EmbeddingOutput embedding_output(input_tokens, input_embeddings, input_token_num);
+        op::EmbeddingOutput embedding_output(input_tokens, input_embeddings,
+                                            static_cast<int32_t>(token_ids.size()));
 
         int32_t pos_value = 2;
         auto pos_tensor = make_cpu_tensor(base::DataType::kDataTypeInt32, {1}, &pos_value);
@@ -231,7 +226,7 @@ TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token)
 
 TEST(test_model_core, slice_kv_cache_returns_tensor_views_into_backing_storage) {
     FakeModel model;
-    ASSERT_TRUE(model.init(base::DeviceType::kDeviceCPU));
+    ASSERT_TRUE(model.init(base::DeviceType::kDeviceCPU).ok());
     model.mutable_config()->seq_len_ = 4;
     model.mutable_config()->kv_dim_ = 3;
 
@@ -242,8 +237,9 @@ TEST(test_model_core, slice_kv_cache_returns_tensor_views_into_backing_storage) 
 
     auto key_tensor = make_cpu_tensor(base::DataType::kDataTypeFp32, {24}, key_cache.data());
     auto value_tensor = make_cpu_tensor(base::DataType::kDataTypeFp32, {24}, value_cache.data());
-    ASSERT_TRUE(model.insert_buffer_for_test(model::ModelBufferType::kKeyCache, key_tensor));
-    ASSERT_TRUE(model.insert_buffer_for_test(model::ModelBufferType::kValueCache, value_tensor));
+    ASSERT_TRUE(model.insert_buffer_for_test(model::ModelBufferType::kKeyCache, key_tensor).ok());
+    ASSERT_TRUE(
+        model.insert_buffer_for_test(model::ModelBufferType::kValueCache, value_tensor).ok());
 
     auto [key_view, value_view] = model.slice_kv_cache(1, 2);
     ASSERT_EQ(key_view.size(), 3U);

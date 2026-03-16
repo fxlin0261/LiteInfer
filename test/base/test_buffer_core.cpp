@@ -33,8 +33,7 @@ TEST(test_buffer, external_cpu_memory_keeps_original_pointer) {
     using namespace base;
 
     float* ptr = new float[32];
-    Buffer buffer(32 * sizeof(float), nullptr, ptr, true);
-    buffer.set_device_type(DeviceType::kDeviceCPU);
+    Buffer buffer(32 * sizeof(float), nullptr, ptr, true, DeviceType::kDeviceCPU);
 
     EXPECT_EQ(buffer.ptr(), ptr);
     EXPECT_EQ(buffer.byte_size(), 32 * sizeof(float));
@@ -84,9 +83,6 @@ TEST(test_buffer, copy_from_cpu_to_cpu_copies_minimum_byte_size) {
     Buffer src(4 * sizeof(float), alloc);
     Buffer dst(2 * sizeof(float), alloc);
 
-    src.set_device_type(DeviceType::kDeviceCPU);
-    dst.set_device_type(DeviceType::kDeviceCPU);
-
     auto* src_ptr = static_cast<float*>(src.ptr());
     auto* dst_ptr = static_cast<float*>(dst.ptr());
     src_ptr[0] = 1.f;
@@ -118,8 +114,7 @@ TEST(test_buffer, copy_from_cpu_to_cuda_works_with_external_source) {
         src_ptr[i] = static_cast<float>(i);
     }
 
-    Buffer src(size * sizeof(float), nullptr, src_ptr, true);
-    src.set_device_type(DeviceType::kDeviceCPU);
+    Buffer src(size * sizeof(float), nullptr, src_ptr, true, DeviceType::kDeviceCPU);
 
     Buffer dst(size * sizeof(float), alloc_cu);
     ASSERT_EQ(dst.device_type(), DeviceType::kDeviceCUDA);

@@ -15,7 +15,8 @@ public:
     explicit Buffer() = default;
 
     explicit Buffer(size_t byte_size, std::shared_ptr<DeviceAllocator> allocator = nullptr,
-                    void* ptr = nullptr, bool use_external = false);
+                    void* ptr = nullptr, bool use_external = false,
+                    DeviceType device_type = DeviceType::kDeviceUnknown);
 
     virtual ~Buffer();
 

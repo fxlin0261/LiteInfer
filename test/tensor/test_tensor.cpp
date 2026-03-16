@@ -145,6 +145,34 @@ TEST(test_tensor, init2) {
     ASSERT_EQ(t1.is_empty(), true);
 }
 
+// 看多维 tensor 在 need_alloc=false 时不会因为传了 allocator 就偷偷分配
+TEST(test_tensor, multidim_init_without_need_alloc_stays_empty) {
+    using namespace base;
+    auto alloc_cpu = CPUDeviceAllocatorFactory::get_instance();
+
+    tensor::Tensor t(base::DataType::kDataTypeFp32, 2, 3, false, alloc_cpu);
+
+    ASSERT_TRUE(t.is_empty());
+    ASSERT_EQ(t.ptr<float>(), nullptr);
+    ASSERT_EQ(t.size(), 6);
+    ASSERT_EQ(t.dims_size(), 2);
+}
+
+// 看带 allocator 的外部 view 会不会保留原始指针和设备类型
+TEST(test_tensor, external_view_with_allocator_keeps_pointer_and_device_type) {
+    using namespace base;
+    auto alloc_cpu = CPUDeviceAllocatorFactory::get_instance();
+
+    float data[6] = {1.f, 2.f, 3.f, 4.f, 5.f, 6.f};
+    tensor::Tensor t(base::DataType::kDataTypeFp32, std::vector<int32_t>{2, 3}, false, alloc_cpu,
+                     data);
+
+    ASSERT_FALSE(t.is_empty());
+    ASSERT_EQ(t.ptr<float>(), data);
+    ASSERT_EQ(t.device_type(), DeviceType::kDeviceCPU);
+    ASSERT_EQ(t.index<float>(5), 6.f);
+}
+
 // 看把外部 buffer 塞进 tensor 后，tensor 能不能正常接管
 TEST(test_tensor, assign1) {
     using namespace base;
@@ -158,8 +186,7 @@ TEST(test_tensor, assign1) {
         ptr[i] = float(i);
     }
     std::shared_ptr<Buffer> buffer =
-        std::make_shared<Buffer>(size * sizeof(float), nullptr, ptr, true);
-    buffer->set_device_type(DeviceType::kDeviceCPU);
+        std::make_shared<Buffer>(size * sizeof(float), nullptr, ptr, true, DeviceType::kDeviceCPU);
 
     ASSERT_EQ(t1_cpu.assign(buffer), true);
     ASSERT_EQ(t1_cpu.is_empty(), false);
@@ -186,6 +213,25 @@ TEST(test_tensor, clone_cpu_is_deep_copy) {
     ASSERT_EQ(src.index<float>(1), 1.f);
     ASSERT_EQ(cloned.index<float>(0), 0.f);
     ASSERT_EQ(cloned.index<float>(1), -3.f);
+}
+
+// 看 external CPU tensor clone 之后会不会自动分配自有内存，而不是依赖原 view 的 allocator
+TEST(test_tensor, clone_external_cpu_tensor_is_supported) {
+    using namespace base;
+    float data[4] = {1.f, 2.f, 3.f, 4.f};
+
+    tensor::Tensor src = tensor::Tensor::make_external(base::DataType::kDataTypeFp32, {4}, data,
+                                                       DeviceType::kDeviceCPU);
+    tensor::Tensor cloned = src.clone();
+
+    ASSERT_NE(cloned.ptr<float>(), data);
+    ASSERT_EQ(cloned.device_type(), DeviceType::kDeviceCPU);
+    ASSERT_EQ(cloned.index<float>(0), 1.f);
+    ASSERT_EQ(cloned.index<float>(3), 4.f);
+
+    data[0] = 99.f;
+    ASSERT_EQ(src.index<float>(0), 99.f);
+    ASSERT_EQ(cloned.index<float>(0), 1.f);
 }
 
 // 看 reshape 变大时，前面原有的数据还在不在
@@ -275,8 +321,8 @@ TEST(test_tensor, assign_accepts_same_size_external_buffer) {
         ptr[i] = static_cast<float>(i * 2);
     }
 
-    auto buffer = std::make_shared<Buffer>(8 * sizeof(float), nullptr, ptr, true);
-    buffer->set_device_type(DeviceType::kDeviceCPU);
+    auto buffer =
+        std::make_shared<Buffer>(8 * sizeof(float), nullptr, ptr, true, DeviceType::kDeviceCPU);
 
     ASSERT_TRUE(t.assign(buffer));
     for (int i = 0; i < 8; ++i) {

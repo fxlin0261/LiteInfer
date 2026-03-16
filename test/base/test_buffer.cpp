@@ -26,8 +26,7 @@ TEST(test_buffer, allocate) {
 TEST(test_buffer, use_external) {
     using namespace base;
     float* ptr = new float[32];
-    Buffer buffer(32 * sizeof(float), nullptr, ptr, true);
-    buffer.set_device_type(DeviceType::kDeviceCPU);
+    Buffer buffer(32 * sizeof(float), nullptr, ptr, true, DeviceType::kDeviceCPU);
 
     ASSERT_EQ(buffer.ptr(), ptr);
     ASSERT_EQ(buffer.byte_size(), 32 * sizeof(float));
@@ -75,8 +74,6 @@ TEST(test_buffer, cpu_memcpy_copies_minimum_byte_size) {
 
     Buffer src(4 * sizeof(float), alloc);
     Buffer dst(2 * sizeof(float), alloc);
-    src.set_device_type(DeviceType::kDeviceCPU);
-    dst.set_device_type(DeviceType::kDeviceCPU);
 
     auto* src_ptr = static_cast<float*>(src.ptr());
     auto* dst_ptr = static_cast<float*>(dst.ptr());
@@ -107,8 +104,7 @@ TEST(test_buffer, cuda_memcpy1) {
     for (int i = 0; i < size; ++i) {
         ptr[i] = float(i);
     }
-    Buffer buffer(size * sizeof(float), nullptr, ptr, true);
-    buffer.set_device_type(DeviceType::kDeviceCPU);
+    Buffer buffer(size * sizeof(float), nullptr, ptr, true, DeviceType::kDeviceCPU);
     ASSERT_TRUE(buffer.is_external());
 
     Buffer cu_buffer(size * sizeof(float), alloc_cu);

@@ -6,9 +6,7 @@ namespace {
 
 tensor::Tensor make_cpu_tensor(base::DataType data_type, const std::vector<int32_t>& dims,
                                void* ptr) {
-    tensor::Tensor tensor(data_type, dims, false, nullptr, ptr);
-    tensor.set_device_type(base::DeviceType::kDeviceCPU);
-    return tensor;
+    return tensor::Tensor::make_external(data_type, dims, ptr, base::DeviceType::kDeviceCPU);
 }
 
 }  // namespace
@@ -29,7 +27,7 @@ TEST(test_mha_cpu, forward_with_single_position_returns_cached_value_vector) {
     auto value_cache = make_cpu_tensor(base::DataType::kDataTypeFp32, {2}, value_cache_data.data());
     auto output = make_cpu_tensor(base::DataType::kDataTypeFp32, {2}, output_data.data());
 
-    ASSERT_TRUE(layer.forward(query, score, key_cache, value_cache, output));
+    ASSERT_TRUE(layer.forward(query, score, key_cache, value_cache, output).ok());
     EXPECT_FLOAT_EQ(score.index<float>(0), 1.f);
     EXPECT_FLOAT_EQ(output.index<float>(0), 5.f);
     EXPECT_FLOAT_EQ(output.index<float>(1), 6.f);
@@ -51,6 +49,6 @@ TEST(test_mha_cpu, forward_fails_when_output_tensor_is_empty) {
     tensor::Tensor empty_output;
 
     const auto status = layer.forward(query, score, key_cache, value_cache, empty_output);
-    EXPECT_FALSE(status);
-    EXPECT_EQ(status.get_err_code(), base::StatusCode::kInvalidArgument);
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(status.code(), base::StatusCode::kInvalidArgument);
 }

@@ -67,8 +67,9 @@ int main(int argc, char* argv[]) {
 
     model::Llama3Model model(tokenizer_path, checkpoint_path, false);
     auto init_status = model.init(base::DefaultDeviceType());
-    if (!init_status) {
-        LOG(FATAL) << "The model init failed, the error code is: " << init_status.get_err_code();
+    if (!init_status.ok()) {
+        LOG(FATAL) << "The model init failed, code: " << static_cast<int>(init_status.code())
+                   << ", message: " << init_status.message();
     }
     const std::string& sentence = "hello";
 

@@ -157,13 +157,13 @@ base::Status LlamaModelBase::init(base::DeviceType device_type) {
     device_type_ = device_type;
     if (device_type == DeviceType::kDeviceCUDA) {
         auto cuda_status = init_cuda_config(cuda_config_);
-        if (!cuda_status) {
+        if (!cuda_status.ok()) {
             return cuda_status;
         }
     }
     // 这一步是“正式加载模型”的入口。它会从模型文件里解析配置、权重，并创建各层对象
     Status read_status = gen_model_from_file();
-    if (!read_status) {
+    if (!read_status.ok()) {
         return read_status;
     }
     // 这一步是分配运行时缓冲区，不是读权重。权重是模型参数，已经由前面的 gen_model_from_file() 处理
@@ -183,7 +183,7 @@ base::Status LlamaModelBase::init(base::DeviceType device_type) {
             init_sin_cos_cache(model_type_, config_->head_size_, config_->seq_len_,
                                get_buffer(ModelBufferType::kSinCache),
                                get_buffer(ModelBufferType::kCosCache), cuda_config_);
-        if (!cache_status) {
+        if (!cache_status.ok()) {
             return cache_status;
         }
     }
@@ -511,23 +511,23 @@ void LlamaModelBase::init_mem() {
     tensor::Tensor cos_cache(base::DataType::kDataTypeFp32, config_->head_size_ * config_->seq_len_,
                              true, alloc);
 
-    CHECK(insert_buffer(ModelBufferType::kSinCache, sin_cache));
-    CHECK(insert_buffer(ModelBufferType::kCosCache, cos_cache));
+    CHECK(insert_buffer(ModelBufferType::kSinCache, sin_cache).ok());
+    CHECK(insert_buffer(ModelBufferType::kCosCache, cos_cache).ok());
 
-    CHECK(insert_buffer(ModelBufferType::kInputTokens, input_tokens));
-    CHECK(insert_buffer(ModelBufferType::kInputEmbeddings, input_embeddings));
+    CHECK(insert_buffer(ModelBufferType::kInputTokens, input_tokens).ok());
+    CHECK(insert_buffer(ModelBufferType::kInputEmbeddings, input_embeddings).ok());
 
     tensor::Tensor rms_output(base::DataType::kDataTypeFp32, config_->dim_, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kOutputRMSNorm, rms_output));
-    CHECK(insert_buffer(ModelBufferType::kOutputMHA, rms_output));
-    CHECK(insert_buffer(ModelBufferType::kW2Output, rms_output));
-    CHECK(insert_buffer(ModelBufferType::kFFNRMSNorm, rms_output));
+    CHECK(insert_buffer(ModelBufferType::kOutputRMSNorm, rms_output).ok());
+    CHECK(insert_buffer(ModelBufferType::kOutputMHA, rms_output).ok());
+    CHECK(insert_buffer(ModelBufferType::kW2Output, rms_output).ok());
+    CHECK(insert_buffer(ModelBufferType::kFFNRMSNorm, rms_output).ok());
 
     tensor::Tensor w1_output(base::DataType::kDataTypeFp32, config_->hidden_dim_, true, alloc);
     tensor::Tensor w3_output(base::DataType::kDataTypeFp32, config_->hidden_dim_, true, alloc);
 
-    CHECK(insert_buffer(ModelBufferType::kW1Output, w1_output));
-    CHECK(insert_buffer(ModelBufferType::kW3Output, w3_output));
+    CHECK(insert_buffer(ModelBufferType::kW1Output, w1_output).ok());
+    CHECK(insert_buffer(ModelBufferType::kW3Output, w3_output).ok());
 
     // kv cache
     tensor::Tensor key_cache(base::DataType::kDataTypeFp32, config_->layer_num_, config_->seq_len_,
@@ -535,32 +535,32 @@ void LlamaModelBase::init_mem() {
     tensor::Tensor value_cache(base::DataType::kDataTypeFp32, config_->layer_num_,
                                config_->seq_len_, config_->kv_dim_, true, alloc);
 
-    CHECK(insert_buffer(ModelBufferType::kKeyCache, key_cache));
-    CHECK(insert_buffer(ModelBufferType::kValueCache, value_cache));
+    CHECK(insert_buffer(ModelBufferType::kKeyCache, key_cache).ok());
+    CHECK(insert_buffer(ModelBufferType::kValueCache, value_cache).ok());
 
     // Wq query output
     tensor::Tensor query(base::DataType::kDataTypeFp32, config_->dim_, true, alloc);
-    CHECK(insert_buffer(ModelBufferType::kQuery, query));
+    CHECK(insert_buffer(ModelBufferType::kQuery, query).ok());
 
     // Pos tensor
     tensor::Tensor pos_tensor(base::DataType::kDataTypeInt32, 1, true, alloc_cpu);
-    CHECK(insert_buffer(ModelBufferType::kInputPos, pos_tensor));
+    CHECK(insert_buffer(ModelBufferType::kInputPos, pos_tensor).ok());
 
     // Attention output
     tensor::Tensor attn(base::DataType::kDataTypeFp32, config_->head_num_, config_->seq_len_, true,
                         alloc);
-    CHECK(insert_buffer(ModelBufferType::kScoreStorage, attn));
-    CHECK(insert_buffer(ModelBufferType::kAttnOutput, query));
+    CHECK(insert_buffer(ModelBufferType::kScoreStorage, attn).ok());
+    CHECK(insert_buffer(ModelBufferType::kAttnOutput, query).ok());
 
     // final forward output
     tensor::Tensor forward_output(base::DataType::kDataTypeFp32, config_->vocab_size_, true, alloc);
     if (device_type_ == base::DeviceType::kDeviceCUDA) {
         tensor::Tensor forward_output_cpu(base::DataType::kDataTypeFp32, config_->vocab_size_, true,
                                           alloc_cpu);
-        CHECK(insert_buffer(ModelBufferType::kForwardOutputCPU, forward_output_cpu));
+        CHECK(insert_buffer(ModelBufferType::kForwardOutputCPU, forward_output_cpu).ok());
     }
 
-    CHECK(insert_buffer(ModelBufferType::kForwardOutput, forward_output));
+    CHECK(insert_buffer(ModelBufferType::kForwardOutput, forward_output).ok());
 }
 
 base::Status LlamaModelBase::create_layers() {
@@ -569,18 +569,18 @@ base::Status LlamaModelBase::create_layers() {
         llama_layers_ = std::make_unique<LlamaLayers>();
     }
 
-    base::Status layer_status;
+    base::Status layer_status = base::error::Success();
     if (!is_quant_model_) {
         layer_status = create_param_layers();
     } else {
         layer_status = create_param_quant_layers();
     }
-    if (!layer_status) {
+    if (!layer_status.ok()) {
         return layer_status;
     }
 
     layer_status = create_nonparam_layers();
-    if (!layer_status) {
+    if (!layer_status.ok()) {
         return layer_status;
     }
 
@@ -658,14 +658,11 @@ op::EmbeddingOutput LlamaModelBase::embedding(const std::vector<int>& tokens) co
     for (int32_t i = 0; i < tokens.size(); ++i) {
         input_tokens.index<int32_t>(i) = tokens.at(i);
     }
-    auto input_token_num =
-        tensor::Tensor(base::DataType::kDataTypeInt32, static_cast<int32_t>(tokens.size()));
     LOG_IF(FATAL, !llama_layers_->embedding_layer_)
         << "The embedding layer in the Llama model is null pointer.";
-    STATUS_CHECK(
-        llama_layers_->embedding_layer_->forward(input_tokens, input_token_num, input_embeddings));
+    STATUS_CHECK(llama_layers_->embedding_layer_->forward(input_tokens, input_embeddings));
 
-    op::EmbeddingOutput output(input_tokens, input_embeddings, input_token_num);
+    op::EmbeddingOutput output(input_tokens, input_embeddings, static_cast<int32_t>(tokens.size()));
     return output;
 }
 
@@ -724,7 +721,7 @@ base::Status LlamaModelBase::predict(const tensor::Tensor& input, const tensor::
                                      bool is_prompt, int& next) const {
     // 执行一步解码；非 prompt 阶段会采样下一个 token。
     auto status = forward(input, pos_tensor, next);
-    if (!status) {
+    if (!status.ok()) {
         return status;
     }
     next = post_processing(pos_tensor, is_prompt);

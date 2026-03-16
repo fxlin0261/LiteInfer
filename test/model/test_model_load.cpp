@@ -91,11 +91,13 @@ TEST(test_load, create_matmul) {
     for (int i = 0; i < config.dim; ++i) {
         out[i] = 0.f;
     }
-    tensor::Tensor tensor(base::DataType::kDataTypeFp32, config.hidden_dim, false, nullptr, in);
-    tensor.set_device_type(base::DeviceType::kDeviceCPU);
+    tensor::Tensor tensor = tensor::Tensor::make_external(base::DataType::kDataTypeFp32,
+                                                          {config.hidden_dim}, in,
+                                                          base::DeviceType::kDeviceCPU);
 
-    tensor::Tensor out_tensor(base::DataType::kDataTypeFp32, config.dim, false, nullptr, out);
-    out_tensor.set_device_type(base::DeviceType::kDeviceCPU);
+    tensor::Tensor out_tensor = tensor::Tensor::make_external(base::DataType::kDataTypeFp32,
+                                                              {config.dim}, out,
+                                                              base::DeviceType::kDeviceCPU);
 
     wq->set_input(0, tensor);
     wq->set_output(0, out_tensor);

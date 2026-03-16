@@ -52,7 +52,7 @@ TEST(test_llama_model, cpu1) {
     }
 
     const auto status = model->init(base::DeviceType::kDeviceCPU);
-    ASSERT_TRUE(static_cast<bool>(status));
+    ASSERT_TRUE(status.ok());
 
     const auto tokens = model->encode("Hi");
     ASSERT_FALSE(tokens.empty());

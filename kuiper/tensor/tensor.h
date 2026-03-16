@@ -30,6 +30,9 @@ public:
     explicit Tensor(base::DataType data_type, std::vector<int32_t> dims, bool need_alloc = false,
                     std::shared_ptr<base::DeviceAllocator> alloc = nullptr, void* ptr = nullptr);
 
+    static Tensor make_external(base::DataType data_type, std::vector<int32_t> dims, void* ptr,
+                                base::DeviceType device_type = base::DeviceType::kDeviceUnknown);
+
     void to_cpu();
 
     void to_cuda(cudaStream_t stream = nullptr);
@@ -37,7 +40,8 @@ public:
     bool is_empty() const;
 
     void init_buffer(std::shared_ptr<base::DeviceAllocator> alloc, base::DataType data_type,
-                     bool need_alloc, void* ptr);
+                     bool need_alloc, void* ptr,
+                     base::DeviceType device_type = base::DeviceType::kDeviceUnknown);
 
     template <typename T>
     T* ptr();

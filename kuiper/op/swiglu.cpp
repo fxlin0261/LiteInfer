@@ -10,18 +10,18 @@ SwiGLULayer::SwiGLULayer(base::DeviceType device_type, int32_t hidden_dim)
 }
 
 base::Status SwiGLULayer::check() const {
-    base::Status status;
+    base::Status status = base::error::Success();
     const int32_t input_tensor_num = 2;
     for (int32_t i = 0; i < input_tensor_num; ++i) {
         status = check_tensor_with_dim(get_input(0), device_type_, data_type_, hidden_dim_);
-        if (!status) {
+        if (!status.ok()) {
             LOG(ERROR) << "The input tensor " << std::to_string(i) << " error in the swiglu layer.";
             return status;
         }
     }
 
     status = check_tensor_with_dim(get_output(0), device_type_, data_type_, hidden_dim_);
-    if (!status) {
+    if (!status.ok()) {
         LOG(ERROR) << "The output tensor error in the swiglu layer.";
         return status;
     }
@@ -30,7 +30,7 @@ base::Status SwiGLULayer::check() const {
 
 base::Status SwiGLULayer::forward() {
     auto status = check();
-    if (!status) {
+    if (!status.ok()) {
         return status;
     }
     auto input1 = this->get_input(0);

@@ -90,6 +90,13 @@ if(USE_CPM)
   )
 
   CPMAddPackage(
+    NAME absl
+    GITHUB_REPOSITORY abseil/abseil-cpp
+    GIT_TAG 20240722.0
+    OPTIONS "BUILD_TESTING Off" "ABSL_PROPAGATE_CXX_STD ON" "ABSL_ENABLE_INSTALL ON"
+  )
+
+  CPMAddPackage(
     NAME Armadillo
     GITLAB_REPOSITORY conradsnicta/armadillo-code
     GIT_TAG 14.0.1
@@ -102,13 +109,6 @@ if(USE_CPM)
   )
 
   if(KUIPER_ENABLE_BPE_TOKENIZERS)
-    CPMAddPackage(
-      NAME absl
-      GITHUB_REPOSITORY abseil/abseil-cpp
-      GIT_TAG 20240722.0
-      OPTIONS "BUILD_TESTING Off" "ABSL_PROPAGATE_CXX_STD ON" "ABSL_ENABLE_INSTALL ON"
-    )
-
     CPMAddPackage(
       NAME re2
       GITHUB_REPOSITORY google/re2
@@ -195,11 +195,11 @@ if(NOT TARGET sentencepiece::sentencepiece
   endif()
 endif()
 
-if(KUIPER_ENABLE_BPE_TOKENIZERS)
-  if(NOT TARGET absl::base)
-    find_package(absl REQUIRED)
-  endif()
+if(NOT TARGET absl::status)
+  find_package(absl REQUIRED)
+endif()
 
+if(KUIPER_ENABLE_BPE_TOKENIZERS)
   if(NOT TARGET re2::re2)
     find_package(re2 REQUIRED)
   endif()
@@ -272,7 +272,7 @@ add_library(kuiper::runtime ALIAS kuiper_runtime)
 
 target_compile_features(kuiper_runtime PUBLIC cxx_std_17)
 target_include_directories(kuiper_runtime PUBLIC "${PROJECT_SOURCE_DIR}/kuiper")
-target_link_libraries(kuiper_runtime PUBLIC glog::glog kuiper_armadillo kuiper_sentencepiece)
+target_link_libraries(kuiper_runtime PUBLIC glog::glog absl::status kuiper_armadillo kuiper_sentencepiece)
 
 if(KUIPER_WITH_CUDA)
   target_link_libraries(kuiper_runtime PUBLIC ${KUIPER_CUDART_TARGET})

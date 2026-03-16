@@ -18,21 +18,21 @@ MatmulLayer::MatmulLayer(base::DeviceType device_type, int32_t dim0, int32_t dim
 
 base::Status MatmulLayer::check() const {
     auto status = check_tensor_with_dim(get_input(0), device_type_, data_type_, dim1_);
-    if (!status) {
+    if (!status.ok()) {
         LOG(ERROR) << "The input tensor error in the matmul layer.";
         return status;
     }
 
     if (!is_quant_layer_) {
         status = check_tensor_with_dim(get_weight(0), device_type_, data_type_, dim0_, dim1_);
-        if (!status) {
+        if (!status.ok()) {
             LOG(ERROR) << "The weight tensor error in the matmul layer.";
             return status;
         }
     } else {
         status = check_tensor_with_dim(get_weight(0), device_type_, base::DataType::kDataTypeInt8,
                                        dim0_, dim1_);
-        if (!status) {
+        if (!status.ok()) {
             LOG(ERROR) << "The weight tensor error in the matmul layer.";
             return status;
         }
@@ -41,14 +41,14 @@ base::Status MatmulLayer::check() const {
     if (is_quant_layer_) {
         status = check_tensor_with_dim(scales_, device_type_, base::DataType::kDataTypeFp32,
                                        scales_.size());
-        if (!status) {
+        if (!status.ok()) {
             LOG(ERROR) << "The scale tensor error in the matmul layer.";
             return status;
         }
     }
 
     status = check_tensor_with_dim(get_output(0), device_type_, data_type_, dim0_);
-    if (!status) {
+    if (!status.ok()) {
         LOG(ERROR) << "The output tensor error in the matmul layer.";
         return status;
     }
@@ -57,7 +57,7 @@ base::Status MatmulLayer::check() const {
 
 base::Status MatmulLayer::forward() {
     auto status = check();
-    if (!status) {
+    if (!status.ok()) {
         return status;
     }
     if (device_type_ == base::DeviceType::kDeviceCUDA) {
@@ -87,22 +87,17 @@ base::Status MatmulLayer::set_bias(int32_t idx, int32_t& dim, const void* bias_p
     CHECK_NE(bias_ptr, nullptr);
 
     size_t size = dim * sizeof(float);
-    std::shared_ptr<base::Buffer> buffer =
-        std::make_shared<base::Buffer>(size, nullptr, const_cast<void*>(bias_ptr), true);
-    if (device_type != base::DeviceType::kDeviceUnknown) {
-        buffer->set_device_type(device_type);
-    }
+    std::shared_ptr<base::Buffer> buffer = std::make_shared<base::Buffer>(
+        size, nullptr, const_cast<void*>(bias_ptr), true, device_type);
 
     if (!is_quant_layer_) {
         tensor::Tensor bias(base::DataType::kDataTypeFp32, dim);
-        bias.set_device_type(device_type);
         CHECK(bias.assign(buffer));
         // LOG(INFO) << "bias:" << bias.index<float>(0);
         bias_.at(idx) = bias;
     } else {
         // is quant layer
         tensor::Tensor bias(base::DataType::kDataTypeInt8, dim);
-        bias.set_device_type(device_type);
         CHECK(bias.assign(buffer));
         bias_.at(idx) = bias;
 
@@ -110,9 +105,12 @@ base::Status MatmulLayer::set_bias(int32_t idx, int32_t& dim, const void* bias_p
         CHECK(bias_size % group_size_ == 0);
 
         int32_t scale_nums = bias_size / group_size_;
-        scales_ = tensor::Tensor{base::DataType::kDataTypeFp32, scale_nums, false, nullptr,
-                                 reinterpret_cast<float*>((int8_t*)bias_ptr + bias_size)};
-        scales_.set_device_type(device_type);
+        auto scale_buffer = std::make_shared<base::Buffer>(
+            scale_nums * sizeof(float), nullptr,
+            reinterpret_cast<float*>((int8_t*)bias_ptr + bias_size), true, device_type);
+        tensor::Tensor scales(base::DataType::kDataTypeFp32, scale_nums);
+        CHECK(scales.assign(scale_buffer));
+        scales_ = scales;
     }
 
     return base::error::Success();

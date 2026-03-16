@@ -16,7 +16,7 @@ RoPELayer::RoPELayer(base::DeviceType device_type, base::ModelType model_type, i
 
 base::Status RoPELayer::forward() {
     base::Status status = check();
-    if (!status) {
+    if (!status.ok()) {
         return status;
     }
 
@@ -40,19 +40,19 @@ base::Status RoPELayer::check() const {
     // pos tensor
     auto status = check_tensor_with_dim(get_input(2), base::DeviceType::kDeviceCPU,
                                         base::DataType::kDataTypeInt32, 1);
-    if (!status) {
+    if (!status.ok()) {
         LOG(ERROR) << "The input tensor 2 error in the add layer.";
         return status;
     }
 
     status = check_tensor_with_dim(get_input(1), device_type_, data_type_, kv_dim_);
-    if (!status) {
+    if (!status.ok()) {
         LOG(ERROR) << "The input tensor 1 error in the add layer.";
         return status;
     }
 
     status = check_tensor_with_dim(get_input(0), device_type_, data_type_, dim_);
-    if (!status) {
+    if (!status.ok()) {
         LOG(ERROR) << "The input tensor 0 error in the add layer.";
         return status;
     }

@@ -11,21 +11,21 @@ base::Status VecAddLayer::check() const {
     tensor::Tensor input1 = this->get_input(0);
     tensor::Tensor input2 = this->get_input(1);
     int32_t size = input1.size();
-    base::Status status;
+    base::Status status = base::error::Success();
     status = check_tensor_with_dim(input1, device_type_, data_type_, size);
-    if (!status) {
+    if (!status.ok()) {
         LOG(ERROR) << "The input tensor 1 error in the add layer.";
         return status;
     }
 
     status = check_tensor_with_dim(input2, device_type_, data_type_, size);
-    if (!status) {
+    if (!status.ok()) {
         LOG(ERROR) << "The input tensor 2 error in the add layer.";
         return status;
     }
 
     status = check_tensor_with_dim(get_output(0), device_type_, data_type_, size);
-    if (!status) {
+    if (!status.ok()) {
         LOG(ERROR) << "The output tensor error in the add layer.";
         return status;
     }
@@ -34,7 +34,7 @@ base::Status VecAddLayer::check() const {
 
 base::Status VecAddLayer::forward() {
     auto status = this->check();
-    if (!status) {
+    if (!status.ok()) {
         return status;
     }
     auto input1 = this->get_input(0);

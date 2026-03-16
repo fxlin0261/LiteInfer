@@ -73,7 +73,7 @@ base::Status Model::read_model_file() {
     }
 
     auto gen_status = generate_model_infos(config);
-    if (!gen_status) {
+    if (!gen_status.ok()) {
         return gen_status;
     }
 
@@ -162,18 +162,18 @@ base::Status Model::gen_model_from_file() {
 
     // 先初始化 tokenizer，再加载依赖词表信息的模型数据。
     auto create_tokenizer_status = create_tokenizer_layer();
-    if (!create_tokenizer_status) {
+    if (!create_tokenizer_status.ok()) {
         LOG(ERROR) << "Create the tokenizer layer failed!";
         return create_tokenizer_status;
     }
     // mmap
     auto mmap_status = read_model_file();
-    if (!mmap_status) {
+    if (!mmap_status.ok()) {
         LOG(ERROR) << "Handle model file " << model_path_ << " failed!";
         return mmap_status;
     }
     auto layer_create_status = create_layers();
-    if (!layer_create_status) {
+    if (!layer_create_status.ok()) {
         LOG(ERROR) << "Create layers for the model file " << model_path_ << " failed!";
         return layer_create_status;
     }
@@ -215,12 +215,14 @@ std::pair<tensor::Tensor, tensor::Tensor> Model::slice_kv_cache(int32_t layer_id
     float* val_cache_ptr =
         const_cast<float*>(get_buffer(ModelBufferType::kValueCache).ptr<float>(cache_offset));
     // 这里构造出来的 key / val 本质上是：shape 是 [kv_dim] 数据指针直接指向 KV cache 的那段内存
-    tensor::Tensor key(base::DataType::kDataTypeFp32, config_->kv_dim_, false, nullptr,
-                       key_cache_ptr);
-    tensor::Tensor val(base::DataType::kDataTypeFp32, config_->kv_dim_, false, nullptr,
-                       val_cache_ptr);
-    key.set_device_type(device_type_);
-    val.set_device_type(device_type_);
+    auto key_buffer = std::make_shared<base::Buffer>(config_->kv_dim_ * sizeof(float), nullptr,
+                                                     key_cache_ptr, true, device_type_);
+    auto val_buffer = std::make_shared<base::Buffer>(config_->kv_dim_ * sizeof(float), nullptr,
+                                                     val_cache_ptr, true, device_type_);
+    tensor::Tensor key(base::DataType::kDataTypeFp32, config_->kv_dim_);
+    tensor::Tensor val(base::DataType::kDataTypeFp32, config_->kv_dim_);
+    CHECK(key.assign(key_buffer));
+    CHECK(val.assign(val_buffer));
     return {key, val};
 }
 
@@ -240,10 +242,10 @@ tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
     const int32_t input_dim = input_width();
     // prompt 阶段取第 pos 行；decode 阶段只有一行可用。
     std::shared_ptr<base::Buffer> input_emb_buffer = std::make_shared<base::Buffer>(
-        input_dim * sizeof(float), nullptr, input_embeddings.ptr<float>(index * input_dim), true);
+        input_dim * sizeof(float), nullptr, input_embeddings.ptr<float>(index * input_dim), true,
+        device_type_);
     tensor::Tensor input(base::DataType::kDataTypeFp32, input_dim);
     input.assign(input_emb_buffer);
-    input.set_device_type(device_type_);
     return input;
 }
 

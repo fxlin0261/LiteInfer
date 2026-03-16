@@ -18,7 +18,7 @@ MultiHeadAttention::MultiHeadAttention(base::DeviceType device_type, int32_t lay
 
 base::Status MultiHeadAttention::forward() {
     auto status = check();
-    if (!status) {
+    if (!status.ok()) {
         return status;
     }
     const tensor::Tensor& mha_out = this->get_output(0);
@@ -42,12 +42,12 @@ void MultiHeadAttention::set_pos(int32_t pos) { this->pos_ = pos; }
 void MultiHeadAttention::set_layer_idx(int32_t layer_idx) { this->layer_index_ = layer_idx; }
 
 base::Status MultiHeadAttention::check() const {
-    base::Status status;
+    base::Status status = base::error::Success();
     const int32_t input_tensor_num = 4;
     for (int32_t i = 0; i < input_tensor_num; ++i) {
         // mha score tensor
         status = check_tensor(get_input(i), device_type_, data_type_);
-        if (!status) {
+        if (!status.ok()) {
             LOG(ERROR) << "The input tensor " << std::to_string(i) << " error in the matmul layer.";
             return status;
         }

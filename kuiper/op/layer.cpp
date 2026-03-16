@@ -189,21 +189,16 @@ base::Status LayerParam::set_weight(int32_t idx, const std::vector<int32_t>& dim
     CHECK_NE(weight_ptr, nullptr);
 
     size_t size = std::accumulate(dims.begin(), dims.end(), sizeof(float), std::multiplies<>());
-    std::shared_ptr<base::Buffer> buffer =
-        std::make_shared<base::Buffer>(size, nullptr, const_cast<void*>(weight_ptr), true);
-    if (device_type != base::DeviceType::kDeviceUnknown) {
-        buffer->set_device_type(device_type);
-    }
+    std::shared_ptr<base::Buffer> buffer = std::make_shared<base::Buffer>(
+        size, nullptr, const_cast<void*>(weight_ptr), true, device_type);
 
     if (!is_quant_layer_) {
         tensor::Tensor weight(base::DataType::kDataTypeFp32, dims);
-        weight.set_device_type(device_type);
         CHECK(weight.assign(buffer));
         weights_.at(idx) = weight;
     } else {
         // is quant layer
         tensor::Tensor weight(base::DataType::kDataTypeInt8, dims);
-        weight.set_device_type(device_type);
         CHECK(weight.assign(buffer));
         weights_.at(idx) = weight;
 
@@ -211,9 +206,12 @@ base::Status LayerParam::set_weight(int32_t idx, const std::vector<int32_t>& dim
         CHECK(weight_size % group_size_ == 0);
 
         int32_t scale_nums = weight_size / group_size_;
-        scales_ = tensor::Tensor{base::DataType::kDataTypeFp32, scale_nums, false, nullptr,
-                                 reinterpret_cast<float*>((int8_t*)weight_ptr + weight_size)};
-        scales_.set_device_type(device_type);
+        auto scale_buffer = std::make_shared<base::Buffer>(
+            scale_nums * sizeof(float), nullptr,
+            reinterpret_cast<float*>((int8_t*)weight_ptr + weight_size), true, device_type);
+        tensor::Tensor scales(base::DataType::kDataTypeFp32, scale_nums);
+        CHECK(scales.assign(scale_buffer));
+        scales_ = scales;
     }
 
     return base::error::Success();

@@ -6,9 +6,7 @@ namespace {
 
 tensor::Tensor make_cpu_tensor(base::DataType data_type, const std::vector<int32_t>& dims,
                                void* ptr) {
-    tensor::Tensor tensor(data_type, dims, false, nullptr, ptr);
-    tensor.set_device_type(base::DeviceType::kDeviceCPU);
-    return tensor;
+    return tensor::Tensor::make_external(data_type, dims, ptr, base::DeviceType::kDeviceCPU);
 }
 
 }  // namespace
@@ -17,7 +15,6 @@ TEST(test_embedding_cpu, forward_copies_selected_rows_from_weight_matrix) {
     op::EmbeddingLayer layer(base::DeviceType::kDeviceCPU, 3, 8, 4);
 
     std::vector<int32_t> tokens{2, 0, 3};
-    std::vector<int32_t> token_count_placeholder{0, 0, 0};
     std::vector<float> weight{
         1.f,  2.f,  3.f,  //
         4.f,  5.f,  6.f,  //
@@ -27,12 +24,10 @@ TEST(test_embedding_cpu, forward_copies_selected_rows_from_weight_matrix) {
     std::vector<float> output_data(9, 0.f);
 
     auto input_tokens = make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, tokens.data());
-    auto input_token_num =
-        make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_count_placeholder.data());
     auto output = make_cpu_tensor(base::DataType::kDataTypeFp32, {3, 3}, output_data.data());
-    ASSERT_TRUE(layer.set_weight(0, {4, 3}, weight.data(), base::DeviceType::kDeviceCPU));
+    ASSERT_TRUE(layer.set_weight(0, {4, 3}, weight.data(), base::DeviceType::kDeviceCPU).ok());
 
-    ASSERT_TRUE(layer.forward(input_tokens, input_token_num, output));
+    ASSERT_TRUE(layer.forward(input_tokens, output).ok());
     EXPECT_FLOAT_EQ(output.index<float>(0), 7.f);
     EXPECT_FLOAT_EQ(output.index<float>(1), 8.f);
     EXPECT_FLOAT_EQ(output.index<float>(2), 9.f);
@@ -48,17 +43,30 @@ TEST(test_embedding_cpu, forward_fails_when_output_shape_does_not_match_token_co
     op::EmbeddingLayer layer(base::DeviceType::kDeviceCPU, 3, 8, 4);
 
     std::vector<int32_t> tokens{1, 2, 3};
-    std::vector<int32_t> token_count_placeholder{0, 0, 0};
     std::vector<float> weight(12, 1.f);
     std::vector<float> output_data(6, 0.f);
 
     auto input_tokens = make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, tokens.data());
-    auto input_token_num =
-        make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_count_placeholder.data());
     auto output = make_cpu_tensor(base::DataType::kDataTypeFp32, {2, 3}, output_data.data());
-    ASSERT_TRUE(layer.set_weight(0, {4, 3}, weight.data(), base::DeviceType::kDeviceCPU));
+    ASSERT_TRUE(layer.set_weight(0, {4, 3}, weight.data(), base::DeviceType::kDeviceCPU).ok());
 
-    const auto status = layer.forward(input_tokens, input_token_num, output);
-    EXPECT_FALSE(status);
-    EXPECT_EQ(status.get_err_code(), base::StatusCode::kInvalidArgument);
+    const auto status = layer.forward(input_tokens, output);
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(status.code(), base::StatusCode::kInvalidArgument);
+}
+
+TEST(test_embedding_cpu, forward_fails_when_token_count_exceeds_seq_len) {
+    op::EmbeddingLayer layer(base::DeviceType::kDeviceCPU, 3, 2, 4);
+
+    std::vector<int32_t> tokens{1, 2, 3};
+    std::vector<float> weight(12, 1.f);
+    std::vector<float> output_data(9, 0.f);
+
+    auto input_tokens = make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, tokens.data());
+    auto output = make_cpu_tensor(base::DataType::kDataTypeFp32, {3, 3}, output_data.data());
+    ASSERT_TRUE(layer.set_weight(0, {4, 3}, weight.data(), base::DeviceType::kDeviceCPU).ok());
+
+    const auto status = layer.forward(input_tokens, output);
+    EXPECT_FALSE(status.ok());
+    EXPECT_EQ(status.code(), base::StatusCode::kInvalidArgument);
 }

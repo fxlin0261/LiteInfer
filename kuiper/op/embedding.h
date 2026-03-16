@@ -7,12 +7,12 @@ namespace op {
 struct EmbeddingOutput {
     tensor::Tensor input_tokens;
     tensor::Tensor input_embeddings;
-    tensor::Tensor input_token_num;
+    int32_t input_token_num = 0;
     explicit EmbeddingOutput(tensor::Tensor input_tokens, tensor::Tensor input_embeddings,
-                             tensor::Tensor input_token_num)
+                             int32_t input_token_num)
         : input_tokens(std::move(input_tokens)),
           input_embeddings(std::move(input_embeddings)),
-          input_token_num(std::move(input_token_num)) {}
+          input_token_num(input_token_num) {}
 };
 
 class EmbeddingLayer : public LayerParam {

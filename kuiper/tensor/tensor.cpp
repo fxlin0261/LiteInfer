@@ -30,20 +30,22 @@ static size_t data_type_size(base::DataType data_type) {
     }
 }
 
+static std::shared_ptr<base::DeviceAllocator> allocator_from_device_type(
+    base::DeviceType device_type) {
+    if (device_type == base::DeviceType::kDeviceCPU) {
+        return base::CPUDeviceAllocatorFactory::get_instance();
+    } else if (device_type == base::DeviceType::kDeviceCUDA) {
+        return base::CUDADeviceAllocatorFactory::get_instance();
+    }
+    return nullptr;
+}
+
 Tensor::Tensor(base::DataType data_type, int32_t dim0, bool need_alloc,
                std::shared_ptr<base::DeviceAllocator> alloc, void* ptr)
     : data_type_(data_type) {
     dims_.push_back(dim0);
     size_ = dim0;
-    if (need_alloc && alloc) {
-        allocate(alloc);
-    } else {
-        if (ptr != nullptr) {
-            CHECK(need_alloc == false)
-                << "The need_alloc is is true when ptr parameter is not a null pointer.";
-            init_buffer(alloc, data_type_, need_alloc, ptr);
-        }
-    }
+    init_buffer(alloc, data_type_, need_alloc, ptr);
 }
 
 Tensor::Tensor(base::DataType data_type, int32_t dim0, int32_t dim1, bool need_alloc,
@@ -52,11 +54,7 @@ Tensor::Tensor(base::DataType data_type, int32_t dim0, int32_t dim1, bool need_a
     dims_.push_back(dim0);
     dims_.push_back(dim1);
     size_ = dim0 * dim1;
-    if (need_alloc && alloc) {
-        allocate(alloc);
-    } else {
-        init_buffer(alloc, data_type_, need_alloc, ptr);
-    }
+    init_buffer(alloc, data_type_, need_alloc, ptr);
 }
 
 Tensor::Tensor(base::DataType data_type, int32_t dim0, int32_t dim1, int32_t dim2, bool need_alloc,
@@ -66,11 +64,7 @@ Tensor::Tensor(base::DataType data_type, int32_t dim0, int32_t dim1, int32_t dim
     dims_.push_back(dim1);
     dims_.push_back(dim2);
     size_ = dim0 * dim1 * dim2;
-    if (need_alloc && alloc) {
-        allocate(alloc);
-    } else {
-        init_buffer(alloc, data_type_, need_alloc, ptr);
-    }
+    init_buffer(alloc, data_type_, need_alloc, ptr);
 }
 
 Tensor::Tensor(base::DataType data_type, int32_t dim0, int32_t dim1, int32_t dim2, int32_t dim3,
@@ -81,22 +75,22 @@ Tensor::Tensor(base::DataType data_type, int32_t dim0, int32_t dim1, int32_t dim
     dims_.push_back(dim2);
     dims_.push_back(dim3);
     size_ = dim0 * dim1 * dim2 * dim3;
-    if (need_alloc && alloc) {
-        allocate(alloc);
-    } else {
-        init_buffer(alloc, data_type_, need_alloc, ptr);
-    }
+    init_buffer(alloc, data_type_, need_alloc, ptr);
 }
 
 Tensor::Tensor(base::DataType data_type, std::vector<int32_t> dims, bool need_alloc,
                std::shared_ptr<base::DeviceAllocator> alloc, void* ptr)
     : dims_(std::move(dims)), data_type_(data_type) {
     size_ = reduce_dimension(dims_.begin(), dims_.end(), 1);
-    if (need_alloc && alloc) {
-        allocate(alloc);
-    } else {
-        init_buffer(alloc, data_type_, need_alloc, ptr);
-    }
+    init_buffer(alloc, data_type_, need_alloc, ptr);
+}
+
+Tensor Tensor::make_external(base::DataType data_type, std::vector<int32_t> dims, void* ptr,
+                             base::DeviceType device_type) {
+    CHECK_NE(ptr, nullptr) << "The ptr parameter in make_external is a null pointer.";
+    Tensor tensor(data_type, std::move(dims));
+    tensor.init_buffer(nullptr, data_type, false, ptr, device_type);
+    return tensor;
 }
 
 void Tensor::to_cuda(cudaStream_t stream) {
@@ -155,8 +149,11 @@ bool Tensor::assign(std::shared_ptr<base::Buffer> buffer) {
         return false;
     }
     if (buffer_) {
-        if (buffer_->device_type() != buffer->device_type()) {
+        if (buffer_->device_type() != base::DeviceType::kDeviceUnknown &&
+            buffer->device_type() != base::DeviceType::kDeviceUnknown &&
+            buffer_->device_type() != buffer->device_type()) {
             LOG(ERROR) << "The device type of the new buffer is different from the original one.";
+            return false;
         }
     }
 
@@ -224,9 +221,15 @@ void Tensor::reshape(const std::vector<int32_t>& dims) {
     }
 
     if (size > size_) {
-        auto new_buffer = std::make_shared<base::Buffer>(
-            size * base::DataTypeSize(this->data_type_), buffer_->allocator());
-        CHECK(new_buffer->allocate());
+        auto allocator = buffer_->allocator();
+        if (!allocator) {
+            allocator = allocator_from_device_type(buffer_->device_type());
+        }
+        CHECK(allocator != nullptr) << "Cannot grow a tensor view without a valid device type.";
+
+        auto new_buffer =
+            std::make_shared<base::Buffer>(size * base::DataTypeSize(this->data_type_), allocator);
+        CHECK(new_buffer->ptr() != nullptr);
         new_buffer->copy_from(buffer_.get());
         this->buffer_ = new_buffer;
     }
@@ -237,11 +240,20 @@ void Tensor::reshape(const std::vector<int32_t>& dims) {
 std::shared_ptr<base::Buffer> Tensor::get_buffer() const { return buffer_; }
 
 Tensor Tensor::clone() const {
+    CHECK(buffer_ != nullptr && buffer_->ptr() != nullptr)
+        << "Cannot clone an empty tensor or a tensor without backing memory.";
+
     Tensor new_tensor = *this;
     size_t byte_size = this->byte_size();
 
     auto allocator = buffer_->allocator();
+    if (!allocator) {
+        allocator = allocator_from_device_type(buffer_->device_type());
+    }
+    CHECK(allocator != nullptr) << "Cannot clone a tensor view with unknown device type.";
+
     new_tensor.buffer_ = std::make_shared<base::Buffer>(byte_size, allocator);
+    CHECK(new_tensor.buffer_->ptr() != nullptr);
     new_tensor.buffer_->copy_from(buffer_.get());
     return new_tensor;
 }
@@ -265,13 +277,32 @@ bool Tensor::is_empty() const {
 }
 
 void Tensor::init_buffer(std::shared_ptr<base::DeviceAllocator> alloc, base::DataType data_type,
-                         bool need_alloc, void* ptr) {
-    if (!alloc && !need_alloc) {
+                         bool need_alloc, void* ptr, base::DeviceType device_type) {
+    CHECK(!need_alloc || ptr == nullptr)
+        << "The need_alloc parameter cannot be true when ptr is not a null pointer.";
+
+    if (ptr != nullptr) {
         std::shared_ptr<base::Buffer> buffer =
-            std::make_shared<base::Buffer>(data_type_size(data_type) * size_, nullptr, ptr, true);
+            std::make_shared<base::Buffer>(data_type_size(data_type) * size_, alloc, ptr, true,
+                                           alloc ? alloc->device_type() : device_type);
         this->buffer_ = buffer;
-    } else {
-        allocate(alloc, true);
+        return;
+    }
+
+    if (!need_alloc) {
+        this->buffer_ = nullptr;
+        return;
+    }
+
+    if (!alloc) {
+        LOG(ERROR) << "The allocator parameter in init_buffer is null when allocation is needed.";
+        this->buffer_ = nullptr;
+        return;
+    }
+
+    if (!allocate(alloc, true)) {
+        LOG(ERROR) << "The allocate function failed in init_buffer.";
+        this->buffer_ = nullptr;
     }
 }
 }  // namespace tensor
