@@ -1,5 +1,4 @@
 #include <base/cuda_config.h>
-#include <base/tick.h>
 #include <tensor/tensor.h>
 #include <cfloat>
 #include <cub/cub.cuh>

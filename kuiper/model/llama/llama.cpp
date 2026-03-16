@@ -10,7 +10,6 @@
 #if KUIPER_ENABLE_CUDA
 #include "op/kernels/cuda/rope_kernel.cuh"
 #endif
-#include "base/tick.h"
 
 namespace model {
 namespace {

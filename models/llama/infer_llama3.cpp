@@ -1,5 +1,5 @@
+#include <chrono>
 #include <base/base.h>
-#include <base/tick.h>
 #include <glog/logging.h>
 #include "common/generation.h"
 #include "model/llama/llama.h"
