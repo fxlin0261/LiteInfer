@@ -53,21 +53,9 @@ private:
     int32_t fd_ = -1;
 };
 
-FileHandle OpenBinaryFile(const std::string& path) {
-    return FileHandle(std::fopen(path.c_str(), "rb"), &std::fclose);
-}
-
 template <typename T>
 bool ReadBinaryValue(FILE* file, T* value) {
     return std::fread(value, sizeof(T), 1, file) == 1;
-}
-
-size_t ModelHeaderBytes(bool is_quant_model) {
-    size_t header_bytes = sizeof(ModelConfig);
-    if (is_quant_model) {
-        header_bytes += sizeof(int32_t);
-    }
-    return header_bytes;
 }
 
 base::Status ReadModelHeader(FILE* file, bool is_quant_model, ModelConfig* config,
@@ -101,13 +89,6 @@ base::Status ValidateTokenizerVocab(const op::TokenizerLayerBase* tokenizer_laye
                                   std::to_string(tokenizer_layer->vocab_size()) +
                                   " does not match the model vocab size " +
                                   std::to_string(config.vocab_size_) + ".");
-}
-
-std::shared_ptr<RawModelData> CreateRawModelData(bool is_quant_model) {
-    if (is_quant_model) {
-        return std::make_shared<RawModelDataInt8>();
-    }
-    return std::make_shared<RawModelDataFp32>();
 }
 
 base::Status MapModelData(ScopedFd&& fd, const std::string& model_path, size_t header_bytes,
@@ -147,11 +128,6 @@ std::unique_ptr<op::TokenizerLayerBase> CreateTokenizerLayer(base::TokenizerType
     }
 }
 
-int32_t KvCacheOffset(const TransformerConfig& config, int32_t layer_idx, int32_t token_pos) {
-    const int32_t layer_offset = layer_idx * config.seq_len_ * config.kv_dim_;
-    return layer_offset + token_pos * config.kv_dim_;
-}
-
 tensor::Tensor MakeExternalFp32TensorView(int32_t element_count, float* data,
                                           base::DeviceType device_type) {
     auto buffer = std::make_shared<base::Buffer>(
@@ -160,8 +136,6 @@ tensor::Tensor MakeExternalFp32TensorView(int32_t element_count, float* data,
     CHECK(tensor.assign(buffer));
     return tensor;
 }
-
-int32_t ResolveInputRow(int32_t pos, bool is_prompt) { return is_prompt ? pos : 0; }
 }  // namespace
 
 Model::Model(base::TokenizerType tokenizer_type, base::ModelType model_type, std::string token_path,
@@ -171,12 +145,6 @@ Model::Model(base::TokenizerType tokenizer_type, base::ModelType model_type, std
       token_path_(std::move(token_path)),
       model_path_(std::move(model_path)),
       is_quant_model_(is_quant_model) {}
-
-base::ModelType Model::model_type() const { return model_type_; }
-
-const std::string& Model::token_path() const { return token_path_; }
-
-const std::string& Model::model_path() const { return model_path_; }
 
 base::Status Model::insert_buffer(ModelBufferType buffer_idx, const tensor::Tensor& tensor) {
     if (buffers_.count(buffer_idx) > 0) {
@@ -212,7 +180,7 @@ base::Status Model::read_model_file() {
                                    " may be the path does not exist!");
     }
 
-    FileHandle file = OpenBinaryFile(model_path_);
+    FileHandle file(std::fopen(model_path_.c_str(), "rb"), &std::fclose);
     if (!file) {
         return error::PathNotValid("Failed to open the file. The path may be invalid.");
     }
@@ -234,10 +202,18 @@ base::Status Model::read_model_file() {
         return vocab_status;
     }
 
-    auto raw_model_data = CreateRawModelData(is_quant_model_);
+    std::shared_ptr<RawModelData> raw_model_data;
+    if (is_quant_model_) {
+        raw_model_data = std::make_shared<RawModelDataInt8>();
+    } else {
+        raw_model_data = std::make_shared<RawModelDataFp32>();
+    }
+    size_t header_bytes = sizeof(ModelConfig);
+    if (is_quant_model_) {
+        header_bytes += sizeof(int32_t);
+    }
     const Status map_status =
-        MapModelData(std::move(fd), model_path_, ModelHeaderBytes(is_quant_model_),
-                     raw_model_data.get());
+        MapModelData(std::move(fd), model_path_, header_bytes, raw_model_data.get());
     if (!map_status.ok()) {
         return map_status;
     }
@@ -248,6 +224,10 @@ base::Status Model::read_model_file() {
 
 base::Status Model::generate_model_infos(const ModelConfig& config) const {
     CHECK(config_ != nullptr);
+    const base::Status validation_status = validate_model_config(config);
+    if (!validation_status.ok()) {
+        return validation_status;
+    }
     auto& model_config = *config_;
     model_config.dim_ = config.dim;
     model_config.hidden_dim_ = config.hidden_dim;
@@ -261,6 +241,41 @@ base::Status Model::generate_model_infos(const ModelConfig& config) const {
     model_config.is_shared_weight_ = config.vocab_size > 0;
     model_config.vocab_size_ = std::abs(config.vocab_size);
     return base::error::Success();
+}
+
+base::Status Model::validate_model_config(const ModelConfig& config) const {
+    using namespace base;
+    if (config.dim <= 0) {
+        return error::InvalidArgument("The model dim must be positive.");
+    }
+    if (config.hidden_dim <= 0) {
+        return error::InvalidArgument("The model hidden_dim must be positive.");
+    }
+    if (config.layer_num <= 0) {
+        return error::InvalidArgument("The model layer_num must be positive.");
+    }
+    if (config.head_num <= 0) {
+        return error::InvalidArgument("The model head_num must be positive.");
+    }
+    if (config.kv_head_num <= 0) {
+        return error::InvalidArgument("The model kv_head_num must be positive.");
+    }
+    if (config.seq_len <= 0) {
+        return error::InvalidArgument("The model seq_len must be positive.");
+    }
+    if (config.vocab_size == 0) {
+        return error::InvalidArgument("The model vocab_size must be non-zero.");
+    }
+    if (config.dim % config.head_num != 0) {
+        return error::InvalidArgument("The model dim must be divisible by head_num.");
+    }
+    if (config.head_num % config.kv_head_num != 0) {
+        return error::InvalidArgument("The model head_num must be divisible by kv_head_num.");
+    }
+    if ((config.dim * config.kv_head_num) % config.head_num != 0) {
+        return error::InvalidArgument("The model kv projection width must resolve to an integer.");
+    }
+    return error::Success();
 }
 
 base::Status Model::create_tokenizer_layer() {
@@ -329,7 +344,8 @@ std::pair<tensor::Tensor, tensor::Tensor> Model::slice_kv_cache(int32_t layer_id
                                                                 int32_t token_pos) const {
     // Return tensor views that point at the current token position in the KV cache.
     CHECK(config_ != nullptr);
-    const int32_t cache_offset = KvCacheOffset(*config_, layer_idx, token_pos);
+    const int32_t cache_offset =
+        layer_idx * config_->seq_len_ * config_->kv_dim_ + token_pos * config_->kv_dim_;
     float* key_cache_ptr =
         const_cast<float*>(get_buffer(ModelBufferType::kKeyCache).ptr<float>(cache_offset));
     float* val_cache_ptr =
@@ -346,15 +362,10 @@ tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
     UNUSED(embedding_output.input_tokens);
     UNUSED(embedding_output.input_token_num);
 
-    const int32_t input_row = ResolveInputRow(pos, is_prompt);
+    const int32_t input_row = is_prompt ? pos : 0;
     const int32_t input_dim = input_width();
     float* input_ptr = const_cast<float*>(
         embedding_output.input_embeddings.ptr<float>(input_row * input_dim));
     return MakeExternalFp32TensorView(input_dim, input_ptr, device_type_);
-}
-
-int32_t Model::input_width() const {
-    CHECK(config_ != nullptr);
-    return config_->dim_;
 }
 }  // namespace model

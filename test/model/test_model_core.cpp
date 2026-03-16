@@ -152,6 +152,44 @@ TEST(test_model_core, generate_model_infos_populates_derived_fields) {
     EXPECT_TRUE(model.mutable_config()->is_shared_weight_);
 }
 
+TEST(test_model_core, generate_model_infos_rejects_invalid_model_config) {
+    auto expect_invalid = [](const model::ModelConfig& config, const char* message_fragment) {
+        FakeModel model;
+        const auto status = model.generate_model_infos_for_test(config);
+        EXPECT_FALSE(status.ok());
+        EXPECT_EQ(status.code(), base::StatusCode::kInvalidArgument);
+        EXPECT_NE(std::string(status.message()).find(message_fragment), std::string::npos);
+    };
+
+    model::ModelConfig zero_heads{};
+    zero_heads.dim = 16;
+    zero_heads.hidden_dim = 32;
+    zero_heads.layer_num = 2;
+    zero_heads.head_num = 0;
+    zero_heads.kv_head_num = 2;
+    zero_heads.vocab_size = 32000;
+    zero_heads.seq_len = 8;
+    expect_invalid(zero_heads, "head_num must be positive");
+
+    model::ModelConfig bad_head_split = zero_heads;
+    bad_head_split.dim = 18;
+    bad_head_split.head_num = 6;
+    bad_head_split.kv_head_num = 4;
+    expect_invalid(bad_head_split, "head_num must be divisible by kv_head_num");
+
+    model::ModelConfig bad_dim_split = zero_heads;
+    bad_dim_split.head_num = 6;
+    bad_dim_split.kv_head_num = 3;
+    bad_dim_split.dim = 14;
+    expect_invalid(bad_dim_split, "dim must be divisible by head_num");
+
+    model::ModelConfig zero_vocab = zero_heads;
+    zero_vocab.head_num = 4;
+    zero_vocab.kv_head_num = 2;
+    zero_vocab.vocab_size = 0;
+    expect_invalid(zero_vocab, "vocab_size must be non-zero");
+}
+
 TEST(test_model_core, insert_buffer_rejects_empty_tensor_and_duplicates) {
     FakeModel model;
     tensor::Tensor empty;

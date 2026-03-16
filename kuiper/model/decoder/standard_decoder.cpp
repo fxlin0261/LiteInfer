@@ -7,6 +7,29 @@
 #include "op/kernels/cpu/rope_kernel.h"
 
 namespace model {
+namespace {
+base::Status ValidateLayerGroup(const std::vector<std::shared_ptr<op::Layer>>& layers,
+                                int32_t expected_size, const char* error_message) {
+    if (static_cast<int32_t>(layers.size()) != expected_size) {
+        return base::error::InternalError(error_message);
+    }
+    for (const auto& layer : layers) {
+        if (!layer) {
+            return base::error::InternalError(error_message);
+        }
+    }
+    return base::error::Success();
+}
+
+base::Status ValidateOptionalLayerGroup(const std::vector<std::shared_ptr<op::Layer>>& layers,
+                                        int32_t expected_size, const char* error_message) {
+    if (layers.empty()) {
+        return base::error::Success();
+    }
+    return ValidateLayerGroup(layers, expected_size, error_message);
+}
+}  // namespace
+
 void StandardDecoderLayers::to_cuda(std::shared_ptr<kernel::CudaConfig> config) {
     detail::MoveLayerToCuda(add_layer_, config);
     detail::MoveLayerToCuda(rope_layer_, config);
@@ -134,27 +157,6 @@ const StandardDecoderLayers& StandardDecoderModel::layers() const {
     return *layers_;
 }
 
-const std::shared_ptr<kernel::CudaConfig>& StandardDecoderModel::cuda_config() const {
-    return cuda_config_;
-}
-
-int32_t StandardDecoderModel::input_width() const { return residual_width(); }
-
-int32_t StandardDecoderModel::residual_width() const { return config_->dim_; }
-
-int32_t StandardDecoderModel::attention_width() const { return config_->dim_; }
-
-int32_t StandardDecoderModel::ffn_width() const { return config_->hidden_dim_; }
-
-base::Status StandardDecoderModel::validate_custom_layers() const { return base::error::Success(); }
-void StandardDecoderModel::apply_attention_projection_norms(int32_t layer_idx,
-                                                            tensor::Tensor& query,
-                                                            tensor::Tensor& key) const {
-    UNUSED(layer_idx);
-    UNUSED(query);
-    UNUSED(key);
-}
-
 void StandardDecoderModel::init_mem() {
     // 分配 embedding、中间激活和 KV cache 等运行期缓冲区。
     std::shared_ptr<base::DeviceAllocator> alloc;
@@ -241,74 +243,71 @@ base::Status StandardDecoderModel::create_layers() {
     if (!layers().embedding_layer_) {
         return error::InternalError("Create the embedding layer for the decoder model failed!");
     }
-
-    if (layers().rmsnorm_layers_.size() != 2 * config_->layer_num_ + 1) {
-        return error::InternalError("Create the rmsnorm layers for the decoder model failed!");
-    }
-
-    if (layers().wq_layers_.size() != config_->layer_num_ ||
-        layers().wk_layers_.size() != config_->layer_num_ ||
-        layers().wv_layers_.size() != config_->layer_num_ ||
-        layers().wo_layers_.size() != config_->layer_num_) {
-        return error::InternalError(
-            "Create the attention matmul layers for the decoder model "
-            "failed.");
-    }
-
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        if (!layers().wq_layers_.at(i) || !layers().wk_layers_.at(i) ||
-            !layers().wv_layers_.at(i) || !layers().wo_layers_.at(i)) {
-            return error::InternalError(
-                "Create the attention layers for the decoder model "
-                "failed.");
-        }
-    }
-
-    if (layers().w1_layers_.size() != config_->layer_num_ ||
-        layers().w2_layers_.size() != config_->layer_num_ ||
-        layers().w3_layers_.size() != config_->layer_num_) {
-        return error::InternalError(
-            "Create the feedforward matmul layers for the decoder model "
-            "failed.");
-    }
-
-    for (int32_t i = 0; i < config_->layer_num_; ++i) {
-        if (!layers().w1_layers_.at(i) || !layers().w2_layers_.at(i) ||
-            !layers().w3_layers_.at(i)) {
-            return error::InternalError(
-                "Create the feedforward layers for the decoder model "
-                "failed.");
-        }
-    }
-
     if (!layers().rope_layer_ || !layers().add_layer_ || !layers().mha_layer_ ||
         !layers().swiglu_layer_) {
         return error::InternalError(
             "Create the non-parameter layers for the decoder model "
             "failed.");
     }
-
-    if (!layers().query_norm_layers_.empty() &&
-        layers().query_norm_layers_.size() != config_->layer_num_) {
-        return error::InternalError("Create the query norm layers for the decoder model failed.");
+    layer_status = ValidateLayerGroup(
+        layers().rmsnorm_layers_, 2 * config_->layer_num_ + 1,
+        "Create the rmsnorm layers for the decoder model failed!");
+    if (!layer_status.ok()) {
+        return layer_status;
     }
-
-    if (!layers().key_norm_layers_.empty() &&
-        layers().key_norm_layers_.size() != config_->layer_num_) {
-        return error::InternalError("Create the key norm layers for the decoder model failed.");
+    layer_status = ValidateLayerGroup(
+        layers().wq_layers_, config_->layer_num_,
+        "Create the attention layers for the decoder model failed.");
+    if (!layer_status.ok()) {
+        return layer_status;
     }
-
-    for (int32_t i = 0; i < static_cast<int32_t>(layers().query_norm_layers_.size()); ++i) {
-        if (!layers().query_norm_layers_.at(i)) {
-            return error::InternalError(
-                "Create the query norm layers for the decoder model failed.");
-        }
+    layer_status = ValidateLayerGroup(
+        layers().wk_layers_, config_->layer_num_,
+        "Create the attention layers for the decoder model failed.");
+    if (!layer_status.ok()) {
+        return layer_status;
     }
-
-    for (int32_t i = 0; i < static_cast<int32_t>(layers().key_norm_layers_.size()); ++i) {
-        if (!layers().key_norm_layers_.at(i)) {
-            return error::InternalError("Create the key norm layers for the decoder model failed.");
-        }
+    layer_status = ValidateLayerGroup(
+        layers().wv_layers_, config_->layer_num_,
+        "Create the attention layers for the decoder model failed.");
+    if (!layer_status.ok()) {
+        return layer_status;
+    }
+    layer_status = ValidateLayerGroup(
+        layers().wo_layers_, config_->layer_num_,
+        "Create the attention layers for the decoder model failed.");
+    if (!layer_status.ok()) {
+        return layer_status;
+    }
+    layer_status = ValidateLayerGroup(
+        layers().w1_layers_, config_->layer_num_,
+        "Create the feedforward layers for the decoder model failed.");
+    if (!layer_status.ok()) {
+        return layer_status;
+    }
+    layer_status = ValidateLayerGroup(
+        layers().w2_layers_, config_->layer_num_,
+        "Create the feedforward layers for the decoder model failed.");
+    if (!layer_status.ok()) {
+        return layer_status;
+    }
+    layer_status = ValidateLayerGroup(
+        layers().w3_layers_, config_->layer_num_,
+        "Create the feedforward layers for the decoder model failed.");
+    if (!layer_status.ok()) {
+        return layer_status;
+    }
+    layer_status = ValidateOptionalLayerGroup(
+        layers().query_norm_layers_, config_->layer_num_,
+        "Create the query norm layers for the decoder model failed.");
+    if (!layer_status.ok()) {
+        return layer_status;
+    }
+    layer_status = ValidateOptionalLayerGroup(
+        layers().key_norm_layers_, config_->layer_num_,
+        "Create the key norm layers for the decoder model failed.");
+    if (!layer_status.ok()) {
+        return layer_status;
     }
 
     return validate_custom_layers();

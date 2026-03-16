@@ -46,15 +46,18 @@ public:
 protected:
     StandardDecoderLayers& layers();
     const StandardDecoderLayers& layers() const;
-    const std::shared_ptr<kernel::CudaConfig>& cuda_config() const;
     base::Status create_param_layers() override = 0;
-    int32_t input_width() const override;
-    virtual int32_t residual_width() const;
-    virtual int32_t attention_width() const;
-    virtual int32_t ffn_width() const;
-    virtual base::Status validate_custom_layers() const;
+    int32_t input_width() const override { return residual_width(); }
+    virtual int32_t residual_width() const { return config_->dim_; }
+    virtual int32_t attention_width() const { return config_->dim_; }
+    virtual int32_t ffn_width() const { return config_->hidden_dim_; }
+    virtual base::Status validate_custom_layers() const { return base::error::Success(); }
     virtual void apply_attention_projection_norms(int32_t layer_idx, tensor::Tensor& query,
-                                                  tensor::Tensor& key) const;
+                                                  tensor::Tensor& key) const {
+        UNUSED(layer_idx);
+        UNUSED(query);
+        UNUSED(key);
+    }
 
 private:
     void init_mem() override;

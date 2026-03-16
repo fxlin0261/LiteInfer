@@ -22,9 +22,9 @@ public:
                                  bool is_prompt, int& next) const = 0;
     virtual base::Status forward(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                                  int& next) const = 0;
-    base::ModelType model_type() const;
-    const std::string& token_path() const;
-    const std::string& model_path() const;
+    base::ModelType model_type() const { return model_type_; }
+    const std::string& token_path() const { return token_path_; }
+    const std::string& model_path() const { return model_path_; }
     virtual tensor::Tensor& get_buffer(ModelBufferType buffer_idx);
     virtual const tensor::Tensor& get_buffer(ModelBufferType buffer_idx) const;
     virtual bool is_sentence_ending(int32_t token_idx) const;
@@ -47,8 +47,12 @@ protected:
     virtual base::Status create_tokenizer_layer();
     virtual base::Status gen_model_from_file();
     virtual base::Status generate_model_infos(const ModelConfig& config) const;
-    virtual int32_t input_width() const;
+    virtual int32_t input_width() const {
+        CHECK(config_ != nullptr);
+        return config_->dim_;
+    }
     virtual int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const = 0;
+    virtual base::Status validate_model_config(const ModelConfig& config) const;
 
 private:
     virtual void init_mem() = 0;
