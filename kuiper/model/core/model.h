@@ -1,7 +1,8 @@
 #ifndef KUIPER_INCLUDE_MODEL_MODEL_H_
 #define KUIPER_INCLUDE_MODEL_MODEL_H_
+#include <cstddef>
 #include <op/embedding.h>
-#include <map>
+#include <array>
 #include <string>
 #include "model/core/config.h"
 #include "op/tokenizer_layer.h"
@@ -12,6 +13,8 @@
 #include "tensor/tensor.h"
 
 namespace model {
+constexpr size_t kModelBufferSlotCount = static_cast<size_t>(ModelBufferType::kCosCache) + 1;
+
 class Model {
 public:
     explicit Model(base::TokenizerType tokenizer_type, base::ModelType model_type,
@@ -68,7 +71,7 @@ protected:
     std::string token_path_;
     std::string model_path_;
     std::unique_ptr<op::TokenizerLayerBase> tokenizer_layer_;
-    std::map<ModelBufferType, tensor::Tensor> buffers_;
+    std::array<tensor::Tensor, kModelBufferSlotCount> buffers_;
     std::unique_ptr<sampler::Sampler> sampler_;
     std::shared_ptr<RawModelData> raw_model_data_;
     base::DeviceType device_type_ = base::DeviceType::kDeviceUnknown;

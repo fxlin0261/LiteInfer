@@ -114,8 +114,6 @@ void CUDADeviceAllocator::release(void* ptr) const {
     CHECK(state == cudaSuccess) << "Error: CUDA error when release memory on device";
 }
 
-std::shared_ptr<CUDADeviceAllocator> CUDADeviceAllocatorFactory::instance = nullptr;
-
 #else
 
 CUDADeviceAllocator::CUDADeviceAllocator() : DeviceAllocator(DeviceType::kDeviceCUDA) {}
@@ -130,8 +128,6 @@ void CUDADeviceAllocator::release(void* ptr) const {
         LOG(FATAL) << "CUDA release requested in a CPU-only build.";
     }
 }
-
-std::shared_ptr<CUDADeviceAllocator> CUDADeviceAllocatorFactory::instance = nullptr;
 
 #endif
 }  // namespace base

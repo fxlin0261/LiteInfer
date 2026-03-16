@@ -14,6 +14,8 @@ namespace model {
 namespace {
 using FileHandle = std::unique_ptr<FILE, int (*)(FILE*)>;
 
+size_t BufferSlot(ModelBufferType buffer_idx) { return static_cast<size_t>(buffer_idx); }
+
 class ScopedFd {
 public:
     explicit ScopedFd(int32_t fd = -1) : fd_(fd) {}
@@ -147,25 +149,28 @@ Model::Model(base::TokenizerType tokenizer_type, base::ModelType model_type, std
       is_quant_model_(is_quant_model) {}
 
 base::Status Model::insert_buffer(ModelBufferType buffer_idx, const tensor::Tensor& tensor) {
-    if (buffers_.count(buffer_idx) > 0) {
+    auto& buffer_slot = buffers_.at(BufferSlot(buffer_idx));
+    if (!buffer_slot.is_empty()) {
         return base::error::KeyHasExits(std::to_string(int(buffer_idx)) +
                                         " has exits in the buffers");
     }
     if (tensor.is_empty()) {
         return base::error::InvalidArgument("The tensor is empty for inserting buffer.");
     }
-    buffers_.insert({buffer_idx, tensor});
+    buffer_slot = tensor;
     return base::error::Success();
 }
 
 tensor::Tensor& Model::get_buffer(ModelBufferType buffer_idx) {
-    CHECK_GT(buffers_.count(buffer_idx), 0) << int(buffer_idx);
-    return buffers_.at(buffer_idx);
+    auto& buffer_slot = buffers_.at(BufferSlot(buffer_idx));
+    CHECK(!buffer_slot.is_empty()) << int(buffer_idx);
+    return buffer_slot;
 }
 
 const tensor::Tensor& Model::get_buffer(ModelBufferType buffer_idx) const {
-    CHECK_GT(buffers_.count(buffer_idx), 0);
-    return buffers_.at(buffer_idx);
+    const auto& buffer_slot = buffers_.at(BufferSlot(buffer_idx));
+    CHECK(!buffer_slot.is_empty()) << int(buffer_idx);
+    return buffer_slot;
 }
 
 base::Status Model::read_model_file() {

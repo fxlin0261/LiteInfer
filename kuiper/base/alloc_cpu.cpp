@@ -33,6 +33,4 @@ void CPUDeviceAllocator::release(void* ptr) const {
         free(ptr);
     }
 }
-
-std::shared_ptr<CPUDeviceAllocator> CPUDeviceAllocatorFactory::instance = nullptr;
 }  // namespace base
