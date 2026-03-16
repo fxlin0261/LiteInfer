@@ -6,11 +6,8 @@ class RoPELayer : public Layer {
 public:
     explicit RoPELayer(base::DeviceType device_type, base::ModelType model_type, int32_t dim,
                        int32_t kv_dim, int32_t head_size);
-
     base::Status check() const override;
-
     base::Status forward() override;
-
 private:
     base::ModelType model_type_ = base::ModelType::kModelTypeUnknown;
     int32_t dim_ = 0;

@@ -85,7 +85,6 @@ base::Status MatmulLayer::set_bias(int32_t idx, int32_t& dim, const void* bias_p
     CHECK_GE(idx, 0);
     CHECK_LT(idx, bias_.size());
     CHECK_NE(bias_ptr, nullptr);
-
     size_t size = dim * sizeof(float);
     std::shared_ptr<base::Buffer> buffer = std::make_shared<base::Buffer>(
         size, nullptr, const_cast<void*>(bias_ptr), true, device_type);
@@ -100,10 +99,8 @@ base::Status MatmulLayer::set_bias(int32_t idx, int32_t& dim, const void* bias_p
         tensor::Tensor bias(base::DataType::kDataTypeInt8, dim);
         CHECK(bias.assign(buffer));
         bias_.at(idx) = bias;
-
         const int32_t bias_size = static_cast<int32_t>(bias.size());
         CHECK(bias_size % group_size_ == 0);
-
         int32_t scale_nums = bias_size / group_size_;
         auto scale_buffer = std::make_shared<base::Buffer>(
             scale_nums * sizeof(float), nullptr,
@@ -136,5 +133,4 @@ void MatmulLayer::to_cuda() {
         }
     }
 }
-
 }  // namespace op

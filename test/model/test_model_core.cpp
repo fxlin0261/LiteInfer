@@ -8,19 +8,15 @@
 #include "model/core/model.h"
 
 namespace {
-
 class FakeEncodeLayer final : public op::TokenizerLayerBase {
 public:
     FakeEncodeLayer() : TokenizerLayerBase("fake.model", true, false) {}
-
     std::vector<int32_t> encode(const std::string& sentence) const override {
         return {101, static_cast<int32_t>(sentence.size())};
     }
-
     std::string decode(int32_t token_id) const override {
         return "tok_" + std::to_string(token_id);
     }
-
     std::string decode(const std::vector<int32_t>& token_ids) const override {
         std::ostringstream oss;
         for (size_t i = 0; i < token_ids.size(); ++i) {
@@ -31,9 +27,7 @@ public:
         }
         return oss.str();
     }
-
     bool is_sentence_ending(int32_t token_id) const override { return token_id == 999; }
-
     int32_t vocab_size() const override { return 2048; }
 };
 
@@ -44,12 +38,10 @@ public:
         : Model(tokenizer_type, model_type, "token.model", "model.bin", false) {
         config_ = std::make_unique<model::TransformerConfig>();
     }
-
     base::Status init(base::DeviceType device_type) override {
         device_type_ = device_type;
         return base::error::Success();
     }
-
     base::Status predict(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                          bool is_prompt, int& next) const override {
         UNUSED(input);
@@ -79,37 +71,27 @@ public:
         return op::EmbeddingOutput(input_tokens, input_embeddings,
                                    static_cast<int32_t>(tokens.size()));
     }
-
     void set_tokenizer_layer_for_test(std::unique_ptr<op::TokenizerLayerBase> layer) {
         tokenizer_layer_ = std::move(layer);
     }
-
     base::Status insert_buffer_for_test(model::ModelBufferType buffer_idx,
                                         const tensor::Tensor& tensor) {
         return insert_buffer(buffer_idx, tensor);
     }
-
     base::Status generate_model_infos_for_test(const model::ModelConfig& config) {
         return generate_model_infos(config);
     }
-
     model::TransformerConfig* mutable_config() { return config_.get(); }
-
 private:
     int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const override {
         UNUSED(pos);
         UNUSED(is_prompt);
         return 0;
     }
-
     void init_mem() override {}
-
     base::Status create_layers() override { return base::error::Success(); }
-
     base::Status create_param_layers() override { return base::error::Success(); }
-
     base::Status create_nonparam_layers() override { return base::error::Success(); }
-
     base::Status create_param_quant_layers() override { return base::error::Success(); }
 };
 
@@ -117,12 +99,10 @@ tensor::Tensor make_cpu_tensor(base::DataType data_type, const std::vector<int32
                                void* ptr) {
     return tensor::Tensor::make_external(data_type, dims, ptr, base::DeviceType::kDeviceCPU);
 }
-
 }  // namespace
 
 TEST(test_model_core, generate_model_infos_populates_derived_fields) {
     FakeModel model;
-
     model::ModelConfig config{};
     config.dim = 12;
     config.hidden_dim = 48;
@@ -131,7 +111,6 @@ TEST(test_model_core, generate_model_infos_populates_derived_fields) {
     config.kv_head_num = 3;
     config.vocab_size = -32000;
     config.seq_len = 16;
-
     ASSERT_TRUE(model.generate_model_infos_for_test(config).ok());
     const auto* transformer = model.mutable_config();
     ASSERT_NE(transformer, nullptr);
@@ -146,7 +125,6 @@ TEST(test_model_core, generate_model_infos_populates_derived_fields) {
     EXPECT_EQ(transformer->head_size_, 2);
     EXPECT_EQ(transformer->vocab_size_, 32000);
     EXPECT_FALSE(transformer->is_shared_weight_);
-
     config.vocab_size = 32000;
     ASSERT_TRUE(model.generate_model_infos_for_test(config).ok());
     EXPECT_TRUE(model.mutable_config()->is_shared_weight_);
@@ -154,16 +132,13 @@ TEST(test_model_core, generate_model_infos_populates_derived_fields) {
 
 TEST(test_model_core, insert_buffer_rejects_empty_tensor_and_duplicates) {
     FakeModel model;
-
     tensor::Tensor empty;
     auto status = model.insert_buffer_for_test(model::ModelBufferType::kInputTokens, empty);
     EXPECT_FALSE(status.ok());
     EXPECT_EQ(status.code(), base::StatusCode::kInvalidArgument);
-
     std::vector<int32_t> token_data{1, 2, 3};
     auto tensor = make_cpu_tensor(base::DataType::kDataTypeInt32, {3}, token_data.data());
     ASSERT_TRUE(model.insert_buffer_for_test(model::ModelBufferType::kInputTokens, tensor).ok());
-
     status = model.insert_buffer_for_test(model::ModelBufferType::kInputTokens, tensor);
     EXPECT_FALSE(status.ok());
     EXPECT_EQ(status.code(), base::StatusCode::kAlreadyExists);
@@ -172,7 +147,6 @@ TEST(test_model_core, insert_buffer_rejects_empty_tensor_and_duplicates) {
 TEST(test_model_core, encode_decode_and_sentence_ending_delegate_to_encode_layer) {
     FakeModel model;
     model.set_tokenizer_layer_for_test(std::make_unique<FakeEncodeLayer>());
-
     const auto encoded = model.encode("hello");
     ASSERT_EQ(encoded.size(), 2U);
     EXPECT_EQ(encoded[0], 101);
@@ -187,10 +161,8 @@ TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token)
     auto run_case = [](base::ModelType model_type, base::TokenizerType tokenizer_type) {
         FakeModel model(model_type, tokenizer_type);
         ASSERT_TRUE(model.init(base::DeviceType::kDeviceCPU).ok());
-
         constexpr int32_t embed_dim = 4;
         model.mutable_config()->dim_ = embed_dim;
-
         std::vector<int32_t> token_ids{11, 22, 33};
         std::vector<float> embedding_data{
             1.f,   2.f,   3.f,   4.f,   //
@@ -203,16 +175,13 @@ TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token)
             make_cpu_tensor(base::DataType::kDataTypeFp32, {3, embed_dim}, embedding_data.data());
         op::EmbeddingOutput embedding_output(input_tokens, input_embeddings,
                                             static_cast<int32_t>(token_ids.size()));
-
         int32_t pos_value = 2;
         auto pos_tensor = make_cpu_tensor(base::DataType::kDataTypeInt32, {1}, &pos_value);
-
         tensor::Tensor prompt_input = model.fill_input(pos_tensor, embedding_output, true);
         ASSERT_EQ(prompt_input.size(), static_cast<size_t>(embed_dim));
         EXPECT_EQ(prompt_input.ptr<float>(), embedding_data.data() + 2 * embed_dim);
         EXPECT_FLOAT_EQ(prompt_input.index<float>(0), 100.f);
         EXPECT_FLOAT_EQ(prompt_input.index<float>(3), 400.f);
-
         tensor::Tensor generation_input = model.fill_input(pos_tensor, embedding_output, false);
         ASSERT_EQ(generation_input.size(), static_cast<size_t>(embed_dim));
         EXPECT_EQ(generation_input.ptr<float>(), embedding_data.data());
@@ -229,18 +198,15 @@ TEST(test_model_core, slice_kv_cache_returns_tensor_views_into_backing_storage) 
     ASSERT_TRUE(model.init(base::DeviceType::kDeviceCPU).ok());
     model.mutable_config()->seq_len_ = 4;
     model.mutable_config()->kv_dim_ = 3;
-
     std::vector<float> key_cache(24);
     std::iota(key_cache.begin(), key_cache.end(), 0.f);
     std::vector<float> value_cache(24);
     std::iota(value_cache.begin(), value_cache.end(), 100.f);
-
     auto key_tensor = make_cpu_tensor(base::DataType::kDataTypeFp32, {24}, key_cache.data());
     auto value_tensor = make_cpu_tensor(base::DataType::kDataTypeFp32, {24}, value_cache.data());
     ASSERT_TRUE(model.insert_buffer_for_test(model::ModelBufferType::kKeyCache, key_tensor).ok());
     ASSERT_TRUE(
         model.insert_buffer_for_test(model::ModelBufferType::kValueCache, value_tensor).ok());
-
     auto [key_view, value_view] = model.slice_kv_cache(1, 2);
     ASSERT_EQ(key_view.size(), 3U);
     ASSERT_EQ(value_view.size(), 3U);
@@ -248,7 +214,6 @@ TEST(test_model_core, slice_kv_cache_returns_tensor_views_into_backing_storage) 
     EXPECT_EQ(value_view.ptr<float>(), value_cache.data() + 18);
     EXPECT_FLOAT_EQ(key_view.index<float>(0), 18.f);
     EXPECT_FLOAT_EQ(value_view.index<float>(2), 120.f);
-
     key_view.index<float>(1) = -7.f;
     value_view.index<float>(0) = -3.f;
     EXPECT_FLOAT_EQ(key_cache[19], -7.f);

@@ -34,7 +34,6 @@ void emb_kernel_cu(const tensor::Tensor& input, const tensor::Tensor& weight,
     const int32_t weight_dim = weight.get_dim(1);
     CHECK(weight.device_type() == output.device_type());
     CHECK(output.device_type() == base::DeviceType::kDeviceCUDA);
-
     constexpr int32_t max_seq_len = 512;
     constexpr int32_t thread_num = 128;
     int32_t* in_ptr = input_cu.ptr<int32_t>();

@@ -25,7 +25,6 @@ __global__ void rope_kernel_cu_fp32(bool use_half_split, int pos, int dim, int k
         const int i = head_idx * head_size;
         const int v0_idx = i + head_dim;
         const int v1_idx = i + head_dim + head_size / 2;
-
         const float fci = sin_cache[pos * head_size + head_dim * 2];
         const float fcr = cos_cache[pos * head_size + head_dim * 2];
         const int rotn = i < kv_dim ? 2 : 1;
@@ -48,7 +47,6 @@ __global__ void rope_kernel_cu_fp32(bool use_half_split, int pos, int dim, int k
     const int head_dim = idx % head_size;
     const float fci = *(sin_cache + pos * head_size + head_dim);
     const float fcr = *(cos_cache + pos * head_size + head_dim);
-
     rope_calc(fcr, fci, const_cast<float*>(input_q), idx);
     if (idx >= kv_dim) {
         return;

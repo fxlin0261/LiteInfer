@@ -15,7 +15,6 @@ MultiHeadAttention::MultiHeadAttention(base::DeviceType device_type, int32_t lay
     reset_input_size(5);
     reset_output_size(1);
 }
-
 base::Status MultiHeadAttention::forward() {
     auto status = check();
     if (!status.ok()) {
@@ -38,9 +37,7 @@ base::Status MultiHeadAttention::forward() {
 }
 
 void MultiHeadAttention::set_pos(int32_t pos) { this->pos_ = pos; }
-
 void MultiHeadAttention::set_layer_idx(int32_t layer_idx) { this->layer_index_ = layer_idx; }
-
 base::Status MultiHeadAttention::check() const {
     base::Status status = base::error::Success();
     const int32_t input_tensor_num = 4;
@@ -54,5 +51,4 @@ base::Status MultiHeadAttention::check() const {
     }
     return check_tensor(get_output(0), device_type_, data_type_);
 }
-
 }  // namespace op

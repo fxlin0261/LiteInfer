@@ -3,7 +3,6 @@
 #include "tokenizer/unicode_byte_fallback.h"
 #include "base/unicode_utf8.h"
 namespace op {
-
 std::string SentencePieceTokenizerLayer::decode(int32_t token_id) const {
     CHECK(spe != nullptr);
     std::vector<int32_t> token_ids{token_id};
@@ -14,7 +13,6 @@ std::string SentencePieceTokenizerLayer::decode(const std::vector<int32_t>& toke
     CHECK(spe != nullptr);
     return this->spe->DecodeIds(token_ids);
 }
-
 SentencePieceTokenizerLayer::SentencePieceTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos)
     : TokenizerLayerBase(std::move(token_model_path), has_bos, has_eos) {
     using namespace sentencepiece::util;
@@ -43,7 +41,6 @@ bool SentencePieceTokenizerLayer::is_sentence_ending(int32_t token_id) const {
     CHECK(this->spe != nullptr);
     return token_id == this->spe->eos_id();
 }
-
 int32_t SentencePieceTokenizerLayer::vocab_size() const {
     CHECK(spe != nullptr);
     return spe->GetPieceSize();
@@ -51,7 +48,6 @@ int32_t SentencePieceTokenizerLayer::vocab_size() const {
 
 static const std::string PAT_STR =
     R"((?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?:$|[^\S])|\s+)";
-
 BpeTokenizerLayer::BpeTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos)
     : TokenizerLayerBase(std::move(token_model_path), has_bos, has_eos) {
     using json = nlohmann::json;
@@ -91,7 +87,6 @@ BpeTokenizerLayer::BpeTokenizerLayer(std::string token_model_path, bool has_bos,
     eos_id_ = special_tokens["<|end_of_text|>"];
     stop_token1_ = eos_id_;
     stop_token2_ = special_tokens["<|eot_id|>"];
-
     num_token_ = encoder.size() + special_tokens.size();
     tiktoken_ = std::make_unique<tiktoken::tiktoken>(encoder, special_tokens, PAT_STR);
 }
@@ -115,7 +110,6 @@ std::vector<int32_t> BpeTokenizerLayer::encode(const std::string& sentence) cons
 std::string BpeTokenizerLayer::decode(int32_t token_id) const {
     return decode(std::vector<int32_t>{token_id});
 }
-
 std::string BpeTokenizerLayer::decode(const std::vector<int32_t>& token_ids) const {
     CHECK(this->tiktoken_ != nullptr);
     auto s = tiktoken_->decode(token_ids);

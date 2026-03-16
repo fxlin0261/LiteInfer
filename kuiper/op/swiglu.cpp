@@ -8,7 +8,6 @@ SwiGLULayer::SwiGLULayer(base::DeviceType device_type, int32_t hidden_dim)
     reset_input_size(2);
     reset_output_size(1);
 }
-
 base::Status SwiGLULayer::check() const {
     base::Status status = base::error::Success();
     const int32_t input_tensor_num = 2;
@@ -43,5 +42,4 @@ base::Status SwiGLULayer::forward() {
                                             cuda_config_ ? cuda_config_->stream : nullptr);
     return base::error::Success();
 }
-
 }  // namespace op

@@ -10,14 +10,11 @@ __global__ void swiglu_kernel_cu_fp32(int size, const float* in1, const float* i
     extern __shared__ float shared_mem[];
     float* smem1 = shared_mem;
     float* smem2 = shared_mem + blockDim.x;
-
     smem1[tid] = in1[idx];
     smem2[tid] = in2[idx];
     __syncthreads();
-
     float value = 1.0f / (1.0f + exp(-smem1[tid]));
     smem1[tid] = smem1[tid] * value;
-
     out[idx] = smem1[tid] * smem2[tid];
 }
 
@@ -25,13 +22,10 @@ void swiglu_kernel_cu(const tensor::Tensor& input1, const tensor::Tensor& input2
                       const tensor::Tensor& output, void* stream) {
     CHECK_EQ(input1.is_empty(), false);
     CHECK(input1.device_type() == base::DeviceType::kDeviceCUDA);
-
     CHECK_EQ(input2.is_empty(), false);
     CHECK(input2.device_type() == base::DeviceType::kDeviceCUDA);
-
     CHECK_EQ(output.is_empty(), false);
     CHECK(output.device_type() == base::DeviceType::kDeviceCUDA);
-
     int size = static_cast<int32_t>(input1.size());
     int threads = 128;
     int blocks = (size + threads - 1) / threads;

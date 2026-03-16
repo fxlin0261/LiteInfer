@@ -6,7 +6,6 @@ VecAddLayer::VecAddLayer(base::DeviceType device_type)
     reset_input_size(2);
     reset_output_size(1);
 }
-
 base::Status VecAddLayer::check() const {
     tensor::Tensor input1 = this->get_input(0);
     tensor::Tensor input2 = this->get_input(1);
@@ -47,5 +46,4 @@ base::Status VecAddLayer::forward() {
                                          cuda_config_ ? cuda_config_->stream : nullptr);
     return base::error::Success();
 }
-
 }  // namespace op

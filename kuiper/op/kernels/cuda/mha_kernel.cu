@@ -28,7 +28,6 @@ __device__ void softmax_gpu(float* __restrict__ x, int size) {
     }
     __syncthreads();
     max_val = shared_val;
-
     float sum = 0.0f;
     for (int i = tid; i < size; i += step) {
         x[i] = expf(x[i] - max_val);
@@ -65,7 +64,6 @@ __global__ void multi_head_attention_kernel(int32_t pos, int32_t seq_len, float*
         s_query_head[i] = query_head[i];
     }
     __syncthreads();
-
     float* score_head = score_ptr + head * seq_len;
     // head当前的注意力头索引，kv_mul用于gqa，head_size表示一个自注意力头的维度
     // kv_dim = head_size * head_num，多头自注意力情况下的key,value 维度
@@ -74,7 +72,6 @@ __global__ void multi_head_attention_kernel(int32_t pos, int32_t seq_len, float*
     // 计算自注意力分数
     for (int t = threadIdx.x; t <= pos; t += blockDim.x) {
         float* key_head = key_cache + layer_offset + t * kv_dim + head_offset;
-
         float score = 0.0f;
         for (int i = 0; i < head_size; i += 4) {
             float4 key_val = *reinterpret_cast<float4*>(key_head + i);
@@ -88,10 +85,8 @@ __global__ void multi_head_attention_kernel(int32_t pos, int32_t seq_len, float*
         score_head[t] = score;
     }
     __syncthreads();
-
     softmax_gpu(score_head, pos + 1);
     __syncthreads();
-
     float* output_head = output + head * head_size;
     // 使用自注意力分数对value矩阵加权
     for (int i = threadIdx.x; i < head_size; i += blockDim.x) {
@@ -115,10 +110,8 @@ void mha_kernel_cu(int32_t pos, int32_t head_num, int32_t layer_index, int32_t s
     float* query = const_cast<float*>(query_tensor.ptr<float>());
     float* score = const_cast<float*>(score_tensor.ptr<float>());
     float* output = const_cast<float*>(mha_out.ptr<float>());
-
     float* key_cache = const_cast<float*>(key_cache_tensor.ptr<float>());
     float* value_cache = const_cast<float*>(value_cache_tensor.ptr<float>());
-
     cudaStream_t stream = config->stream;
     multi_head_attention_kernel<<<head_num, thread_num, head_size * sizeof(float), stream>>>(
         pos, seq_len, query, score, output, key_cache, value_cache, kv_dim, kv_mul, head_num,

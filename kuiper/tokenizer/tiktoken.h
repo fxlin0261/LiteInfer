@@ -12,7 +12,6 @@
 #include <ankerl/unordered_dense.h>
 
 namespace tiktoken {
-
 static auto _byte_pair_merge(const std::string& piece,
                              const ankerl::unordered_dense::map<std::string, int>& ranks,
                              std::function<int(int, int)> func) -> std::vector<int> {
@@ -46,7 +45,6 @@ static auto _byte_pair_merge(const std::string& piece,
 
     while (true) {
         if (parts.size() == 1) break;
-
         auto min_rank = std::make_pair<int, int>(std::numeric_limits<int>::max(), 0);
         for (auto i = 0U; i < parts.size() - 1; ++i) {
             auto rank = parts[i].second;
@@ -84,7 +82,6 @@ static auto _byte_pair_merge(const std::string& piece,
     }
     return out;
 }
-
 static auto byte_pair_encode(const std::string& piece,
                              const ankerl::unordered_dense::map<std::string, int>& ranks)
     -> std::vector<int> {
@@ -96,7 +93,6 @@ static auto byte_pair_encode(const std::string& piece,
         std::string key = piece.substr(start, stop - start);
         return ranks.at(key);
     };
-
     return _byte_pair_merge(piece, ranks, func);
 }
 
@@ -107,7 +103,6 @@ public:
              ankerl::unordered_dense::map<std::string, int> special_encoder,
              const std::string& pattern) {
         regex_ = std::make_unique<re2::RE2>("(" + pattern + ")");
-
         std::string special_pattern;
         for (const auto& item : special_encoder) {
             if (!special_pattern.empty()) {
@@ -134,15 +129,12 @@ public:
             special_tokens_decoder.emplace(v, k);
         }
     }
-
     auto encode_ordinary(const std::string& text) const -> std::vector<int> {
         return _encode_ordinary_native(text);
     }
-
     auto encode(const std::string& text) const -> std::vector<int> {
         return _encode_native(text, special_tokens_encoder).first;
     }
-
     auto encode_single_piece(const std::string& text) const -> std::vector<int> {
         auto iter = encoder_.find(text);
         if (iter != encoder_.end()) {
@@ -150,18 +142,15 @@ public:
         }
         return byte_pair_encode(text, encoder_);
     }
-
     auto decode(const std::vector<int>& tokens) const -> std::string {
         return _decode_native(tokens);
     }
-
 private:
     auto split_with_allowed_special_token(
         re2::StringPiece& input,
         const ankerl::unordered_dense::map<std::string, int>& allowed_special) const
         -> std::pair<std::optional<std::string>, re2::StringPiece> {
         if (special_regex_ == nullptr) return {std::nullopt, input};
-
         auto start = input.begin();
         std::string special;
         while (true) {
@@ -181,7 +170,6 @@ private:
     auto _encode_ordinary_native(const std::string& text) const -> std::vector<int> {
         std::vector<int> ret;
         re2::StringPiece input(text);
-
         std::string piece;
         while (re2::RE2::FindAndConsume(&input, *regex_, &piece)) {
             auto iter = encoder_.find(piece);
@@ -194,7 +182,6 @@ private:
         }
         return ret;
     }
-
     auto _encode_native(const std::string& text,
                         const ankerl::unordered_dense::map<std::string, int>& allowed_special) const
         -> std::pair<std::vector<int>, int> {
@@ -249,7 +236,6 @@ private:
         }
         return ret;
     }
-
     ankerl::unordered_dense::map<std::string, int> encoder_;
     ankerl::unordered_dense::map<std::string, int> special_tokens_encoder;
     ankerl::unordered_dense::map<int, std::string> decoder_;

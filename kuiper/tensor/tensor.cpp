@@ -84,7 +84,6 @@ Tensor::Tensor(base::DataType data_type, std::vector<int32_t> dims, bool need_al
     size_ = reduce_dimension(dims_.begin(), dims_.end(), 1);
     init_buffer(alloc, data_type_, need_alloc, ptr);
 }
-
 Tensor Tensor::make_external(base::DataType data_type, std::vector<int32_t> dims, void* ptr,
                              base::DeviceType device_type) {
     CHECK_NE(ptr, nullptr) << "The ptr parameter in make_external is a null pointer.";
@@ -129,7 +128,6 @@ void Tensor::to_cpu() {
 }
 
 size_t Tensor::size() const { return this->size_; }
-
 int32_t Tensor::get_dim(int32_t idx) const {
     CHECK_GE(idx, 0);
     CHECK_LT(idx, this->dims_.size());
@@ -194,7 +192,6 @@ bool Tensor::allocate(std::shared_ptr<base::DeviceAllocator> allocator, bool nee
 }
 
 const std::vector<int32_t>& Tensor::dims() const { return this->dims_; }
-
 void Tensor::set_device_type(base::DeviceType device_type) const {
     if (buffer_) {
         buffer_->set_device_type(device_type);
@@ -209,9 +206,7 @@ void Tensor::reset(base::DataType data_type, const std::vector<int32_t>& dims) {
 }
 
 int32_t Tensor::dims_size() const { return static_cast<int32_t>(dims_.size()); }
-
 base::DataType Tensor::data_type() const { return data_type_; }
-
 void Tensor::reshape(const std::vector<int32_t>& dims) {
     size_t size = reduce_dimension(dims.begin(), dims.end(), 1);
     if (!buffer_) {
@@ -238,20 +233,16 @@ void Tensor::reshape(const std::vector<int32_t>& dims) {
 }
 
 std::shared_ptr<base::Buffer> Tensor::get_buffer() const { return buffer_; }
-
 Tensor Tensor::clone() const {
     CHECK(buffer_ != nullptr && buffer_->ptr() != nullptr)
         << "Cannot clone an empty tensor or a tensor without backing memory.";
-
     Tensor new_tensor = *this;
     size_t byte_size = this->byte_size();
-
     auto allocator = buffer_->allocator();
     if (!allocator) {
         allocator = allocator_from_device_type(buffer_->device_type());
     }
     CHECK(allocator != nullptr) << "Cannot clone a tensor view with unknown device type.";
-
     new_tensor.buffer_ = std::make_shared<base::Buffer>(byte_size, allocator);
     CHECK(new_tensor.buffer_->ptr() != nullptr);
     new_tensor.buffer_->copy_from(buffer_.get());
@@ -259,7 +250,6 @@ Tensor Tensor::clone() const {
 }
 
 size_t Tensor::byte_size() const { return this->size() * DataTypeSize(data_type_); }
-
 std::vector<size_t> Tensor::strides() const {
     std::vector<size_t> strides;
     if (!dims_.empty()) {
@@ -275,7 +265,6 @@ std::vector<size_t> Tensor::strides() const {
 bool Tensor::is_empty() const {
     return size_ == 0 || buffer_ == nullptr || buffer_->ptr() == nullptr;
 }
-
 void Tensor::init_buffer(std::shared_ptr<base::DeviceAllocator> alloc, base::DataType data_type,
                          bool need_alloc, void* ptr, base::DeviceType device_type) {
     CHECK(!need_alloc || ptr == nullptr)

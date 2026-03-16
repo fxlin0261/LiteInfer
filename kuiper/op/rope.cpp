@@ -13,7 +13,6 @@ RoPELayer::RoPELayer(base::DeviceType device_type, base::ModelType model_type, i
     reset_input_size(5);
     reset_output_size(1);
 }
-
 base::Status RoPELayer::forward() {
     base::Status status = check();
     if (!status.ok()) {
@@ -23,7 +22,6 @@ base::Status RoPELayer::forward() {
     tensor::Tensor input_q = this->get_input(0);
     tensor::Tensor input_k = this->get_input(1);
     tensor::Tensor input_pos = this->get_input(2);
-
     tensor::Tensor sin_cache = this->get_input(3);
     tensor::Tensor cos_cache = this->get_input(4);
 
@@ -58,5 +56,4 @@ base::Status RoPELayer::check() const {
     }
     return base::error::Success();
 }
-
 }  // namespace op

@@ -23,9 +23,7 @@ __forceinline__ __device__ void block_reduce_argmax(float& val, size_t& ptr, flo
                                                     size_t* shared_ptr) {
     int lane_id = threadIdx.x % warpSize;
     int warp_id = threadIdx.x / warpSize;
-
     warp_reduce_argmax(val, ptr);
-
     __syncthreads();
     if (lane_id == 0) {
         shared_value[warp_id] = val;

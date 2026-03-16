@@ -8,7 +8,6 @@ __global__ void matmul_kernel_cu_fp32(const float* input, const float* weight, f
                                       int K) {
     __shared__ float sdata[THREAD_PER_BLOCK];
     unsigned int tid = threadIdx.x;
-
     int start_row = blockIdx.x * ROW_PER_BLOCK;
     int end_row = start_row + ROW_PER_BLOCK;
     if (start_row >= K) {
@@ -40,7 +39,6 @@ __global__ void matmul_kernel_cu_fp32(const float* input, const float* weight, f
         }
 
         __syncthreads();
-
         using BlockReduce = cub::BlockReduce<float, THREAD_PER_BLOCK>;
         __shared__ typename BlockReduce::TempStorage temp;
         float part_sum = BlockReduce(temp).Sum(sdata[tid]);
@@ -59,7 +57,6 @@ __global__ void matmul_kernel_cu_fp32int8(const float* input, const int8_t* weig
                                           float* output, int M, int K) {
     __shared__ float sdata[THREAD_PER_BLOCK];
     unsigned int tid = threadIdx.x;
-
     int start_row = blockIdx.x * ROW_PER_BLOCK;
     int end_row = start_row + ROW_PER_BLOCK;
     if (start_row >= K) {
@@ -73,7 +70,6 @@ __global__ void matmul_kernel_cu_fp32int8(const float* input, const int8_t* weig
             sdata[tid] += input[i] * scales[group_idx] * static_cast<float>(weight[weight_idx]);
         }
         __syncthreads();
-
         using BlockReduce = cub::BlockReduce<float, THREAD_PER_BLOCK>;
         __shared__ typename BlockReduce::TempStorage temp;
         float part_sum = BlockReduce(temp).Sum(sdata[tid]);
@@ -90,7 +86,6 @@ void matmul_kernel_cu(const tensor::Tensor& input, const tensor::Tensor& weight,
                       const tensor::Tensor& output, const float scale, const CudaConfig* config) {
     CHECK(input.is_empty() == false && input.dims_size() <= 2);
     CHECK(input.device_type() == base::DeviceType::kDeviceCUDA);
-
     CHECK(weight.is_empty() == false && weight.dims_size() == 2);
     CHECK(weight.device_type() == base::DeviceType::kDeviceCUDA);
     const int32_t K = weight.get_dim(0);  // row
@@ -114,7 +109,6 @@ void matmul_kernel_cu_qint8(const tensor::Tensor& input, const tensor::Tensor& w
     CHECK(config != nullptr);
     CHECK(input.is_empty() == false && input.dims_size() <= 2);
     CHECK(input.device_type() == base::DeviceType::kDeviceCUDA);
-
     CHECK(weight.is_empty() == false && weight.dims_size() == 2);
     CHECK(weight.device_type() == base::DeviceType::kDeviceCUDA);
     const int32_t K = weight.get_dim(0);  // row

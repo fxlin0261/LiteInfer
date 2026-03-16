@@ -18,7 +18,6 @@ static __global__ void row_rmsnorm_f32_dim(float* in, float* wei, float* out, in
     constexpr int pack_size = 4;
     const int pack_num = size / pack_size;
     const int pack_off = pack_size * pack_num;
-
     float sum = 0.0f;
     float4* in_pack = reinterpret_cast<float4*>(block_in);
     for (int i = tid; i < pack_num; i += blockDim.x) {
@@ -43,7 +42,6 @@ static __global__ void row_rmsnorm_f32_dim(float* in, float* wei, float* out, in
     __syncthreads();
     sum = shared_val;
     const float scale = rsqrtf(sum / static_cast<float>(size) + eps);
-
     float4* wei_pack = reinterpret_cast<float4*>(wei);
     float4* out_pack = reinterpret_cast<float4*>(block_out);
     for (int i = tid; i < pack_num; i += blockDim.x) {
@@ -62,11 +60,9 @@ static __global__ void row_rmsnorm_f32_dim(float* in, float* wei, float* out, in
 template <int32_t BLOCK_DIM>
 static __global__ void row_rmsnorm_f32(float* in, float* wei, float* out, int size, float eps) {
     const int tid = threadIdx.x;
-
     constexpr int pack_size = 4;
     const int pack_num = size / pack_size;
     const int pack_off = pack_size * pack_num;
-
     float sum = 0.0f;
     float4* in_pack = reinterpret_cast<float4*>(in);
     for (int i = tid; i < pack_num; i += blockDim.x) {
@@ -91,7 +87,6 @@ static __global__ void row_rmsnorm_f32(float* in, float* wei, float* out, int si
     __syncthreads();
     sum = shared_val;
     const float scale = rsqrtf(sum / static_cast<float>(size) + eps);
-
     float4* wei_pack = reinterpret_cast<float4*>(wei);
     float4* out_pack = reinterpret_cast<float4*>(out);
     for (int i = tid; i < pack_num; i += blockDim.x) {
@@ -116,7 +111,6 @@ void rmsnorm_kernel_cu(const tensor::Tensor& input, const tensor::Tensor& weight
     CHECK(input.device_type() == base::DeviceType::kDeviceCUDA &&
           weight.device_type() == base::DeviceType::kDeviceCUDA &&
           output.device_type() == base::DeviceType::kDeviceCUDA);
-
     const int32_t size = static_cast<int32_t>(input.size());
     float* in_ptr = const_cast<float*>(input.ptr<float>());
     float* wei_ptr = const_cast<float*>(weight.ptr<float>());
@@ -139,11 +133,9 @@ void rmsnorm_kernel_cu_dim(const tensor::Tensor& input, const tensor::Tensor& we
     CHECK(input.device_type() == base::DeviceType::kDeviceCUDA &&
           weight.device_type() == base::DeviceType::kDeviceCUDA &&
           output.device_type() == base::DeviceType::kDeviceCUDA);
-
     const int32_t total_size = static_cast<int32_t>(input.size());
     const int32_t size = input.get_dim(input.dims_size() - 1);
     const int32_t dim_size = total_size / size;
-
     float* in_ptr = const_cast<float*>(input.ptr<float>());
     float* wei_ptr = const_cast<float*>(weight.ptr<float>());
     float* out_ptr = const_cast<float*>(output.ptr<float>());

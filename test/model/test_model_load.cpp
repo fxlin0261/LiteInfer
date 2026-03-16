@@ -9,21 +9,17 @@
 #include "op/kernels/kernels_interface.h"
 
 namespace {
-
 std::filesystem::path test_model_path() {
     return std::filesystem::path(__FILE__).parent_path().parent_path() / "data" / "test.bin";
 }
-
 }  // namespace
 
 TEST(test_load, load_model_config) {
     const std::string model_path = test_model_path().string();
     int32_t fd = open(model_path.data(), O_RDONLY);
     ASSERT_NE(fd, -1);
-
     FILE* file = fopen(model_path.data(), "rb");
     ASSERT_NE(file, nullptr);
-
     auto config = model::ModelConfig{};
     ASSERT_EQ(fread(&config, sizeof(model::ModelConfig), 1, file), 1u);
     ASSERT_EQ(config.dim, 16);
@@ -35,16 +31,12 @@ TEST(test_load, load_model_weight) {
     const std::string model_path = test_model_path().string();
     int32_t fd = open(model_path.data(), O_RDONLY);
     ASSERT_NE(fd, -1);
-
     FILE* file = fopen(model_path.data(), "rb");
     ASSERT_NE(file, nullptr);
-
     auto config = model::ModelConfig{};
     ASSERT_EQ(fread(&config, sizeof(model::ModelConfig), 1, file), 1u);
-
     fseek(file, 0, SEEK_END);
     auto file_size = ftell(file);
-
     void* data = mmap(nullptr, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
     float* weight_data =
         reinterpret_cast<float*>(static_cast<int8_t*>(data) + sizeof(model::ModelConfig));
@@ -58,16 +50,12 @@ TEST(test_load, create_matmul) {
     const std::string model_path = test_model_path().string();
     int32_t fd = open(model_path.data(), O_RDONLY);
     ASSERT_NE(fd, -1);
-
     FILE* file = fopen(model_path.data(), "rb");
     ASSERT_NE(file, nullptr);
-
     auto config = model::ModelConfig{};
     ASSERT_EQ(fread(&config, sizeof(model::ModelConfig), 1, file), 1u);
-
     fseek(file, 0, SEEK_END);
     auto file_size = ftell(file);
-
     void* data = mmap(nullptr, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
     float* weight_data =
         reinterpret_cast<float*>(static_cast<int8_t*>(data) + sizeof(model::ModelConfig));
@@ -98,7 +86,6 @@ TEST(test_load, create_matmul) {
     tensor::Tensor out_tensor = tensor::Tensor::make_external(base::DataType::kDataTypeFp32,
                                                               {config.dim}, out,
                                                               base::DeviceType::kDeviceCPU);
-
     wq->set_input(0, tensor);
     wq->set_output(0, out_tensor);
     wq->set_weight(0, {config.dim, config.hidden_dim}, weight_data, base::DeviceType::kDeviceCPU);
@@ -113,7 +100,6 @@ TEST(test_load, create_matmul) {
     ASSERT_EQ(out[1], 24512);
     ASSERT_EQ(out[14], 237504);
     ASSERT_EQ(out[15], 253888);
-
     delete[] in;
     delete[] out;
 }

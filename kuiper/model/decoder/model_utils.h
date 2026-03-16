@@ -9,13 +9,10 @@
 
 namespace model {
 namespace detail {
-
 base::Status InitCudaConfig(std::shared_ptr<kernel::CudaConfig>& cuda_config);
-
 base::Status InitSinCosCache(base::ModelType model_type, int32_t head_size, int32_t seq_len,
                              const tensor::Tensor& sin_cache, const tensor::Tensor& cos_cache,
                              const std::shared_ptr<kernel::CudaConfig>& cuda_config);
-
 inline void MoveLayerToCuda(const std::shared_ptr<op::Layer>& layer,
                             const std::shared_ptr<kernel::CudaConfig>& config) {
     if (!layer) {
@@ -32,7 +29,6 @@ void MoveLayerRangeToCuda(const LayerCollection& layers,
         MoveLayerToCuda(layer, config);
     }
 }
-
 }  // namespace detail
 }  // namespace model
 

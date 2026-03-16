@@ -6,7 +6,6 @@
 
 namespace model {
 namespace detail {
-
 base::Status InitCudaConfig(std::shared_ptr<kernel::CudaConfig>& cuda_config) {
 #if KUIPER_ENABLE_CUDA
     cudaSetDevice(0);
@@ -41,6 +40,5 @@ base::Status InitSinCosCache(base::ModelType model_type, int32_t head_size, int3
     return base::error::InternalError("This build does not include CUDA support.");
 #endif
 }
-
 }  // namespace detail
 }  // namespace model

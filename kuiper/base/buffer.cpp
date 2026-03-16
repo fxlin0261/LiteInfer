@@ -4,7 +4,6 @@
 
 namespace base {
 namespace {
-
 MemcpyKind resolve_memcpy_kind(DeviceType src_device, DeviceType dst_device) {
     CHECK(src_device != DeviceType::kDeviceUnknown);
     CHECK(dst_device != DeviceType::kDeviceUnknown);
@@ -19,7 +18,6 @@ MemcpyKind resolve_memcpy_kind(DeviceType src_device, DeviceType dst_device) {
         return MemcpyKind::kMemcpyCUDA2CUDA;
     }
 }
-
 }  // namespace
 
 Buffer::Buffer(size_t byte_size, std::shared_ptr<DeviceAllocator> allocator, void* ptr,
@@ -54,11 +52,8 @@ Buffer::~Buffer() {
 }
 
 void* Buffer::ptr() { return ptr_; }
-
 const void* Buffer::ptr() const { return ptr_; }
-
 size_t Buffer::byte_size() const { return byte_size_; }
-
 bool Buffer::allocate() {
     if (!allocator_ || byte_size_ == 0) {
         return false;
@@ -76,12 +71,10 @@ bool Buffer::allocate() {
 }
 
 std::shared_ptr<DeviceAllocator> Buffer::allocator() const { return allocator_; }
-
 void Buffer::copy_from(const Buffer& buffer) const {
     CHECK(allocator_ != nullptr);
     CHECK(ptr_ != nullptr);
     CHECK(buffer.ptr_ != nullptr);
-
     size_t byte_size = std::min(byte_size_, buffer.byte_size_);
     const DeviceType& buffer_device = buffer.device_type();
     const DeviceType& current_device = this->device_type();
@@ -96,9 +89,7 @@ void Buffer::copy_from(const Buffer* buffer) const {
     CHECK_NE(buffer, nullptr);
     copy_from(*buffer);
 }
-
 DeviceType Buffer::device_type() const { return device_type_; }
-
 void Buffer::set_device_type(DeviceType device_type) {
     if (allocator_) {
         const DeviceType allocator_device_type = allocator_->device_type();
@@ -113,7 +104,5 @@ void Buffer::set_device_type(DeviceType device_type) {
 }
 
 std::shared_ptr<Buffer> Buffer::get_shared_from_this() { return shared_from_this(); }
-
 bool Buffer::is_external() const { return this->use_external_; }
-
 }  // namespace base

@@ -17,13 +17,11 @@ TEST(test_unicode, codepoint_roundtrip_preserves_multibyte_values_and_offset) {
     const std::string ascii = "A";
     EXPECT_EQ(unicode_cpt_from_utf8(ascii, offset), static_cast<uint32_t>('A'));
     EXPECT_EQ(offset, 1U);
-
     const std::string ni = "\xE4\xBD\xA0";
     offset = 0;
     EXPECT_EQ(unicode_cpt_from_utf8(ni, offset), 0x4F60U);
     EXPECT_EQ(offset, ni.size());
     EXPECT_EQ(unicode_cpt_to_utf8(0x4F60U), ni);
-
     const std::string smile = "\xF0\x9F\x99\x82";
     offset = 0;
     EXPECT_EQ(unicode_cpt_from_utf8(smile, offset), 0x1F642U);
@@ -43,18 +41,14 @@ TEST(test_unicode, flags_and_case_conversion_match_basic_categories) {
     EXPECT_TRUE(upper.is_letter);
     EXPECT_TRUE(upper.is_uppercase);
     EXPECT_FALSE(upper.is_lowercase);
-
     const auto lower = unicode_cpt_flags("a");
     EXPECT_TRUE(lower.is_letter);
     EXPECT_TRUE(lower.is_lowercase);
     EXPECT_FALSE(lower.is_uppercase);
-
     const auto digit = unicode_cpt_flags("7");
     EXPECT_TRUE(digit.is_number);
-
     const auto space = unicode_cpt_flags(" ");
     EXPECT_TRUE(space.is_whitespace);
-
     EXPECT_EQ(unicode_tolower(static_cast<uint32_t>('A')), static_cast<uint32_t>('a'));
     EXPECT_EQ(unicode_tolower(static_cast<uint32_t>('a')), static_cast<uint32_t>('a'));
 }

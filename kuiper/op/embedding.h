@@ -1,4 +1,3 @@
-
 #ifndef KUIPER_INCLUDE_OP_EMBEDDING_H_
 #define KUIPER_INCLUDE_OP_EMBEDDING_H_
 #include <utility>
@@ -14,18 +13,13 @@ struct EmbeddingOutput {
           input_embeddings(std::move(input_embeddings)),
           input_token_num(input_token_num) {}
 };
-
 class EmbeddingLayer : public LayerParam {
 public:
     explicit EmbeddingLayer(base::DeviceType device_type, int32_t dim, int32_t seq_len,
                             int32_t vocab_size);
-
     using LayerParam::forward;
-
     base::Status check() const override;
-
     base::Status forward() override;
-
 private:
     int32_t dim_ = 0;
     int32_t seq_len_ = 0;

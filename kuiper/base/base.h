@@ -40,21 +40,18 @@ enum class DeviceType : uint8_t {
     kDeviceCPU = 1,
     kDeviceCUDA = 2,
 };
-
 enum class DataType : uint8_t {
     kDataTypeUnknown = 0,
     kDataTypeFp32 = 1,
     kDataTypeInt8 = 2,
     kDataTypeInt32 = 3,
 };
-
 enum class ModelType : uint8_t {
     kModelTypeUnknown = 0,
     kModelTypeLlama = 1,
     kModelTypeLlama2 = kModelTypeLlama,
     kModelTypeLlama3 = 2,
 };
-
 inline size_t DataTypeSize(DataType data_type) {
     if (data_type == DataType::kDataTypeFp32) {
         return sizeof(float);
@@ -66,47 +63,36 @@ inline size_t DataTypeSize(DataType data_type) {
         return 0;
     }
 }
-
 class NoCopyable {
 protected:
     NoCopyable() = default;
-
     ~NoCopyable() = default;
-
     NoCopyable(const NoCopyable&) = delete;
-
     NoCopyable& operator=(const NoCopyable&) = delete;
 };
-
 using Status = absl::Status;
 using StatusCode = absl::StatusCode;
-
 enum class TokenizerType {
     kEncodeUnknown = -1,
     kEncodeSpe = 0,
     kEncodeBpe = 1,
 };
-
 inline bool IsLlamaModel(ModelType model_type) {
     return model_type == ModelType::kModelTypeLlama || model_type == ModelType::kModelTypeLlama2 ||
            model_type == ModelType::kModelTypeLlama3;
 }
-
 inline bool UsesLlama3RoPE(ModelType model_type) {
     return model_type == ModelType::kModelTypeLlama3;
 }
-
 inline bool UsesHalfSplitRoPE(ModelType model_type) {
     return UsesLlama3RoPE(model_type);
 }
-
 inline float RoPETheta(ModelType model_type) {
     if (UsesLlama3RoPE(model_type)) {
         return 500000.0f;
     }
     return 10000.0f;
 }
-
 inline float RmsNormEpsilon(ModelType model_type) {
     UNUSED(model_type);
     return 1e-5f;
@@ -128,20 +114,12 @@ namespace error {
     } while (0)
 
 Status Success(const std::string& err_msg = "");
-
 Status FunctionNotImplement(const std::string& err_msg = "");
-
 Status PathNotValid(const std::string& err_msg = "");
-
 Status ModelParseError(const std::string& err_msg = "");
-
 Status InternalError(const std::string& err_msg = "");
-
 Status KeyHasExits(const std::string& err_msg = "");
-
 Status InvalidArgument(const std::string& err_msg = "");
-
 }  // namespace error
-
 }  // namespace base
 #endif  // KUIPER_INCLUDE_BASE_BASE_H_

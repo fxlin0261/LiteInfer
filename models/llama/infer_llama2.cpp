@@ -11,7 +11,6 @@ int main(int argc, char* argv[]) {
     }
     const char* checkpoint_path = argv[1];
     const char* tokenizer_path = argv[2];
-
     model::Llama2Model model(tokenizer_path, checkpoint_path, false);
     const auto init_status = model.init(base::DefaultDeviceType());
     if (!init_status.ok()) {
@@ -19,7 +18,6 @@ int main(int argc, char* argv[]) {
                    << ", message: " << init_status.message();
     }
     const std::string sentence = "hello";
-
     const auto start = std::chrono::steady_clock::now();
     printf("Generating...\n");
     fflush(stdout);

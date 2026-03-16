@@ -7,7 +7,6 @@
 #include "tensor/tensor.h"
 
 namespace {
-
 class FakeGenerationModel {
 public:
     FakeGenerationModel(std::vector<int32_t> prompt_tokens, std::vector<int32_t> predicted_tokens,
@@ -17,17 +16,14 @@ public:
           eos_token_(eos_token),
           pos_tensor_(base::DataType::kDataTypeInt32, 1, true,
                       base::CPUDeviceAllocatorFactory::get_instance()) {}
-
     std::vector<int32_t> encode(const std::string& sentence) const {
         UNUSED(sentence);
         return prompt_tokens_;
     }
-
     const tensor::Tensor& get_buffer(model::ModelBufferType buffer_idx) const {
         CHECK_EQ(buffer_idx, model::ModelBufferType::kInputPos);
         return pos_tensor_;
     }
-
     op::EmbeddingOutput embedding(const std::vector<int>& tokens) const {
         auto alloc = base::CPUDeviceAllocatorFactory::get_instance();
         tensor::Tensor input_tokens(base::DataType::kDataTypeInt32,
@@ -43,7 +39,6 @@ public:
         return op::EmbeddingOutput(input_tokens, input_embeddings,
                                    static_cast<int32_t>(tokens.size()));
     }
-
     tensor::Tensor fill_input(const tensor::Tensor& pos_tensor,
                               const op::EmbeddingOutput& embedding_output,
                               bool is_prompt) const {
@@ -53,7 +48,6 @@ public:
         input.index<float>(0) = embedding_output.input_embeddings.index<float>(index);
         return input;
     }
-
     base::Status predict(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                          bool is_prompt, int& next) const {
         seen_inputs_.push_back(static_cast<int32_t>(input.index<float>(0)));
@@ -66,9 +60,7 @@ public:
         ++predict_call_count_;
         return base::error::Success();
     }
-
     bool is_sentence_ending(int32_t token_idx) const { return token_idx == eos_token_; }
-
     std::string decode(const std::vector<int32_t>& token_idxs) const {
         std::string decoded;
         for (size_t i = 0; i < token_idxs.size(); ++i) {
@@ -79,13 +71,9 @@ public:
         }
         return decoded;
     }
-
     const std::vector<int32_t>& seen_inputs() const { return seen_inputs_; }
-
     const std::vector<int32_t>& seen_positions() const { return seen_positions_; }
-
     const std::vector<int32_t>& seen_prompt_flags() const { return seen_prompt_flags_; }
-
 private:
     std::vector<int32_t> prompt_tokens_;
     std::vector<int32_t> predicted_tokens_;
@@ -104,7 +92,6 @@ TEST(test_generation, single_token_prompt_switches_to_decode_path_cleanly) {
     const auto status =
         app::RunGeneration(model, model.encode("ignored"), 4, app::GenerationState{},
                            app::CollectPromptAndGeneratedTokens, &result);
-
     ASSERT_TRUE(status.ok());
     EXPECT_EQ(result.steps, 1);
     EXPECT_EQ(result.state.words, std::vector<int32_t>({7}));
@@ -120,7 +107,6 @@ TEST(test_generation, prompt_tokens_are_consumed_before_generated_tokens) {
     const auto status =
         app::RunGeneration(model, model.encode("ignored"), 3, app::GenerationState{},
                            app::CollectPromptAndGeneratedTokens, &result);
-
     ASSERT_TRUE(status.ok());
     EXPECT_EQ(result.steps, 3);
     EXPECT_EQ(result.state.words, std::vector<int32_t>({11, 12, 52}));
@@ -128,5 +114,4 @@ TEST(test_generation, prompt_tokens_are_consumed_before_generated_tokens) {
     EXPECT_EQ(model.seen_positions(), std::vector<int32_t>({0, 1, 2}));
     EXPECT_EQ(model.seen_prompt_flags(), std::vector<int32_t>({1, 1, 1}));
 }
-
 }  // namespace

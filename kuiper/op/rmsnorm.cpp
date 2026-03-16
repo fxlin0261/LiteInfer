@@ -62,5 +62,4 @@ base::Status RmsNormLayer::check() const {
         return base::error::Success();
     }
 }
-
 }  // namespace op

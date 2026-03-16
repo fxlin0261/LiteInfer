@@ -7,85 +7,60 @@
 #include "op/rope.h"
 #include "op/swiglu.h"
 namespace model {
-
 struct LlamaLayers {
     std::shared_ptr<op::Layer> add_layer_;
     std::shared_ptr<op::Layer> rope_layer_;
     std::shared_ptr<op::Layer> swiglu_layer_;
     std::shared_ptr<op::Layer> mha_layer_;
-
     std::vector<std::shared_ptr<op::Layer>> wq_layers_;
     std::vector<std::shared_ptr<op::Layer>> wk_layers_;
     std::vector<std::shared_ptr<op::Layer>> wv_layers_;
     std::vector<std::shared_ptr<op::Layer>> wo_layers_;
-
     std::vector<std::shared_ptr<op::Layer>> w1_layers_;
     std::vector<std::shared_ptr<op::Layer>> w2_layers_;
     std::vector<std::shared_ptr<op::Layer>> rmsnorm_layers_;
     std::vector<std::shared_ptr<op::Layer>> w3_layers_;
     std::shared_ptr<op::Layer> cls_layer_;
-
     std::shared_ptr<op::Layer> embedding_layer_;
-
     void to_cuda(std::shared_ptr<kernel::CudaConfig> config);
 };
-
 class LlamaModelBase : public Model {
 public:
     explicit LlamaModelBase(base::TokenizerType tokenizer_type, base::ModelType model_type,
                             std::string token_path, std::string model_path, bool is_quant_model);
-
     base::Status init(base::DeviceType device_type) override;
-
     base::Status predict(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                          bool is_prompt, int& next) const override;
-
     base::Status forward(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                          int& next) const override;
-
     op::EmbeddingOutput embedding(const std::vector<int>& tokens) const override;
-
 private:
     void init_mem() override;
-
     base::Status create_layers() override;
-
     base::Status create_param_layers() override;
-
     base::Status create_nonparam_layers() override;
-
     base::Status create_param_quant_layers() override;
-
     void attention_mha(int32_t layer_idx, const tensor::Tensor& pos_tensor) const;
-
     void attention_rms(int32_t layer_idx, const tensor::Tensor& input) const;
-
     void feed_forward(int32_t layer_idx, const tensor::Tensor& input) const;
-
     void attention_qkv(int32_t layer_idx, const tensor::Tensor& pos_tensor) const;
-
     void cls_logits(const tensor::Tensor& input) const;
-
     int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const override;
-
 private:
     std::shared_ptr<kernel::CudaConfig> cuda_config_;
     std::unique_ptr<LlamaLayers> llama_layers_;
 };
-
 class Llama2Model : public LlamaModelBase {
 public:
     explicit Llama2Model(std::string token_path, std::string model_path, bool is_quant_model)
         : LlamaModelBase(base::TokenizerType::kEncodeSpe, base::ModelType::kModelTypeLlama2,
                          std::move(token_path), std::move(model_path), is_quant_model) {}
 };
-
 class Llama3Model : public LlamaModelBase {
 public:
     explicit Llama3Model(std::string token_path, std::string model_path, bool is_quant_model)
         : LlamaModelBase(base::TokenizerType::kEncodeBpe, base::ModelType::kModelTypeLlama3,
                          std::move(token_path), std::move(model_path), is_quant_model) {}
 };
-
 }  // namespace model
 #endif

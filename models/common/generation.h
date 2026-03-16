@@ -12,18 +12,15 @@
 #include "model/core/model.h"
 
 namespace app {
-
 struct GenerationState {
     int32_t next = -1;
     bool is_prompt = true;
     std::vector<int32_t> words;
 };
-
 struct GenerationResult {
     int32_t steps = 0;
     GenerationState state;
 };
-
 inline void CollectPromptAndGeneratedTokens(GenerationState& state,
                                             const std::vector<int32_t>& prompt_tokens, int32_t pos,
                                             int32_t prompt_len) {
@@ -63,11 +60,9 @@ base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens, int
         return base::error::InvalidArgument("The generation result pointer is empty.");
     }
     LOG_IF(FATAL, tokens.empty()) << "The tokens is empty.";
-
     const int32_t prompt_len = static_cast<int32_t>(tokens.size());
     const auto prompt_embedding = model.embedding(tokens);
     tensor::Tensor pos_tensor = model.get_buffer(model::ModelBufferType::kInputPos);
-
     int32_t pos = 0;
     while (pos < total_steps) {
         pos_tensor.index<int32_t>(0) = pos;
@@ -132,7 +127,6 @@ base::Status GenerateGreedyText(const ModelT& model, const std::string& sentence
     *steps = result.steps;
     return base::error::Success();
 }
-
 }  // namespace app
 
 #endif  // KUIPER_MODELS_COMMON_GENERATION_H_

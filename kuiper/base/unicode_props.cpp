@@ -6,10 +6,8 @@
 #include "base/unicode_utf8.h"
 
 namespace {
-
 std::vector<codepoint_flags> unicode_cpt_flags_array() {
     std::vector<codepoint_flags> cpt_flags(MAX_CODEPOINTS, codepoint_flags::UNDEFINED);
-
     assert(unicode_ranges_flags.front().first == 0);
     assert(unicode_ranges_flags.back().first == MAX_CODEPOINTS);
     for (size_t i = 1; i < unicode_ranges_flags.size(); ++i) {
@@ -38,7 +36,6 @@ std::vector<codepoint_flags> unicode_cpt_flags_array() {
 
     return cpt_flags;
 }
-
 }  // namespace
 
 std::vector<uint32_t> unicode_cpts_normalize_nfd(const std::vector<uint32_t>& cpts) {

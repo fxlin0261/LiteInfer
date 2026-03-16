@@ -4,7 +4,6 @@
 #include "base/unicode_utf8.h"
 
 namespace {
-
 std::unordered_map<uint8_t, std::string> unicode_byte_to_utf8_map() {
     std::unordered_map<uint8_t, std::string> map;
     for (int ch = 0x21; ch <= 0x7E; ++ch) {
@@ -53,14 +52,12 @@ std::unordered_map<std::string, uint8_t> unicode_utf8_to_byte_map() {
     }
     return map;
 }
-
 }  // namespace
 
 std::string unicode_byte_to_utf8(uint8_t byte) {
     static const auto map = unicode_byte_to_utf8_map();
     return map.at(byte);
 }
-
 uint8_t unicode_utf8_to_byte(const std::string& utf8) {
     static const auto map = unicode_utf8_to_byte_map();
     return map.at(utf8);

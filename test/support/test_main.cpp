@@ -8,7 +8,6 @@ int main(int argc, char* argv[]) {
     std::filesystem::create_directories("./log");
     FLAGS_log_dir = "./log/";
     FLAGS_alsologtostderr = true;
-
     LOG(INFO) << "Start Test...\n";
     return RUN_ALL_TESTS();
 }

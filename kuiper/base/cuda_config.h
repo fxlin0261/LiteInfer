@@ -8,13 +8,10 @@
 #endif
 
 namespace base {
-
 inline constexpr bool IsCudaEnabled() { return KUIPER_ENABLE_CUDA != 0; }
-
 inline constexpr DeviceType DefaultDeviceType() {
     return IsCudaEnabled() ? DeviceType::kDeviceCUDA : DeviceType::kDeviceCPU;
 }
-
 }  // namespace base
 
 #if KUIPER_ENABLE_CUDA

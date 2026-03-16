@@ -12,13 +12,9 @@ Model::Model(base::TokenizerType tokenizer_type, base::ModelType model_type, std
       token_path_(std::move(token_path)),
       model_path_(std::move(model_path)),
       is_quant_model_(is_quant_model) {}
-
 base::ModelType Model::model_type() const { return model_type_; }
-
 const std::string& Model::token_path() const { return token_path_; }
-
 const std::string& Model::model_path() const { return model_path_; }
-
 base::Status Model::insert_buffer(ModelBufferType buffer_idx, const tensor::Tensor& tensor) {
     if (buffers_.count(buffer_idx) > 0) {
         return base::error::KeyHasExits(std::to_string(int(buffer_idx)) +
@@ -35,12 +31,10 @@ tensor::Tensor& Model::get_buffer(ModelBufferType buffer_idx) {
     CHECK_GT(buffers_.count(buffer_idx), 0) << int(buffer_idx);
     return buffers_.at(buffer_idx);
 }
-
 const tensor::Tensor& Model::get_buffer(ModelBufferType buffer_idx) const {
     CHECK_GT(buffers_.count(buffer_idx), 0);
     return buffers_.at(buffer_idx);
 }
-
 base::Status Model::read_model_file() {
     using namespace base;
     if (model_path_.empty()) {
@@ -91,7 +85,6 @@ base::Status Model::read_model_file() {
             "file.");
     }
     raw_model_data_->file_size = sb.st_size;
-
     raw_model_data_->fd = fd;
     raw_model_data_->data =
         mmap(nullptr, raw_model_data_->file_size, PROT_READ, MAP_PRIVATE, raw_model_data_->fd, 0);
@@ -120,7 +113,6 @@ base::Status Model::generate_model_infos(const ModelConfig& config) const {
     config_->head_num_ = config.head_num;
     config_->kv_head_num_ = config.kv_head_num;
     config_->seq_len_ = config.seq_len;
-
     config_->kv_dim_ = (config.dim * config.kv_head_num) / config.head_num;
     config_->kv_mul_ = config.head_num / config.kv_head_num;
     config_->head_size_ = config.dim / config.head_num;
@@ -191,17 +183,14 @@ bool Model::is_sentence_ending(int32_t token_idx) const {
     CHECK(this->tokenizer_layer_ != nullptr);
     return this->tokenizer_layer_->is_sentence_ending(token_idx);
 }
-
 std::string Model::decode(int32_t token_idx) const {
     CHECK(this->tokenizer_layer_ != nullptr);
     return this->tokenizer_layer_->decode(token_idx);
 }
-
 std::string Model::decode(std::vector<int32_t> token_idxs) const {
     CHECK(this->tokenizer_layer_ != nullptr);
     return this->tokenizer_layer_->decode(token_idxs);
 }
-
 std::pair<tensor::Tensor, tensor::Tensor> Model::slice_kv_cache(int32_t layer_idx,
                                                                 int32_t token_pos) const {
     // 返回当前层、当前位置对应的 KV cache 视图。
@@ -234,7 +223,6 @@ tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
     auto [input_tokens, input_embeddings, input_token_num] = embedding_output;
     UNUSED(input_tokens);
     UNUSED(input_token_num);
-
     int32_t index = 0;
     if (is_prompt) {
         index = pos;

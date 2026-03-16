@@ -5,9 +5,7 @@
 #endif
 
 namespace sampler {
-
 namespace {
-
 size_t sample_cuda_argmax(const float* logits, size_t size, void* stream) {
 #if KUIPER_ENABLE_CUDA
     return kernel::argmax_kernel_cu(logits, size, stream);
@@ -19,7 +17,6 @@ size_t sample_cuda_argmax(const float* logits, size_t size, void* stream) {
     return 0;
 #endif
 }
-
 }  // namespace
 
 size_t ArgmaxSampler::sample(const float* logits, size_t size, void* stream) {

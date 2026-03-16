@@ -22,7 +22,6 @@ TEST(test_tensor, to_cpu) {
     tensor::Tensor t1_cu(DataType::kDataTypeFp32, 32, 32, true, alloc_cu);
     ASSERT_EQ(t1_cu.is_empty(), false);
     set_value_cu(t1_cu.ptr<float>(), 32 * 32);
-
     t1_cu.to_cpu();
     ASSERT_EQ(t1_cu.device_type(), base::DeviceType::kDeviceCPU);
     float* cpu_ptr = t1_cu.ptr<float>();
@@ -41,7 +40,6 @@ TEST(test_tensor, clone_cuda) {
     tensor::Tensor t1_cu(DataType::kDataTypeFp32, 32, 32, true, alloc_cu);
     ASSERT_EQ(t1_cu.is_empty(), false);
     set_value_cu(t1_cu.ptr<float>(), 32 * 32, 1.f);
-
     tensor::Tensor t2_cu = t1_cu.clone();
     float* p2 = new float[32 * 32];
     cudaMemcpy(p2, t2_cu.ptr<float>(), sizeof(float) * 32 * 32, cudaMemcpyDeviceToHost);
@@ -56,7 +54,6 @@ TEST(test_tensor, clone_cuda) {
 
     ASSERT_EQ(t2_cu.data_type(), base::DataType::kDataTypeFp32);
     ASSERT_EQ(t2_cu.size(), 32 * 32);
-
     t2_cu.to_cpu();
     std::memcpy(p2, t2_cu.ptr<float>(), sizeof(float) * 32 * 32);
     for (int i = 0; i < 32 * 32; ++i) {
@@ -116,9 +113,7 @@ TEST(test_tensor, to_cu) {
 TEST(test_tensor, init1) {
     using namespace base;
     auto alloc_cu = base::CPUDeviceAllocatorFactory::get_instance();
-
     int32_t size = 32 * 151;
-
     tensor::Tensor t1(base::DataType::kDataTypeFp32, size, true, alloc_cu);
     ASSERT_EQ(t1.is_empty(), false);
 }
@@ -138,9 +133,7 @@ TEST(test_tensor, init3) {
 TEST(test_tensor, init2) {
     using namespace base;
     auto alloc_cu = base::CPUDeviceAllocatorFactory::get_instance();
-
     int32_t size = 32 * 151;
-
     tensor::Tensor t1(base::DataType::kDataTypeFp32, size, false, alloc_cu);
     ASSERT_EQ(t1.is_empty(), true);
 }
@@ -149,9 +142,7 @@ TEST(test_tensor, init2) {
 TEST(test_tensor, multidim_init_without_need_alloc_stays_empty) {
     using namespace base;
     auto alloc_cpu = CPUDeviceAllocatorFactory::get_instance();
-
     tensor::Tensor t(base::DataType::kDataTypeFp32, 2, 3, false, alloc_cpu);
-
     ASSERT_TRUE(t.is_empty());
     ASSERT_EQ(t.ptr<float>(), nullptr);
     ASSERT_EQ(t.size(), 6);
@@ -162,11 +153,9 @@ TEST(test_tensor, multidim_init_without_need_alloc_stays_empty) {
 TEST(test_tensor, external_view_with_allocator_keeps_pointer_and_device_type) {
     using namespace base;
     auto alloc_cpu = CPUDeviceAllocatorFactory::get_instance();
-
     float data[6] = {1.f, 2.f, 3.f, 4.f, 5.f, 6.f};
     tensor::Tensor t(base::DataType::kDataTypeFp32, std::vector<int32_t>{2, 3}, false, alloc_cpu,
                      data);
-
     ASSERT_FALSE(t.is_empty());
     ASSERT_EQ(t.ptr<float>(), data);
     ASSERT_EQ(t.device_type(), DeviceType::kDeviceCPU);
@@ -179,7 +168,6 @@ TEST(test_tensor, assign1) {
     auto alloc_cpu = CPUDeviceAllocatorFactory::get_instance();
     tensor::Tensor t1_cpu(DataType::kDataTypeFp32, 32, 32, true, alloc_cpu);
     ASSERT_EQ(t1_cpu.is_empty(), false);
-
     int32_t size = 32 * 32;
     float* ptr = new float[size];
     for (int i = 0; i < size; ++i) {
@@ -187,7 +175,6 @@ TEST(test_tensor, assign1) {
     }
     std::shared_ptr<Buffer> buffer =
         std::make_shared<Buffer>(size * sizeof(float), nullptr, ptr, true, DeviceType::kDeviceCPU);
-
     ASSERT_EQ(t1_cpu.assign(buffer), true);
     ASSERT_EQ(t1_cpu.is_empty(), false);
     ASSERT_NE(t1_cpu.ptr<float>(), nullptr);
@@ -205,10 +192,8 @@ TEST(test_tensor, clone_cpu_is_deep_copy) {
 
     tensor::Tensor cloned = src.clone();
     ASSERT_NE(cloned.ptr<float>(), src.ptr<float>());
-
     src.index<float>(0) = 99.f;
     cloned.index<float>(1) = -3.f;
-
     ASSERT_EQ(src.index<float>(0), 99.f);
     ASSERT_EQ(src.index<float>(1), 1.f);
     ASSERT_EQ(cloned.index<float>(0), 0.f);
@@ -223,12 +208,10 @@ TEST(test_tensor, clone_external_cpu_tensor_is_supported) {
     tensor::Tensor src = tensor::Tensor::make_external(base::DataType::kDataTypeFp32, {4}, data,
                                                        DeviceType::kDeviceCPU);
     tensor::Tensor cloned = src.clone();
-
     ASSERT_NE(cloned.ptr<float>(), data);
     ASSERT_EQ(cloned.device_type(), DeviceType::kDeviceCPU);
     ASSERT_EQ(cloned.index<float>(0), 1.f);
     ASSERT_EQ(cloned.index<float>(3), 4.f);
-
     data[0] = 99.f;
     ASSERT_EQ(src.index<float>(0), 99.f);
     ASSERT_EQ(cloned.index<float>(0), 1.f);
@@ -244,7 +227,6 @@ TEST(test_tensor, reshape_expand_preserves_existing_data) {
     }
 
     t.reshape({2, 3});
-
     ASSERT_EQ(t.size(), 6);
     ASSERT_EQ(t.dims_size(), 2);
     ASSERT_EQ(t.get_dim(0), 2);
@@ -260,9 +242,7 @@ TEST(test_tensor, reshape_without_buffer_updates_shape_only) {
     tensor::Tensor t(base::DataType::kDataTypeFp32, 2, false, nullptr);
     ASSERT_TRUE(t.is_empty());
     ASSERT_EQ(t.device_type(), base::DeviceType::kDeviceUnknown);
-
     t.reshape({2, 3, 4});
-
     ASSERT_EQ(t.size(), 24);
     ASSERT_EQ(t.dims_size(), 3);
     ASSERT_EQ(t.get_dim(0), 2);
@@ -276,13 +256,10 @@ TEST(test_tensor, allocate_reuses_or_reallocates_buffer) {
     using namespace base;
     auto alloc_cpu = CPUDeviceAllocatorFactory::get_instance();
     tensor::Tensor t(DataType::kDataTypeFp32, 16, true, alloc_cpu);
-
     float* original_ptr = t.ptr<float>();
     ASSERT_NE(original_ptr, nullptr);
-
     ASSERT_TRUE(t.allocate(alloc_cpu, false));
     ASSERT_EQ(t.ptr<float>(), original_ptr);
-
     ASSERT_TRUE(t.allocate(alloc_cpu, true));
     ASSERT_NE(t.ptr<float>(), nullptr);
     ASSERT_NE(t.ptr<float>(), original_ptr);
@@ -293,7 +270,6 @@ TEST(test_tensor, allocate_fails_without_allocator_or_size) {
     using namespace base;
     tensor::Tensor t(DataType::kDataTypeFp32, 4, false, nullptr);
     ASSERT_FALSE(t.allocate(nullptr));
-
     tensor::Tensor empty(DataType::kDataTypeFp32, 0, false, nullptr);
     ASSERT_FALSE(empty.allocate(CPUDeviceAllocatorFactory::get_instance()));
 }
@@ -303,9 +279,7 @@ TEST(test_tensor, assign_fails_for_null_or_small_buffer) {
     using namespace base;
     auto alloc_cpu = CPUDeviceAllocatorFactory::get_instance();
     tensor::Tensor t(DataType::kDataTypeFp32, 8, true, alloc_cpu);
-
     ASSERT_FALSE(t.assign(nullptr));
-
     auto small_buffer = std::make_shared<Buffer>(4 * sizeof(float), alloc_cpu);
     ASSERT_FALSE(t.assign(small_buffer));
 }
@@ -315,7 +289,6 @@ TEST(test_tensor, assign_accepts_same_size_external_buffer) {
     using namespace base;
     auto alloc_cpu = CPUDeviceAllocatorFactory::get_instance();
     tensor::Tensor t(DataType::kDataTypeFp32, 8, true, alloc_cpu);
-
     float* ptr = new float[8];
     for (int i = 0; i < 8; ++i) {
         ptr[i] = static_cast<float>(i * 2);
@@ -323,7 +296,6 @@ TEST(test_tensor, assign_accepts_same_size_external_buffer) {
 
     auto buffer =
         std::make_shared<Buffer>(8 * sizeof(float), nullptr, ptr, true, DeviceType::kDeviceCPU);
-
     ASSERT_TRUE(t.assign(buffer));
     for (int i = 0; i < 8; ++i) {
         ASSERT_EQ(t.index<float>(i), static_cast<float>(i * 2));
@@ -335,7 +307,6 @@ TEST(test_tensor, assign_accepts_same_size_external_buffer) {
 // 看 shape、stride、byte size 这些基础信息算得对不对。
 TEST(test_tensor, metadata_accessors_match_shape_and_type) {
     tensor::Tensor t(base::DataType::kDataTypeInt32, std::vector<int32_t>{2, 3, 4}, false, nullptr);
-
     ASSERT_EQ(t.data_type(), base::DataType::kDataTypeInt32);
     ASSERT_EQ(t.size(), 24);
     ASSERT_EQ(t.byte_size(), 24 * sizeof(int32_t));
@@ -343,13 +314,11 @@ TEST(test_tensor, metadata_accessors_match_shape_and_type) {
     ASSERT_EQ(t.get_dim(0), 2);
     ASSERT_EQ(t.get_dim(1), 3);
     ASSERT_EQ(t.get_dim(2), 4);
-
     const std::vector<int32_t>& dims = t.dims();
     ASSERT_EQ(dims.size(), 3);
     ASSERT_EQ(dims[0], 2);
     ASSERT_EQ(dims[1], 3);
     ASSERT_EQ(dims[2], 4);
-
     const std::vector<size_t> strides = t.strides();
     ASSERT_EQ(strides.size(), 3);
     ASSERT_EQ(strides[0], 12);
@@ -364,9 +333,7 @@ TEST(test_tensor, reset_clears_buffer_and_updates_metadata) {
     tensor::Tensor t(DataType::kDataTypeFp32, 2, 3, true, alloc_cpu);
     ASSERT_FALSE(t.is_empty());
     ASSERT_EQ(t.device_type(), DeviceType::kDeviceCPU);
-
     t.reset(DataType::kDataTypeInt8, {4, 5});
-
     ASSERT_TRUE(t.is_empty());
     ASSERT_EQ(t.device_type(), DeviceType::kDeviceUnknown);
     ASSERT_EQ(t.data_type(), DataType::kDataTypeInt8);
@@ -389,7 +356,6 @@ TEST(test_tensor, ptr_with_offset_returns_expected_position) {
 
     float* offset_ptr = t.ptr<float>(3);
     ASSERT_EQ(*offset_ptr, 13.f);
-
     const tensor::Tensor& const_t = t;
     const float* const_offset_ptr = const_t.ptr<float>(4);
     ASSERT_EQ(*const_offset_ptr, 14.f);

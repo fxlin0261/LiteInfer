@@ -11,9 +11,7 @@
 #endif
 #include "base/tick.h"
 namespace model {
-
 namespace {
-
 base::Status init_cuda_config(std::shared_ptr<kernel::CudaConfig>& cuda_config) {
 #if KUIPER_ENABLE_CUDA
     cudaSetDevice(0);
@@ -48,7 +46,6 @@ base::Status init_sin_cos_cache(base::ModelType model_type, int32_t head_size, i
     return base::error::InternalError("This build does not include CUDA support.");
 #endif
 }
-
 }  // namespace
 
 void LlamaLayers::to_cuda(std::shared_ptr<kernel::CudaConfig> config) {
@@ -223,7 +220,6 @@ base::Status LlamaModelBase::create_nonparam_layers() {
     llama_layers_->mha_layer_ = std::make_shared<op::MultiHeadAttention>(
         device_type_, 0, config_->kv_mul_, config_->kv_dim_, config_->seq_len_, config_->head_num_,
         config_->head_size_);
-
     llama_layers_->add_layer_ = std::make_shared<op::VecAddLayer>(device_type_);
 
     llama_layers_->swiglu_layer_ =
@@ -234,7 +230,6 @@ base::Status LlamaModelBase::create_nonparam_layers() {
 base::Status LlamaModelBase::create_param_quant_layers() {
     CHECK(is_quant_model_);
     CHECK(llama_layers_ != nullptr);
-
     size_t pos = 0;
     int32_t dim = config_->dim_;
     auto cpu_device_type = base::DeviceType::kDeviceCPU;
@@ -333,7 +328,6 @@ base::Status LlamaModelBase::create_param_quant_layers() {
     for (int32_t i = 0; i < 2 * config_->layer_num_ + 1; ++i) {
         std::shared_ptr<op::RmsNormLayer> rms_norm_layer = std::make_shared<op::RmsNormLayer>(
             device_type_, dim, base::RmsNormEpsilon(model_type_));
-
         rms_norm_layer->set_weight(0, {dim}, weight_ptr, cpu_device_type);
         llama_layers_->rmsnorm_layers_.push_back(rms_norm_layer);
         weight_ptr += dim;
@@ -352,7 +346,6 @@ base::Status LlamaModelBase::create_param_layers() {
     const int32_t vocab_size = std::abs(config_->vocab_size_);
     const int32_t seq_len = config_->seq_len_;
     const int32_t head_size = config_->head_size_;
-
     const size_t embedding_size = static_cast<size_t>(vocab_size) * dim;
     const size_t attn_rms_size = static_cast<size_t>(layer_num) * dim;
     const size_t wq_size = static_cast<size_t>(layer_num) * dim * dim;
@@ -365,7 +358,6 @@ base::Status LlamaModelBase::create_param_layers() {
     const size_t w3_size = static_cast<size_t>(layer_num) * hidden_dim * dim;
     const size_t final_rms_size = dim;
     const size_t rope_cache_size = static_cast<size_t>(seq_len) * head_size;
-
     const size_t embedding_offset = 0;
     const size_t attn_rms_offset = embedding_offset + embedding_size;
     const size_t wq_offset = attn_rms_offset + attn_rms_size;
@@ -503,29 +495,23 @@ void LlamaModelBase::init_mem() {
         base::CPUDeviceAllocatorFactory::get_instance();
     std::shared_ptr<base::DeviceAllocator> alloc_cu =
         base::CUDADeviceAllocatorFactory::get_instance();
-
     tensor::Tensor input_tokens(base::DataType::kDataTypeInt32, 1, true, alloc_cpu);
     tensor::Tensor input_embeddings(base::DataType::kDataTypeFp32, 1, config_->dim_, true, alloc);
     tensor::Tensor sin_cache(base::DataType::kDataTypeFp32, config_->head_size_ * config_->seq_len_,
                              true, alloc);
     tensor::Tensor cos_cache(base::DataType::kDataTypeFp32, config_->head_size_ * config_->seq_len_,
                              true, alloc);
-
     CHECK(insert_buffer(ModelBufferType::kSinCache, sin_cache).ok());
     CHECK(insert_buffer(ModelBufferType::kCosCache, cos_cache).ok());
-
     CHECK(insert_buffer(ModelBufferType::kInputTokens, input_tokens).ok());
     CHECK(insert_buffer(ModelBufferType::kInputEmbeddings, input_embeddings).ok());
-
     tensor::Tensor rms_output(base::DataType::kDataTypeFp32, config_->dim_, true, alloc);
     CHECK(insert_buffer(ModelBufferType::kOutputRMSNorm, rms_output).ok());
     CHECK(insert_buffer(ModelBufferType::kOutputMHA, rms_output).ok());
     CHECK(insert_buffer(ModelBufferType::kW2Output, rms_output).ok());
     CHECK(insert_buffer(ModelBufferType::kFFNRMSNorm, rms_output).ok());
-
     tensor::Tensor w1_output(base::DataType::kDataTypeFp32, config_->hidden_dim_, true, alloc);
     tensor::Tensor w3_output(base::DataType::kDataTypeFp32, config_->hidden_dim_, true, alloc);
-
     CHECK(insert_buffer(ModelBufferType::kW1Output, w1_output).ok());
     CHECK(insert_buffer(ModelBufferType::kW3Output, w3_output).ok());
 
@@ -534,7 +520,6 @@ void LlamaModelBase::init_mem() {
                              config_->kv_dim_, true, alloc);
     tensor::Tensor value_cache(base::DataType::kDataTypeFp32, config_->layer_num_,
                                config_->seq_len_, config_->kv_dim_, true, alloc);
-
     CHECK(insert_buffer(ModelBufferType::kKeyCache, key_cache).ok());
     CHECK(insert_buffer(ModelBufferType::kValueCache, value_cache).ok());
 
@@ -661,7 +646,6 @@ op::EmbeddingOutput LlamaModelBase::embedding(const std::vector<int>& tokens) co
     LOG_IF(FATAL, !llama_layers_->embedding_layer_)
         << "The embedding layer in the Llama model is null pointer.";
     STATUS_CHECK(llama_layers_->embedding_layer_->forward(input_tokens, input_embeddings));
-
     op::EmbeddingOutput output(input_tokens, input_embeddings, static_cast<int32_t>(tokens.size()));
     return output;
 }
@@ -782,7 +766,6 @@ void LlamaModelBase::feed_forward(int32_t layer_idx, const tensor::Tensor& input
     const auto& w1_layer = llama_layers_->w1_layers_.at(layer_idx);
     CHECK_NE(w1_layer, nullptr) << "The w1 layer in the feedforward block is null pointer";
     STATUS_CHECK(w1_layer->forward(ffn_norm_output, w1_output));
-
     tensor::Tensor w3_ouput = get_buffer(ModelBufferType::kW3Output);
     const auto& w3_layer = llama_layers_->w3_layers_.at(layer_idx);
     CHECK_NE(w3_layer, nullptr) << "The w3 layer in the feedforward block is null pointer";
@@ -820,7 +803,6 @@ void LlamaModelBase::cls_logits(const tensor::Tensor& input) const {
 int32_t LlamaModelBase::post_processing(const tensor::Tensor& pos, bool is_prompt) const {
     tensor::Tensor forward_output = get_buffer(ModelBufferType::kForwardOutput);
     const float* forward_logits = forward_output.ptr<float>();
-
     int32_t next = 0;
     // 如果当前是在 prompt 阶段 可能不真正采样，只是把 prompt token 推进 KV cache
     if (is_prompt) {

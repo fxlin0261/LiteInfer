@@ -4,7 +4,6 @@
 namespace kernel {
 void rmsnorm_kernel_cu(const tensor::Tensor& input, const tensor::Tensor& weight,
                        const tensor::Tensor& output, float eps, void* stream = nullptr);
-
 void rmsnorm_kernel_cu_dim(const tensor::Tensor& input, const tensor::Tensor& weight,
                            const tensor::Tensor& output, int32_t dim, float eps,
                            void* stream = nullptr);
