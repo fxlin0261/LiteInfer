@@ -5,7 +5,7 @@
 #include <absl/strings/str_split.h>
 #include <sentencepiece_processor.h>
 #include "tokenizer/tiktoken.h"
-#include "base/unordered_dense.h"
+#include <ankerl/unordered_dense.h>
 #include "layer.h"
 #include "nlohmann/json.hpp"
 namespace op {

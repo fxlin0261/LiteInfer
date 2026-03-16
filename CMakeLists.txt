@@ -120,6 +120,12 @@ if(USE_CPM)
       GITHUB_REPOSITORY nlohmann/json
       VERSION 3.11.3
     )
+
+    CPMAddPackage(
+      NAME unordered_dense
+      GITHUB_REPOSITORY martinus/unordered_dense
+      GIT_TAG v4.1.2
+    )
   endif()
 
   if(KUIPER_RESTORE_WARN_DEPRECATED)
@@ -201,6 +207,10 @@ if(KUIPER_ENABLE_BPE_TOKENIZERS)
   if(NOT TARGET nlohmann_json::nlohmann_json)
     find_package(nlohmann_json REQUIRED)
   endif()
+
+  if(NOT TARGET unordered_dense::unordered_dense AND NOT TARGET unordered_dense)
+    find_package(unordered_dense CONFIG REQUIRED)
+  endif()
 endif()
 
 kuiper_maybe_disable_third_party_warnings(
@@ -240,6 +250,17 @@ else()
   message(FATAL_ERROR "Unable to find a usable Armadillo target or library.")
 endif()
 
+if(KUIPER_ENABLE_BPE_TOKENIZERS)
+  add_library(kuiper_unordered_dense INTERFACE)
+  if(TARGET unordered_dense::unordered_dense)
+    target_link_libraries(kuiper_unordered_dense INTERFACE unordered_dense::unordered_dense)
+  elseif(TARGET unordered_dense)
+    target_link_libraries(kuiper_unordered_dense INTERFACE unordered_dense)
+  else()
+    message(FATAL_ERROR "Unable to find a usable unordered_dense target.")
+  endif()
+endif()
+
 file(GLOB_RECURSE KUIPER_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/kuiper/*.cpp")
 if(KUIPER_WITH_CUDA)
   file(GLOB_RECURSE KUIPER_CUDA_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/kuiper/*.cu")
@@ -262,7 +283,13 @@ else()
 endif()
 
 if(KUIPER_ENABLE_BPE_TOKENIZERS)
-  target_link_libraries(kuiper_runtime PUBLIC absl::base re2::re2 nlohmann_json::nlohmann_json)
+  target_link_libraries(
+    kuiper_runtime PUBLIC
+    absl::base
+    re2::re2
+    nlohmann_json::nlohmann_json
+    kuiper_unordered_dense
+  )
 endif()
 
 if(WIN32)
