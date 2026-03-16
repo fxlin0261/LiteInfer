@@ -4,8 +4,10 @@
 #include <cfloat>
 #include <cub/cub.cuh>
 #include "mha_kernel.cuh"
+
 namespace kernel {
 constexpr static int thread_num = 256;
+
 __device__ void softmax_gpu(float* __restrict__ x, int size) {
     int tid = threadIdx.x;
     int step = blockDim.x;

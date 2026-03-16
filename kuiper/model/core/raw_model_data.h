@@ -2,6 +2,7 @@
 #define RAW_MODEL_DATA_H
 #include <cstddef>
 #include <cstdint>
+
 namespace model {
 struct RawModelData {
     virtual ~RawModelData();
@@ -11,9 +12,11 @@ struct RawModelData {
     void* weight_data = nullptr;
     virtual const void* weight(size_t offset) const = 0;
 };
+
 struct RawModelDataFp32 : RawModelData {
     const void* weight(size_t offset) const override;
 };
+
 struct RawModelDataInt8 : RawModelData {
     const void* weight(size_t offset) const override;
 };

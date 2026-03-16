@@ -1,4 +1,5 @@
 #include "emb_kernel.cuh"
+
 namespace kernel {
 __global__ void emb_kernel_cu_fp32(int32_t vocab_size, int32_t token_num, int32_t weight_dim,
                                    const int32_t* input_ptr, const float* weight_ptr,

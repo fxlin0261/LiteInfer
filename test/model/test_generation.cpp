@@ -74,6 +74,7 @@ public:
     const std::vector<int32_t>& seen_inputs() const { return seen_inputs_; }
     const std::vector<int32_t>& seen_positions() const { return seen_positions_; }
     const std::vector<int32_t>& seen_prompt_flags() const { return seen_prompt_flags_; }
+
 private:
     std::vector<int32_t> prompt_tokens_;
     std::vector<int32_t> predicted_tokens_;

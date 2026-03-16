@@ -8,6 +8,7 @@
 
 namespace base {
 CPUDeviceAllocator::CPUDeviceAllocator() : DeviceAllocator(DeviceType::kDeviceCPU) {}
+
 void* CPUDeviceAllocator::allocate(size_t byte_size) const {
     if (!byte_size) {
         return nullptr;

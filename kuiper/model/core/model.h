@@ -40,6 +40,7 @@ public:
     virtual tensor::Tensor fill_input(const tensor::Tensor& pos_tensor,
                                       const op::EmbeddingOutput& embedding_output,
                                       bool is_prompt) const;
+
 protected:
     virtual base::Status insert_buffer(ModelBufferType buffer_idx, const tensor::Tensor& tensor);
     virtual base::Status read_model_file();
@@ -48,12 +49,14 @@ protected:
     virtual base::Status generate_model_infos(const ModelConfig& config) const;
     virtual int32_t input_width() const;
     virtual int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const = 0;
+
 private:
     virtual void init_mem() = 0;
     virtual base::Status create_layers() = 0;
     virtual base::Status create_param_layers() = 0;
     virtual base::Status create_nonparam_layers() = 0;
     virtual base::Status create_param_quant_layers() = 0;
+
 protected:
     int32_t group_size_ = 1;
     bool is_quant_model_ = false;

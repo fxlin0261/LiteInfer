@@ -128,17 +128,24 @@ StandardDecoderLayers& StandardDecoderModel::layers() {
     CHECK(layers_ != nullptr) << "The decoder layers are null pointer.";
     return *layers_;
 }
+
 const StandardDecoderLayers& StandardDecoderModel::layers() const {
     CHECK(layers_ != nullptr) << "The decoder layers are null pointer.";
     return *layers_;
 }
+
 const std::shared_ptr<kernel::CudaConfig>& StandardDecoderModel::cuda_config() const {
     return cuda_config_;
 }
+
 int32_t StandardDecoderModel::input_width() const { return residual_width(); }
+
 int32_t StandardDecoderModel::residual_width() const { return config_->dim_; }
+
 int32_t StandardDecoderModel::attention_width() const { return config_->dim_; }
+
 int32_t StandardDecoderModel::ffn_width() const { return config_->hidden_dim_; }
+
 base::Status StandardDecoderModel::validate_custom_layers() const { return base::error::Success(); }
 void StandardDecoderModel::apply_attention_projection_norms(int32_t layer_idx,
                                                             tensor::Tensor& query,

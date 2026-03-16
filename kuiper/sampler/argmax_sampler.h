@@ -2,6 +2,7 @@
 #define LLAMA_INFER_NON_SAMPLER_H
 #include <base/base.h>
 #include "sampler.h"
+
 namespace sampler {
 class ArgmaxSampler : public Sampler {
 public:

@@ -9,6 +9,7 @@
 
 namespace base {
 inline constexpr bool IsCudaEnabled() { return KUIPER_ENABLE_CUDA != 0; }
+
 inline constexpr DeviceType DefaultDeviceType() {
     return IsCudaEnabled() ? DeviceType::kDeviceCUDA : DeviceType::kDeviceCPU;
 }
@@ -17,6 +18,7 @@ inline constexpr DeviceType DefaultDeviceType() {
 #if KUIPER_ENABLE_CUDA
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>
+
 namespace kernel {
 struct CudaConfig {
     cudaStream_t stream = nullptr;

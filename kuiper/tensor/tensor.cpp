@@ -128,6 +128,7 @@ void Tensor::to_cpu() {
 }
 
 size_t Tensor::size() const { return this->size_; }
+
 int32_t Tensor::get_dim(int32_t idx) const {
     CHECK_GE(idx, 0);
     CHECK_LT(idx, this->dims_.size());
@@ -192,6 +193,7 @@ bool Tensor::allocate(std::shared_ptr<base::DeviceAllocator> allocator, bool nee
 }
 
 const std::vector<int32_t>& Tensor::dims() const { return this->dims_; }
+
 void Tensor::set_device_type(base::DeviceType device_type) const {
     if (buffer_) {
         buffer_->set_device_type(device_type);
@@ -206,7 +208,9 @@ void Tensor::reset(base::DataType data_type, const std::vector<int32_t>& dims) {
 }
 
 int32_t Tensor::dims_size() const { return static_cast<int32_t>(dims_.size()); }
+
 base::DataType Tensor::data_type() const { return data_type_; }
+
 void Tensor::reshape(const std::vector<int32_t>& dims) {
     size_t size = reduce_dimension(dims.begin(), dims.end(), 1);
     if (!buffer_) {
@@ -233,6 +237,7 @@ void Tensor::reshape(const std::vector<int32_t>& dims) {
 }
 
 std::shared_ptr<base::Buffer> Tensor::get_buffer() const { return buffer_; }
+
 Tensor Tensor::clone() const {
     CHECK(buffer_ != nullptr && buffer_->ptr() != nullptr)
         << "Cannot clone an empty tensor or a tensor without backing memory.";
@@ -250,6 +255,7 @@ Tensor Tensor::clone() const {
 }
 
 size_t Tensor::byte_size() const { return this->size() * DataTypeSize(data_type_); }
+
 std::vector<size_t> Tensor::strides() const {
     std::vector<size_t> strides;
     if (!dims_.empty()) {

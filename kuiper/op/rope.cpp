@@ -2,6 +2,7 @@
 #include <cmath>
 #include "kernels/cpu/rope_kernel.h"
 #include "kernels/kernels_interface.h"
+
 namespace op {
 RoPELayer::RoPELayer(base::DeviceType device_type, base::ModelType model_type, int32_t dim,
                      int32_t kv_dim, int32_t head_size)
@@ -13,6 +14,7 @@ RoPELayer::RoPELayer(base::DeviceType device_type, base::ModelType model_type, i
     reset_input_size(5);
     reset_output_size(1);
 }
+
 base::Status RoPELayer::forward() {
     base::Status status = check();
     if (!status.ok()) {

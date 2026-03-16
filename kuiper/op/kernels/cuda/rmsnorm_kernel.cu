@@ -1,6 +1,7 @@
 #include <device_launch_parameters.h>
 #include <cub/block/block_reduce.cuh>
 #include "rmsnorm_kernel.cuh"
+
 namespace kernel {
 /**
  * 计算多维输入 in = (dim1, dim2), 计算在dim2维度上的rmsnorm

@@ -32,6 +32,7 @@ struct codepoint_flags {
     inline uint16_t as_uint() const { return *reinterpret_cast<const uint16_t*>(this); }
     inline uint16_t category_flag() const { return this->as_uint() & MASK_CATEGORIES; }
 };
+
 std::vector<uint32_t> unicode_cpts_normalize_nfd(const std::vector<uint32_t>& cpts);
 codepoint_flags unicode_cpt_flags(uint32_t cp);
 codepoint_flags unicode_cpt_flags(const std::string& utf8);

@@ -2,6 +2,7 @@
 #define KUIPER_INCLUDE_BASE_BUFFER_H_
 #include <memory>
 #include "base/alloc.h"
+
 namespace base {
 class Buffer : public NoCopyable, std::enable_shared_from_this<Buffer> {
 private:
@@ -10,6 +11,7 @@ private:
     bool use_external_ = false;
     DeviceType device_type_ = DeviceType::kDeviceUnknown;
     std::shared_ptr<DeviceAllocator> allocator_;
+
 public:
     explicit Buffer() = default;
     explicit Buffer(size_t byte_size, std::shared_ptr<DeviceAllocator> allocator = nullptr,

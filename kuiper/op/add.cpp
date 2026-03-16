@@ -1,11 +1,13 @@
 #include "op/add.h"
 #include "kernels/kernels_interface.h"
+
 namespace op {
 VecAddLayer::VecAddLayer(base::DeviceType device_type)
     : Layer(device_type, LayerType::kLayerAdd, "Add") {
     reset_input_size(2);
     reset_output_size(1);
 }
+
 base::Status VecAddLayer::check() const {
     tensor::Tensor input1 = this->get_input(0);
     tensor::Tensor input2 = this->get_input(1);

@@ -1,5 +1,6 @@
 #include <tensor/tensor.h>
 #include "swiglu_kernel.cuh"
+
 namespace kernel {
 __global__ void swiglu_kernel_cu_fp32(int size, const float* in1, const float* in2, float* out) {
     int tid = threadIdx.x;

@@ -17,6 +17,7 @@ struct GenerationState {
     bool is_prompt = true;
     std::vector<int32_t> words;
 };
+
 struct GenerationResult {
     int32_t steps = 0;
     GenerationState state;

@@ -145,6 +145,7 @@ public:
     auto decode(const std::vector<int>& tokens) const -> std::string {
         return _decode_native(tokens);
     }
+
 private:
     auto split_with_allowed_special_token(
         re2::StringPiece& input,

@@ -58,6 +58,7 @@ std::string unicode_byte_to_utf8(uint8_t byte) {
     static const auto map = unicode_byte_to_utf8_map();
     return map.at(byte);
 }
+
 uint8_t unicode_utf8_to_byte(const std::string& utf8) {
     static const auto map = unicode_utf8_to_byte_map();
     return map.at(utf8);

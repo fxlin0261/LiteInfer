@@ -1,6 +1,7 @@
 #include "matmul_kernel.h"
 #include "../kernels_interface.h"
 #include "base/base.h"
+
 namespace kernel {
 void matmul_kernel_cpu(const tensor::Tensor& input, const tensor::Tensor& weight,
                        const tensor::Tensor& output, float scale, const CudaConfig* config) {

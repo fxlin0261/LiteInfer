@@ -1,6 +1,7 @@
 #include "op/matmul.h"
 #include "kernels/cpu/matmul_kernel.h"
 #include "kernels/kernels_interface.h"
+
 namespace op {
 MatmulLayer::MatmulLayer(base::DeviceType device_type, int32_t dim0, int32_t dim1,
                          bool is_quant_layer, bool has_bias)

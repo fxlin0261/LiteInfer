@@ -1,6 +1,7 @@
 #ifndef LLAMA_INFER_ROPE_KERNEL_H
 #define LLAMA_INFER_ROPE_KERNEL_H
 #include "tensor/tensor.h"
+
 namespace kernel {
 void sin_cos_cache_calc_cpu(base::ModelType model_type, int head_size, int max_seq_len,
                             float* sin_cache, float* cos_cache);

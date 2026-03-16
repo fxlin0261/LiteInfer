@@ -1,4 +1,5 @@
 #include "rope_kernel.h"
+
 namespace kernel {
 namespace {
 void rope_kernel_half_split_cpu(int32_t dim, int32_t kv_dim, int32_t head_size,

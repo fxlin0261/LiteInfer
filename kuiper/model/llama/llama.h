@@ -6,6 +6,7 @@
 #include "op/embedding.h"
 #include "op/rope.h"
 #include "op/swiglu.h"
+
 namespace model {
 struct LlamaLayers {
     std::shared_ptr<op::Layer> add_layer_;
@@ -24,6 +25,7 @@ struct LlamaLayers {
     std::shared_ptr<op::Layer> embedding_layer_;
     void to_cuda(std::shared_ptr<kernel::CudaConfig> config);
 };
+
 class LlamaModelBase : public Model {
 public:
     explicit LlamaModelBase(base::TokenizerType tokenizer_type, base::ModelType model_type,
@@ -34,6 +36,7 @@ public:
     base::Status forward(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                          int& next) const override;
     op::EmbeddingOutput embedding(const std::vector<int>& tokens) const override;
+
 private:
     void init_mem() override;
     base::Status create_layers() override;
@@ -46,16 +49,19 @@ private:
     void attention_qkv(int32_t layer_idx, const tensor::Tensor& pos_tensor) const;
     void cls_logits(const tensor::Tensor& input) const;
     int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const override;
+
 private:
     std::shared_ptr<kernel::CudaConfig> cuda_config_;
     std::unique_ptr<LlamaLayers> llama_layers_;
 };
+
 class Llama2Model : public LlamaModelBase {
 public:
     explicit Llama2Model(std::string token_path, std::string model_path, bool is_quant_model)
         : LlamaModelBase(base::TokenizerType::kEncodeSpe, base::ModelType::kModelTypeLlama2,
                          std::move(token_path), std::move(model_path), is_quant_model) {}
 };
+
 class Llama3Model : public LlamaModelBase {
 public:
     explicit Llama3Model(std::string token_path, std::string model_path, bool is_quant_model)

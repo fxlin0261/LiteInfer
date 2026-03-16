@@ -70,14 +70,17 @@ AddKernel get_add_kernel(base::DeviceType device_type) {
     return select_kernel(device_type, add_kernel_cpu, kAddKernelCuda, "add_kernel_cu",
                          "Unknown device type for get a add kernel.");
 }
+
 EmbeddingKernel get_emb_kernel(base::DeviceType device_type) {
     return select_kernel(device_type, emb_kernel_normal, kEmbeddingKernelCuda, "emb_kernel_cu",
                          "Unknown device type for get an embedding kernel.");
 }
+
 MatmulKernel get_matmul_kernel(base::DeviceType device_type) {
     return select_kernel(device_type, matmul_kernel_cpu, kMatmulKernelCuda, "matmul_kernel_cu",
                          "Unknown device type for get an matmul kernel.");
 }
+
 MatmulKernelQuant get_matmul_kernel_quant8(base::DeviceType device_type) {
     return select_kernel<MatmulKernelQuant>(device_type, nullptr, kMatmulKernelQuant8Cuda,
                                             "matmul_kernel_cu_qint8",
@@ -88,10 +91,12 @@ MHAKernel get_mha_kernel(base::DeviceType device_type) {
     return select_kernel(device_type, mha_kernel, kMhaKernelCuda, "mha_kernel_cu",
                          "Unknown device type for get an mha kernel.");
 }
+
 RoPEKernel get_rope_kernel(base::DeviceType device_type) {
     return select_kernel(device_type, rope_kernel_cpu, kRoPEKernelCuda, "rope_kernel_cu",
                          "Unknown device type for get a rope kernel.");
 }
+
 ScaleKernel get_scale_kernel(base::DeviceType device_type) {
     if (device_type == base::DeviceType::kDeviceCPU) {
         return scale_inplace_cpu;
@@ -120,6 +125,7 @@ RMSNormKernel get_rmsnorm_kernel(base::DeviceType device_type) {
     return select_kernel(device_type, rmsnorm_kernel_cpu, kRmsNormKernelCuda, "rmsnorm_kernel_cu",
                          "Unknown device type for get a rmsnorm kernel.");
 }
+
 RMSNormKernelDim get_rmsnorm_dim_kernel(base::DeviceType device_type) {
     return select_kernel<RMSNormKernelDim>(device_type, nullptr, kRmsNormDimKernelCuda,
                                            "rmsnorm_kernel_cu_dim",

@@ -10,6 +10,7 @@
 #include "op/kernels/cuda/rope_kernel.cuh"
 #endif
 #include "base/tick.h"
+
 namespace model {
 namespace {
 base::Status init_cuda_config(std::shared_ptr<kernel::CudaConfig>& cuda_config) {

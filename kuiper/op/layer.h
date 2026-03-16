@@ -8,6 +8,7 @@
 
 namespace op {
 class Layer;
+
 enum class LayerType : uint8_t {
     kLayerUnknown = 0,
     kLayerLinear = 1,
@@ -21,6 +22,7 @@ enum class LayerType : uint8_t {
     kLayerAdd = 9,
     kLayerSwiGLU = 10,
 };
+
 class BaseLayer {
 public:
     explicit BaseLayer(base::DeviceType device_type, LayerType layer_type, base::DataType data_type,
@@ -58,12 +60,14 @@ public:
     void set_layer_name(const std::string& layer_name);
     base::DeviceType device_type() const;
     void set_device_type(base::DeviceType device_type);
+
 protected:
     std::string layer_name_;
     LayerType layer_type_ = LayerType::kLayerUnknown;
     base::DataType data_type_ = base::DataType::kDataTypeUnknown;
     base::DeviceType device_type_ = base::DeviceType::kDeviceUnknown;
 };
+
 class Layer : public BaseLayer {
 public:
     explicit Layer(base::DeviceType device_type, LayerType layer_type, std::string layer_name = "");
@@ -98,11 +102,13 @@ public:
     virtual void to_cuda();
     void set_cuda_config(std::shared_ptr<kernel::CudaConfig> config);
     std::shared_ptr<kernel::CudaConfig> cuda_config() const;
+
 protected:
     std::vector<tensor::Tensor> inputs_;
     std::vector<tensor::Tensor> outputs_;
     std::shared_ptr<kernel::CudaConfig> cuda_config_;
 };
+
 class LayerParam : public Layer {
 public:
     explicit LayerParam(base::DeviceType device_type, LayerType layer_type,
@@ -119,6 +125,7 @@ public:
     void set_scales(const tensor::Tensor& scales);
     void set_group_size(int32_t group_size);
     int32_t get_scale_num() const;
+
 protected:
     int32_t group_size_ = 0;
     bool is_quant_layer_ = false;

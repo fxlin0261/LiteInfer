@@ -4,6 +4,7 @@
 #include <memory>
 #include <sys/mman.h>
 #include <sys/stat.h>
+
 namespace model {
 Model::Model(base::TokenizerType tokenizer_type, base::ModelType model_type, std::string token_path,
              std::string model_path, bool is_quant_model)
@@ -12,9 +13,13 @@ Model::Model(base::TokenizerType tokenizer_type, base::ModelType model_type, std
       token_path_(std::move(token_path)),
       model_path_(std::move(model_path)),
       is_quant_model_(is_quant_model) {}
+
 base::ModelType Model::model_type() const { return model_type_; }
+
 const std::string& Model::token_path() const { return token_path_; }
+
 const std::string& Model::model_path() const { return model_path_; }
+
 base::Status Model::insert_buffer(ModelBufferType buffer_idx, const tensor::Tensor& tensor) {
     if (buffers_.count(buffer_idx) > 0) {
         return base::error::KeyHasExits(std::to_string(int(buffer_idx)) +
@@ -31,10 +36,12 @@ tensor::Tensor& Model::get_buffer(ModelBufferType buffer_idx) {
     CHECK_GT(buffers_.count(buffer_idx), 0) << int(buffer_idx);
     return buffers_.at(buffer_idx);
 }
+
 const tensor::Tensor& Model::get_buffer(ModelBufferType buffer_idx) const {
     CHECK_GT(buffers_.count(buffer_idx), 0);
     return buffers_.at(buffer_idx);
 }
+
 base::Status Model::read_model_file() {
     using namespace base;
     if (model_path_.empty()) {
@@ -183,10 +190,12 @@ bool Model::is_sentence_ending(int32_t token_idx) const {
     CHECK(this->tokenizer_layer_ != nullptr);
     return this->tokenizer_layer_->is_sentence_ending(token_idx);
 }
+
 std::string Model::decode(int32_t token_idx) const {
     CHECK(this->tokenizer_layer_ != nullptr);
     return this->tokenizer_layer_->decode(token_idx);
 }
+
 std::string Model::decode(std::vector<int32_t> token_idxs) const {
     CHECK(this->tokenizer_layer_ != nullptr);
     return this->tokenizer_layer_->decode(token_idxs);

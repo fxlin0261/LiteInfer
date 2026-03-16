@@ -2,6 +2,7 @@
 #include <cub/block/block_reduce.cuh>
 #include "../kernels_interface.h"
 #include "matmul_kernel.cuh"
+
 namespace kernel {
 template <int THREAD_PER_BLOCK, int ROW_PER_BLOCK>
 __global__ void matmul_kernel_cu_fp32(const float* input, const float* weight, float* output, int M,

@@ -6,6 +6,7 @@
 #define KUIPER_INCLUDE_OP_MATMUL_H_
 #include <base/cuda_config.h>
 #include "layer.h"
+
 namespace op {
 class MatmulLayer : public LayerParam {
 public:
@@ -18,6 +19,7 @@ public:
     tensor::Tensor& get_bias(int32_t idx);
     const tensor::Tensor& get_bias(int32_t idx) const;
     void to_cuda() override;
+
 private:
     int32_t dim0_ = 0;
     int32_t dim1_ = 0;

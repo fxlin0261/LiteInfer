@@ -1,6 +1,7 @@
 #include "op/mha.h"
 #include "kernels/cpu/mha_kernel.h"
 #include "kernels/kernels_interface.h"
+
 namespace op {
 MultiHeadAttention::MultiHeadAttention(base::DeviceType device_type, int32_t layer_index,
                                        int32_t kv_mul, int32_t kv_dim, int32_t seq_len,
@@ -15,6 +16,7 @@ MultiHeadAttention::MultiHeadAttention(base::DeviceType device_type, int32_t lay
     reset_input_size(5);
     reset_output_size(1);
 }
+
 base::Status MultiHeadAttention::forward() {
     auto status = check();
     if (!status.ok()) {
@@ -37,7 +39,9 @@ base::Status MultiHeadAttention::forward() {
 }
 
 void MultiHeadAttention::set_pos(int32_t pos) { this->pos_ = pos; }
+
 void MultiHeadAttention::set_layer_idx(int32_t layer_idx) { this->layer_index_ = layer_idx; }
+
 base::Status MultiHeadAttention::check() const {
     base::Status status = base::error::Success();
     const int32_t input_tensor_num = 4;

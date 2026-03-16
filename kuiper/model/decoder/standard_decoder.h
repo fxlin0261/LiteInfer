@@ -30,6 +30,7 @@ struct StandardDecoderLayers {
     std::shared_ptr<op::Layer> embedding_layer_;
     void to_cuda(std::shared_ptr<kernel::CudaConfig> config);
 };
+
 class StandardDecoderModel : public Model {
 public:
     explicit StandardDecoderModel(base::TokenizerType tokenizer_type, base::ModelType model_type,
@@ -41,6 +42,7 @@ public:
     base::Status forward(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                          int& next) const override;
     op::EmbeddingOutput embedding(const std::vector<int>& tokens) const override;
+
 protected:
     StandardDecoderLayers& layers();
     const StandardDecoderLayers& layers() const;
@@ -53,6 +55,7 @@ protected:
     virtual base::Status validate_custom_layers() const;
     virtual void apply_attention_projection_norms(int32_t layer_idx, tensor::Tensor& query,
                                                   tensor::Tensor& key) const;
+
 private:
     void init_mem() override;
     base::Status create_layers() override;
@@ -64,6 +67,7 @@ private:
     void attention_qkv(int32_t layer_idx, const tensor::Tensor& pos_tensor) const;
     void cls_logits(const tensor::Tensor& input) const;
     int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const override;
+
 private:
     std::shared_ptr<kernel::CudaConfig> cuda_config_;
     std::unique_ptr<StandardDecoderLayers> layers_;

@@ -7,6 +7,7 @@
 #include "base/base.h"
 #include "base/buffer.h"
 #include "base/cuda_config.h"
+
 namespace tensor {
 class Tensor {
 public:
@@ -58,6 +59,7 @@ public:
     template <typename T>
     const T& index(int64_t offset) const;
     tensor::Tensor clone() const;
+
 private:
     size_t size_ = 0;
     std::vector<int32_t> dims_;

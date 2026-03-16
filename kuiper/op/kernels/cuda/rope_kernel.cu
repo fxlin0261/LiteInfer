@@ -1,4 +1,5 @@
 #include "rope_kernel.cuh"
+
 namespace kernel {
 namespace {
 __device__ void rope_calc(float fcr, float fci, float* vec, int32_t idx) {

@@ -2,6 +2,7 @@
 #include <glog/logging.h>
 #include "tokenizer/unicode_byte_fallback.h"
 #include "base/unicode_utf8.h"
+
 namespace op {
 std::string SentencePieceTokenizerLayer::decode(int32_t token_id) const {
     CHECK(spe != nullptr);
@@ -41,6 +42,7 @@ bool SentencePieceTokenizerLayer::is_sentence_ending(int32_t token_id) const {
     CHECK(this->spe != nullptr);
     return token_id == this->spe->eos_id();
 }
+
 int32_t SentencePieceTokenizerLayer::vocab_size() const {
     CHECK(spe != nullptr);
     return spe->GetPieceSize();
@@ -110,6 +112,7 @@ std::vector<int32_t> BpeTokenizerLayer::encode(const std::string& sentence) cons
 std::string BpeTokenizerLayer::decode(int32_t token_id) const {
     return decode(std::vector<int32_t>{token_id});
 }
+
 std::string BpeTokenizerLayer::decode(const std::vector<int32_t>& token_ids) const {
     CHECK(this->tiktoken_ != nullptr);
     auto s = tiktoken_->decode(token_ids);

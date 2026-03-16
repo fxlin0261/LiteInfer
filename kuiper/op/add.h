@@ -2,6 +2,7 @@
 #define KUIPER_INCLUDE_OP_ADD_H
 #include "base/base.h"
 #include "layer.h"
+
 namespace op {
 class VecAddLayer : public Layer {
 public:

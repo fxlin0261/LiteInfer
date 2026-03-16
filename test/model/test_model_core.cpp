@@ -82,6 +82,7 @@ public:
         return generate_model_infos(config);
     }
     model::TransformerConfig* mutable_config() { return config_.get(); }
+
 private:
     int32_t post_processing(const tensor::Tensor& pos, bool is_prompt) const override {
         UNUSED(pos);
