@@ -263,8 +263,8 @@ endif()
 
 set(
   LITEINFER_INFER_TARGET_SOURCES
-  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama2.cpp"
-  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama3.cpp"
+  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_infer.cpp"
+  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer.cpp"
   "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_chat.cpp"
 )
 
@@ -309,8 +309,8 @@ function(liteinfer_add_model_target target_name source_file)
   target_link_libraries(${target_name} PRIVATE liteinfer::runtime)
 endfunction()
 
-liteinfer_add_model_target(llama2_infer "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama2.cpp")
-liteinfer_add_model_target(llama3_infer "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama3.cpp")
+liteinfer_add_model_target(llama2_infer "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_infer.cpp")
+liteinfer_add_model_target(llama3_infer "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer.cpp")
 liteinfer_add_model_target(llama2_chat "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_chat.cpp")
 if(BUILD_TESTING)
   add_subdirectory(test)
