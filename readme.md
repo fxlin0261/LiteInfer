@@ -72,13 +72,13 @@ ctest --test-dir build --output-on-failure -R '^test_llm$'
 ### Llama2
 
 ```bash
-./build/models/llama2_infer <model_path> <tokenizer_path> [runtime_max_seq_len] [steps]
+./build/models/llama2_infer <model_path> <tokenizer_path> [runtime_max_seq_len] [max_total_steps]
 ```
 
 ### Llama3
 
 ```bash
-./build/models/llama3_infer <model_path> <tokenizer_path> [runtime_max_seq_len] [steps]
+./build/models/llama3_infer <model_path> <tokenizer_path> [runtime_max_seq_len] [max_total_steps]
 ```
 
 推理示例默认会把运行时上下文长度限制到 `8192`，避免在 CPU 上按模型头里的超长 `seq_len`

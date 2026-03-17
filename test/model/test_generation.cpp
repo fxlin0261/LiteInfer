@@ -88,14 +88,14 @@ private:
 
 TEST(test_generation, single_token_prompt_switches_to_decode_path_cleanly) {
     FakeGenerationModel model({42}, {7, 99}, 99);
-    app::GenerationResult result;
+    app::GenerationState result;
 
     const auto status =
-        app::RunGeneration(model, model.encode("ignored"), 4, app::GenerationState{},
+        app::RunGeneration(model, model.encode("ignored"), 4,
                            app::CollectPromptAndGeneratedTokens, &result);
     ASSERT_TRUE(status.ok());
-    EXPECT_EQ(result.steps, 1);
-    EXPECT_EQ(result.state.words, std::vector<int32_t>({7}));
+    EXPECT_EQ(result.executed_steps, 1);
+    EXPECT_EQ(result.words, std::vector<int32_t>({7}));
     EXPECT_EQ(model.seen_inputs(), std::vector<int32_t>({42, 7}));
     EXPECT_EQ(model.seen_positions(), std::vector<int32_t>({0, 1}));
     EXPECT_EQ(model.seen_prompt_flags(), std::vector<int32_t>({0, 0}));
@@ -103,14 +103,14 @@ TEST(test_generation, single_token_prompt_switches_to_decode_path_cleanly) {
 
 TEST(test_generation, prompt_tokens_are_consumed_before_generated_tokens) {
     FakeGenerationModel model({10, 11, 12}, {50, 51, 52}, -1);
-    app::GenerationResult result;
+    app::GenerationState result;
 
     const auto status =
-        app::RunGeneration(model, model.encode("ignored"), 3, app::GenerationState{},
+        app::RunGeneration(model, model.encode("ignored"), 3,
                            app::CollectPromptAndGeneratedTokens, &result);
     ASSERT_TRUE(status.ok());
-    EXPECT_EQ(result.steps, 3);
-    EXPECT_EQ(result.state.words, std::vector<int32_t>({11, 12, 52}));
+    EXPECT_EQ(result.executed_steps, 3);
+    EXPECT_EQ(result.words, std::vector<int32_t>({11, 12, 52}));
     EXPECT_EQ(model.seen_inputs(), std::vector<int32_t>({10, 11, 12}));
     EXPECT_EQ(model.seen_positions(), std::vector<int32_t>({0, 1, 2}));
     EXPECT_EQ(model.seen_prompt_flags(), std::vector<int32_t>({1, 1, 0}));

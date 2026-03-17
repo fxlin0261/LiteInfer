@@ -9,7 +9,7 @@
 
 namespace {
 constexpr int32_t kDefaultRuntimeMaxSeqLen = 8192;
-constexpr int32_t kDefaultGenerationSteps = 128;
+constexpr int32_t kDefaultMaxTotalSteps = 128;
 
 int32_t ParsePositiveIntArg(const char* arg_name, const char* value) {
     errno = 0;
@@ -26,7 +26,7 @@ int32_t ParsePositiveIntArg(const char* arg_name, const char* value) {
 int main(int argc, char* argv[]) {
     if (argc < 3 || argc > 5) {
         LOG(INFO) << "Usage: ./llama3_infer <checkpoint_path> <tokenizer_path> "
-                  << "[runtime_max_seq_len] [steps]";
+                  << "[runtime_max_seq_len] [max_total_steps]";
         return -1;
     }
     const char* checkpoint_path = argv[1];
@@ -34,18 +34,12 @@ int main(int argc, char* argv[]) {
     const int32_t runtime_max_seq_len =
         argc >= 4 ? ParsePositiveIntArg("runtime_max_seq_len", argv[3])
                   : kDefaultRuntimeMaxSeqLen;
-    const int32_t generation_steps =
-        argc >= 5 ? ParsePositiveIntArg("steps", argv[4]) : kDefaultGenerationSteps;
+    const int32_t max_total_steps =
+        argc >= 5 ? ParsePositiveIntArg("max_total_steps", argv[4]) : kDefaultMaxTotalSteps;
     model::Llama3Model model(tokenizer_path, checkpoint_path, false);
-    const auto max_seq_status = model.set_runtime_max_seq_len(runtime_max_seq_len);
-    if (!max_seq_status.ok()) {
-        LOG(FATAL) << "Invalid runtime max seq len, code: "
-                   << static_cast<int>(max_seq_status.code())
-                   << ", message: " << max_seq_status.message();
-    }
-    LOG(INFO) << "Using runtime max seq len " << runtime_max_seq_len << " and generation steps "
-              << generation_steps;
-    const auto init_status = model.init(base::DefaultDeviceType());
+    LOG(INFO) << "Using runtime max seq len " << runtime_max_seq_len << " and max total steps "
+              << max_total_steps;
+    const auto init_status = model.init(base::DefaultDeviceType(), runtime_max_seq_len);
     if (!init_status.ok()) {
         LOG(FATAL) << "The model init failed, code: " << static_cast<int>(init_status.code())
                    << ", message: " << init_status.message();
@@ -54,9 +48,9 @@ int main(int argc, char* argv[]) {
     const auto start = std::chrono::steady_clock::now();
     printf("Generating...\n");
     fflush(stdout);
-    int32_t steps = 0;
+    int32_t executed_steps = 0;
     const auto generate_status =
-        app::GenerateGreedyText(model, sentence, generation_steps, true, &steps);
+        app::GenerateGreedyText(model, sentence, max_total_steps, true, &executed_steps);
     if (!generate_status.ok()) {
         LOG(FATAL) << "Text generation failed, code: "
                    << static_cast<int>(generate_status.code())
@@ -64,7 +58,7 @@ int main(int argc, char* argv[]) {
     }
     const auto end = std::chrono::steady_clock::now();
     const auto duration = std::chrono::duration<double>(end - start).count();
-    printf("\nsteps/s:%lf\n", static_cast<double>(steps) / duration);
+    printf("\nsteps/s:%lf\n", static_cast<double>(executed_steps) / duration);
     fflush(stdout);
     return 0;
 }

@@ -45,8 +45,11 @@ public:
                 is_quant_model) {
         config_ = std::make_unique<model::TransformerConfig>();
     }
-    base::Status init(base::DeviceType device_type) override {
+    base::Status init(base::DeviceType device_type, int32_t runtime_max_seq_len = 0) override {
         device_type_ = device_type;
+        if (runtime_max_seq_len != 0) {
+            return set_runtime_max_seq_len(runtime_max_seq_len);
+        }
         return base::error::Success();
     }
     base::Status predict(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
@@ -170,6 +173,22 @@ TEST(test_model_core, runtime_max_seq_len_caps_model_seq_len_without_expanding_i
     ASSERT_TRUE(model.set_runtime_max_seq_len(262144).ok());
     ASSERT_TRUE(model.generate_model_infos_for_test(config).ok());
     EXPECT_EQ(model.mutable_config()->seq_len_, 131072);
+}
+
+TEST(test_model_core, init_can_apply_runtime_max_seq_len) {
+    FakeModel model;
+    model::ModelConfig config{};
+    config.dim = 12;
+    config.hidden_dim = 48;
+    config.layer_num = 2;
+    config.head_num = 6;
+    config.kv_head_num = 3;
+    config.vocab_size = -32000;
+    config.seq_len = 131072;
+
+    ASSERT_TRUE(model.init(base::DeviceType::kDeviceCPU, 8192).ok());
+    ASSERT_TRUE(model.generate_model_infos_for_test(config).ok());
+    EXPECT_EQ(model.mutable_config()->seq_len_, 8192);
 }
 
 TEST(test_model_core, runtime_max_seq_len_requires_positive_value) {

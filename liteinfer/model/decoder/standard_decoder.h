@@ -36,7 +36,7 @@ public:
     explicit StandardDecoderModel(base::TokenizerType tokenizer_type, base::ModelType model_type,
                                   std::string token_path, std::string model_path,
                                   bool is_quant_model);
-    base::Status init(base::DeviceType device_type) override;
+    base::Status init(base::DeviceType device_type, int32_t runtime_max_seq_len = 0) override;
     base::Status predict(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                          bool is_prompt, int& next) const override;
     base::Status forward(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,

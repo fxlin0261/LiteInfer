@@ -55,13 +55,20 @@ StandardDecoderModel::StandardDecoderModel(base::TokenizerType tokenizer_type,
     : Model(tokenizer_type, model_type, std::move(token_path), std::move(model_path),
             is_quant_model) {}
 
-base::Status StandardDecoderModel::init(base::DeviceType device_type) {
+base::Status StandardDecoderModel::init(base::DeviceType device_type,
+                                        int32_t runtime_max_seq_len) {
     using namespace base;
     if (token_path_.empty()) {
         return error::PathNotValid(token_path_);
     }
     if (device_type == DeviceType::kDeviceCPU && is_quant_model_) {
         return error::InternalError("The cpu device do not support int8 quant model.");
+    }
+    if (runtime_max_seq_len != 0) {
+        const auto max_seq_status = set_runtime_max_seq_len(runtime_max_seq_len);
+        if (!max_seq_status.ok()) {
+            return max_seq_status;
+        }
     }
 
     device_type_ = device_type;
