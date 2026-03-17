@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 #include "base/alloc.h"
-#include "model/decoder/model_utils.h"
+#include "model/llama/llama_model_utils.h"
 #include "model/core/model.h"
 
 namespace {
