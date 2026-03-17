@@ -14,7 +14,6 @@ namespace model {
 namespace {
 using FileHandle = std::unique_ptr<FILE, int (*)(FILE*)>;
 
-size_t RuntimeTensorSlot(RuntimeTensorType tensor_idx) { return static_cast<size_t>(tensor_idx); }
 
 class ScopedFd {
 public:
@@ -157,28 +156,28 @@ base::Status Model::set_runtime_max_seq_len(int32_t max_seq_len) {
 }
 
 base::Status Model::insert_runtime_tensor(RuntimeTensorType tensor_idx, const tensor::Tensor& tensor) {
-    auto& tensor_slot = runtime_tensors_.at(RuntimeTensorSlot(tensor_idx));
-    if (!tensor_slot.is_empty()) {
+    auto& runtime_tensor = runtime_tensors_.at(static_cast<size_t>(tensor_idx));
+    if (!runtime_tensor.is_empty()) {
         return base::error::KeyHasExits(std::to_string(int(tensor_idx)) +
-                                        " has exists in the runtime tensor slots");
+                                        " already exists in the runtime tensor storage");
     }
     if (tensor.is_empty()) {
         return base::error::InvalidArgument("The tensor is empty for inserting runtime tensor.");
     }
-    tensor_slot = tensor;
+    runtime_tensor = tensor;
     return base::error::Success();
 }
 
 tensor::Tensor& Model::get_runtime_tensor(RuntimeTensorType tensor_idx) {
-    auto& tensor_slot = runtime_tensors_.at(RuntimeTensorSlot(tensor_idx));
-    CHECK(!tensor_slot.is_empty()) << int(tensor_idx);
-    return tensor_slot;
+    auto& runtime_tensor = runtime_tensors_.at(static_cast<size_t>(tensor_idx));
+    CHECK(!runtime_tensor.is_empty()) << int(tensor_idx);
+    return runtime_tensor;
 }
 
 const tensor::Tensor& Model::get_runtime_tensor(RuntimeTensorType tensor_idx) const {
-    const auto& tensor_slot = runtime_tensors_.at(RuntimeTensorSlot(tensor_idx));
-    CHECK(!tensor_slot.is_empty()) << int(tensor_idx);
-    return tensor_slot;
+    const auto& runtime_tensor = runtime_tensors_.at(static_cast<size_t>(tensor_idx));
+    CHECK(!runtime_tensor.is_empty()) << int(tensor_idx);
+    return runtime_tensor;
 }
 
 base::Status Model::read_model_file() {

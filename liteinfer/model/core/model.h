@@ -13,7 +13,7 @@
 #include "tensor/tensor.h"
 
 namespace model {
-constexpr size_t kRuntimeTensorSlotCount = static_cast<size_t>(RuntimeTensorType::kCosCache) + 1;
+constexpr size_t kRuntimeTensorCount = static_cast<size_t>(RuntimeTensorType::kCosCache) + 1;
 
 class Model {
 public:
@@ -72,7 +72,7 @@ protected:
     std::string token_path_;
     std::string model_path_;
     std::unique_ptr<op::TokenizerLayerBase> tokenizer_layer_;
-    std::array<tensor::Tensor, kRuntimeTensorSlotCount> runtime_tensors_;
+    std::array<tensor::Tensor, kRuntimeTensorCount> runtime_tensors_;
     std::unique_ptr<sampler::Sampler> sampler_;
     std::shared_ptr<RawModelData> raw_model_data_;
     base::DeviceType device_type_ = base::DeviceType::kDeviceUnknown;
