@@ -1,12 +1,12 @@
 #ifndef LITEINFER_INCLUDE_MODEL_LLAMA_H_
 #define LITEINFER_INCLUDE_MODEL_LLAMA_H_
 
-#include "model/decoder/standard_decoder.h"
+#include "model/llama/llama_decoder.h"
 
 namespace model {
-class LlamaModelBase : public StandardDecoderModel {
+class LlamaModel : public LlamaDecoderModel {
 public:
-    explicit LlamaModelBase(base::TokenizerType tokenizer_type, base::ModelType model_type,
+    explicit LlamaModel(base::TokenizerType tokenizer_type, base::ModelType model_type,
                             std::string token_path, std::string model_path, bool is_quant_model);
 
 protected:
@@ -14,18 +14,19 @@ protected:
     base::Status create_param_quant_layers() override;
 };
 
-class Llama2Model : public LlamaModelBase {
+class Llama2Model : public LlamaModel {
 public:
     explicit Llama2Model(std::string token_path, std::string model_path, bool is_quant_model)
-        : LlamaModelBase(base::TokenizerType::kEncodeSpe, base::ModelType::kModelTypeLlama2,
+        : LlamaModel(base::TokenizerType::kEncodeSpe, base::ModelType::kModelTypeLlama2,
                          std::move(token_path), std::move(model_path), is_quant_model) {}
 };
 
-class Llama3Model : public LlamaModelBase {
+class Llama3Model : public LlamaModel {
 public:
     explicit Llama3Model(std::string token_path, std::string model_path, bool is_quant_model)
-        : LlamaModelBase(base::TokenizerType::kEncodeBpe, base::ModelType::kModelTypeLlama3,
+        : LlamaModel(base::TokenizerType::kEncodeBpe, base::ModelType::kModelTypeLlama3,
                          std::move(token_path), std::move(model_path), is_quant_model) {}
 };
 }  // namespace model
 #endif
+

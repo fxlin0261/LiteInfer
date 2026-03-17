@@ -1,5 +1,5 @@
-#ifndef LITEINFER_INCLUDE_MODEL_MODEL_UTILS_H_
-#define LITEINFER_INCLUDE_MODEL_MODEL_UTILS_H_
+#ifndef LITEINFER_INCLUDE_MODEL_LLAMA_MODEL_UTILS_H_
+#define LITEINFER_INCLUDE_MODEL_LLAMA_MODEL_UTILS_H_
 
 #include <memory>
 #include <vector>
@@ -44,4 +44,5 @@ void MoveLayerRangeToCuda(const LayerCollection& layers,
 }  // namespace detail
 }  // namespace model
 
-#endif  // LITEINFER_INCLUDE_MODEL_MODEL_UTILS_H_
+#endif  // LITEINFER_INCLUDE_MODEL_LLAMA_MODEL_UTILS_H_
+

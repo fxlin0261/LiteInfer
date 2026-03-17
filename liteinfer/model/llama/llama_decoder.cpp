@@ -1,9 +1,9 @@
-#include "model/decoder/standard_decoder.h"
+#include "model/llama/llama_decoder.h"
 #include <glog/logging.h>
 #include <op/matmul.h>
 #include <op/mha.h>
 #include <op/rmsnorm.h>
-#include "model/decoder/model_utils.h"
+#include "model/llama/llama_model_utils.h"
 #include "op/kernels/cpu/rope_kernel.h"
 
 namespace model {
@@ -30,7 +30,7 @@ base::Status ValidateOptionalLayerGroup(const std::vector<std::shared_ptr<op::La
 }
 }  // namespace
 
-void StandardDecoderLayers::to_cuda(std::shared_ptr<kernel::CudaConfig> config) {
+void LlamaDecoderLayers::to_cuda(std::shared_ptr<kernel::CudaConfig> config) {
     detail::MoveLayerToCuda(add_layer_, config);
     detail::MoveLayerToCuda(rope_layer_, config);
     detail::MoveLayerToCuda(swiglu_layer_, config);
@@ -49,13 +49,13 @@ void StandardDecoderLayers::to_cuda(std::shared_ptr<kernel::CudaConfig> config) 
     detail::MoveLayerRangeToCuda(key_norm_layers_, config);
 }
 
-StandardDecoderModel::StandardDecoderModel(base::TokenizerType tokenizer_type,
+LlamaDecoderModel::LlamaDecoderModel(base::TokenizerType tokenizer_type,
                                            base::ModelType model_type, std::string token_path,
                                            std::string model_path, bool is_quant_model)
     : Model(tokenizer_type, model_type, std::move(token_path), std::move(model_path),
             is_quant_model) {}
 
-base::Status StandardDecoderModel::init(base::DeviceType device_type,
+base::Status LlamaDecoderModel::init(base::DeviceType device_type,
                                         int32_t runtime_max_seq_len) {
     using namespace base;
     if (token_path_.empty()) {
@@ -103,7 +103,7 @@ base::Status StandardDecoderModel::init(base::DeviceType device_type,
     return error::Success();
 }
 
-base::Status StandardDecoderModel::predict(const tensor::Tensor& input,
+base::Status LlamaDecoderModel::predict(const tensor::Tensor& input,
                                            const tensor::Tensor& pos_tensor, bool is_prompt,
                                            int& next) const {
     auto status = forward(input, pos_tensor, next);
@@ -114,7 +114,7 @@ base::Status StandardDecoderModel::predict(const tensor::Tensor& input,
     return base::error::Success();
 }
 
-base::Status StandardDecoderModel::forward(const tensor::Tensor& input,
+base::Status LlamaDecoderModel::forward(const tensor::Tensor& input,
                                            const tensor::Tensor& pos_tensor, int& next) const {
     // Run the shared decoder stack over one prompt/generation step.
     UNUSED(next);
@@ -135,8 +135,8 @@ base::Status StandardDecoderModel::forward(const tensor::Tensor& input,
     return base::error::Success();
 }
 
-op::EmbeddingOutput StandardDecoderModel::embedding(const std::vector<int>& tokens) const {
-    // 将 token id 转成 decoder 输入 embedding。
+op::EmbeddingOutput LlamaDecoderModel::embedding(const std::vector<int>& tokens) const {
+    // Convert token ids into decoder input embeddings.
     auto input_tokens = get_runtime_tensor(RuntimeTensorType::kInputTokens);
     auto input_embeddings = get_runtime_tensor(RuntimeTensorType::kInputEmbeddings);
     const int32_t embedding_width = residual_width();
@@ -154,18 +154,18 @@ op::EmbeddingOutput StandardDecoderModel::embedding(const std::vector<int>& toke
     return op::EmbeddingOutput(input_tokens, input_embeddings, static_cast<int32_t>(tokens.size()));
 }
 
-StandardDecoderLayers& StandardDecoderModel::layers() {
+LlamaDecoderLayers& LlamaDecoderModel::layers() {
     CHECK(layers_ != nullptr) << "The decoder layers are null pointer.";
     return *layers_;
 }
 
-const StandardDecoderLayers& StandardDecoderModel::layers() const {
+const LlamaDecoderLayers& LlamaDecoderModel::layers() const {
     CHECK(layers_ != nullptr) << "The decoder layers are null pointer.";
     return *layers_;
 }
 
-void StandardDecoderModel::init_mem() {
-    // 分配 embedding、中间激活和 KV cache 等运行期缓冲区。
+void LlamaDecoderModel::init_mem() {
+    // Allocate runtime buffers for embeddings, intermediate activations, and the KV cache.
     std::shared_ptr<base::DeviceAllocator> alloc;
     if (device_type_ == base::DeviceType::kDeviceCPU) {
         alloc = base::CPUDeviceAllocatorFactory::get_instance();
@@ -230,10 +230,10 @@ void StandardDecoderModel::init_mem() {
     CHECK(insert_runtime_tensor(RuntimeTensorType::kForwardOutput, forward_output).ok());
 }
 
-base::Status StandardDecoderModel::create_layers() {
+base::Status LlamaDecoderModel::create_layers() {
     using namespace base;
     if (!layers_) {
-        layers_ = std::make_unique<StandardDecoderLayers>();
+        layers_ = std::make_unique<LlamaDecoderLayers>();
     }
 
     base::Status layer_status =
@@ -320,7 +320,7 @@ base::Status StandardDecoderModel::create_layers() {
     return validate_custom_layers();
 }
 
-base::Status StandardDecoderModel::create_nonparam_layers() {
+base::Status LlamaDecoderModel::create_nonparam_layers() {
     layers().rope_layer_ = std::make_shared<op::RoPELayer>(device_type_, model_type_, config_->dim_,
                                                            config_->kv_dim_, config_->head_size_);
 
@@ -332,7 +332,7 @@ base::Status StandardDecoderModel::create_nonparam_layers() {
     return base::error::Success();
 }
 
-base::Status StandardDecoderModel::create_param_quant_layers() {
+base::Status LlamaDecoderModel::create_param_quant_layers() {
     CHECK(is_quant_model_);
     size_t pos = 0;
     const int32_t dim = config_->dim_;
@@ -430,7 +430,7 @@ base::Status StandardDecoderModel::create_param_quant_layers() {
     return base::error::Success();
 }
 
-void StandardDecoderModel::attention_rms(int32_t layer_idx, const tensor::Tensor& input) const {
+void LlamaDecoderModel::attention_rms(int32_t layer_idx, const tensor::Tensor& input) const {
     tensor::Tensor rmsnorm_output = get_runtime_tensor(RuntimeTensorType::kOutputRMSNorm);
     const auto& rmsnorm_layer = layers().rmsnorm_layers_.at(layer_idx);
     CHECK_NE(rmsnorm_layer, nullptr)
@@ -438,7 +438,7 @@ void StandardDecoderModel::attention_rms(int32_t layer_idx, const tensor::Tensor
     STATUS_CHECK(rmsnorm_layer->forward(input, rmsnorm_output));
 }
 
-void StandardDecoderModel::attention_qkv(int32_t layer_idx,
+void LlamaDecoderModel::attention_qkv(int32_t layer_idx,
                                          const tensor::Tensor& pos_tensor) const {
     tensor::Tensor query = get_runtime_tensor(RuntimeTensorType::kQuery);
     const int32_t pos = pos_tensor.index<int32_t>(0);
@@ -462,7 +462,7 @@ void StandardDecoderModel::attention_qkv(int32_t layer_idx,
         get_runtime_tensor(RuntimeTensorType::kCosCache), tensor::Tensor{}));
 }
 
-void StandardDecoderModel::attention_mha(int32_t layer_idx,
+void LlamaDecoderModel::attention_mha(int32_t layer_idx,
                                          const tensor::Tensor& pos_tensor) const {
     tensor::Tensor key_cache = get_runtime_tensor(RuntimeTensorType::kKeyCache);
     tensor::Tensor val_cache = get_runtime_tensor(RuntimeTensorType::kValueCache);
@@ -483,7 +483,7 @@ void StandardDecoderModel::attention_mha(int32_t layer_idx,
     STATUS_CHECK(wo_layer->forward(mha_output, attn_output));
 }
 
-void StandardDecoderModel::feed_forward(int32_t layer_idx, const tensor::Tensor& input) const {
+void LlamaDecoderModel::feed_forward(int32_t layer_idx, const tensor::Tensor& input) const {
     CHECK_NE(layers().add_layer_, nullptr) << "The add layer in the decoder model is null pointer.";
     STATUS_CHECK(
         layers().add_layer_->forward(input, get_runtime_tensor(RuntimeTensorType::kAttnOutput), input));
@@ -511,7 +511,7 @@ void StandardDecoderModel::feed_forward(int32_t layer_idx, const tensor::Tensor&
     STATUS_CHECK(layers().add_layer_->forward(input, w2_output, input));
 }
 
-void StandardDecoderModel::cls_logits(const tensor::Tensor& input) const {
+void LlamaDecoderModel::cls_logits(const tensor::Tensor& input) const {
     const auto& norm = layers().rmsnorm_layers_.at(2 * config_->layer_num_);
     CHECK_NE(norm, nullptr);
     STATUS_CHECK(norm->forward(input, input));
@@ -520,7 +520,7 @@ void StandardDecoderModel::cls_logits(const tensor::Tensor& input) const {
     STATUS_CHECK(layers().cls_layer_->forward(input, forward_output));
 }
 
-int32_t StandardDecoderModel::post_processing(const tensor::Tensor& pos, bool is_prompt) const {
+int32_t LlamaDecoderModel::post_processing(const tensor::Tensor& pos, bool is_prompt) const {
     UNUSED(pos);
     tensor::Tensor forward_output = get_runtime_tensor(RuntimeTensorType::kForwardOutput);
     const float* forward_logits = forward_output.ptr<float>();
@@ -532,3 +532,4 @@ int32_t StandardDecoderModel::post_processing(const tensor::Tensor& pos, bool is
                                                  cuda_config_ ? cuda_config_->stream : nullptr));
 }
 }  // namespace model
+

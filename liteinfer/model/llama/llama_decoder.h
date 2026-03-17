@@ -1,5 +1,5 @@
-#ifndef LITEINFER_INCLUDE_MODEL_STANDARD_DECODER_H_
-#define LITEINFER_INCLUDE_MODEL_STANDARD_DECODER_H_
+#ifndef LITEINFER_INCLUDE_MODEL_LLAMA_DECODER_H_
+#define LITEINFER_INCLUDE_MODEL_LLAMA_DECODER_H_
 
 #include <base/cuda_config.h>
 #include <memory>
@@ -11,7 +11,7 @@
 #include "op/swiglu.h"
 
 namespace model {
-struct StandardDecoderLayers {
+struct LlamaDecoderLayers {
     std::shared_ptr<op::Layer> add_layer_;
     std::shared_ptr<op::Layer> rope_layer_;
     std::shared_ptr<op::Layer> swiglu_layer_;
@@ -31,9 +31,9 @@ struct StandardDecoderLayers {
     void to_cuda(std::shared_ptr<kernel::CudaConfig> config);
 };
 
-class StandardDecoderModel : public Model {
+class LlamaDecoderModel : public Model {
 public:
-    explicit StandardDecoderModel(base::TokenizerType tokenizer_type, base::ModelType model_type,
+    explicit LlamaDecoderModel(base::TokenizerType tokenizer_type, base::ModelType model_type,
                                   std::string token_path, std::string model_path,
                                   bool is_quant_model);
     base::Status init(base::DeviceType device_type, int32_t runtime_max_seq_len = 0) override;
@@ -44,8 +44,8 @@ public:
     op::EmbeddingOutput embedding(const std::vector<int>& tokens) const override;
 
 protected:
-    StandardDecoderLayers& layers();
-    const StandardDecoderLayers& layers() const;
+    LlamaDecoderLayers& layers();
+    const LlamaDecoderLayers& layers() const;
     base::Status create_param_layers() override = 0;
     int32_t input_width() const override { return residual_width(); }
     virtual int32_t residual_width() const { return config_->dim_; }
@@ -73,8 +73,9 @@ private:
 
 private:
     std::shared_ptr<kernel::CudaConfig> cuda_config_;
-    std::unique_ptr<StandardDecoderLayers> layers_;
+    std::unique_ptr<LlamaDecoderLayers> layers_;
 };
 }  // namespace model
 
-#endif  // LITEINFER_INCLUDE_MODEL_STANDARD_DECODER_H_
+#endif  // LITEINFER_INCLUDE_MODEL_LLAMA_DECODER_H_
+

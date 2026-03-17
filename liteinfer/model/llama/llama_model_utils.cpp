@@ -1,4 +1,4 @@
-#include "model/decoder/model_utils.h"
+#include "model/llama/llama_model_utils.h"
 
 #if LITEINFER_ENABLE_CUDA
 #include "op/kernels/cuda/rope_kernel.cuh"
@@ -73,3 +73,4 @@ base::Status InitSinCosCache(base::ModelType model_type, int32_t head_size, int3
 }
 }  // namespace detail
 }  // namespace model
+
