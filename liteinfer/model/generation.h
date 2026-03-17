@@ -3,7 +3,7 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <cstdio>
+#include <iostream>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -51,7 +51,7 @@ base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens,
             tensor::Tensor input = model.fill_input(pos_tensor, prompt_embedding, true);
             predict_status = model.predict(input, pos_tensor, is_prompt_step, state.next);
         } else {
-            tokens = std::vector<int32_t>{state.next};
+            tokens = {state.next};
             const auto token_embedding = model.embedding(tokens);
             tensor::Tensor input = model.fill_input(pos_tensor, token_embedding, false);
             predict_status = model.predict(input, pos_tensor, false, state.next);
@@ -93,8 +93,7 @@ base::Status GenerateGreedyText(const ModelT& model, const std::string& sentence
     }
 
     if (need_output) {
-        printf("%s ", model.decode(result.words).data());
-        fflush(stdout);
+        std::cout << model.decode(result.words) << ' ' << std::flush;
     }
     *executed_steps = result.executed_steps;
     return base::error::Success();

@@ -1,8 +1,9 @@
 #include "model/core/model.h"
 
-#include <cstdio>
+#include <cstddef>
 #include <cstdlib>
 #include <fcntl.h>
+#include <fstream>
 #include <memory>
 #include <utility>
 
@@ -12,9 +13,6 @@
 
 namespace model {
 namespace {
-using FileHandle = std::unique_ptr<FILE, int (*)(FILE*)>;
-
-
 class ScopedFd {
 public:
     explicit ScopedFd(int32_t fd = -1) : fd_(fd) {}
@@ -55,23 +53,22 @@ private:
 };
 
 template <typename T>
-bool ReadBinaryValue(FILE* file, T* value) {
-    return std::fread(value, sizeof(T), 1, file) == 1;
+bool ReadBinaryValue(std::istream& stream, T& value) {
+    return static_cast<bool>(stream.read(reinterpret_cast<char*>(&value), sizeof(T)));
 }
 
-base::Status ReadModelHeader(FILE* file, bool is_quant_model, ModelConfig* config,
+base::Status ReadModelHeader(std::istream& stream, bool is_quant_model, ModelConfig* config,
                              int32_t* group_size) {
-    CHECK(file != nullptr);
     CHECK(config != nullptr);
     CHECK(group_size != nullptr);
 
     using namespace base;
-    if (!ReadBinaryValue(file, config)) {
+    if (!ReadBinaryValue(stream, *config)) {
         return error::ModelParseError(
             "Failed to retrieve the configuration information from the model "
             "file.");
     }
-    if (is_quant_model && !ReadBinaryValue(file, group_size)) {
+    if (is_quant_model && !ReadBinaryValue(stream, *group_size)) {
         return error::ModelParseError(
             "Failed to retrieve the group size information from the model "
             "file.");
@@ -113,7 +110,8 @@ base::Status MapModelData(ScopedFd&& fd, const std::string& model_path, size_t h
                                       " into memory.");
     }
 
-    raw_model_data->weight_data = static_cast<int8_t*>(raw_model_data->data) + header_bytes;
+    auto* mapped_bytes = static_cast<std::byte*>(raw_model_data->data);
+    raw_model_data->weight_data = mapped_bytes + header_bytes;
     return error::Success();
 }
 
@@ -192,14 +190,13 @@ base::Status Model::read_model_file() {
                                    " may be the path does not exist!");
     }
 
-    FileHandle file(std::fopen(model_path_.c_str(), "rb"), &std::fclose);
-    if (!file) {
+    std::ifstream file(model_path_, std::ios::binary);
+    if (!file.is_open()) {
         return error::PathNotValid("Failed to open the file. The path may be invalid.");
     }
 
     ModelConfig config {};
-    const Status header_status =
-        ReadModelHeader(file.get(), is_quant_model_, &config, &group_size_);
+    const Status header_status = ReadModelHeader(file, is_quant_model_, &config, &group_size_);
     if (!header_status.ok()) {
         return header_status;
     }

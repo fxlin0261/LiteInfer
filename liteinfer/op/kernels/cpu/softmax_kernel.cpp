@@ -15,7 +15,8 @@ void softmax_inplace_cpu(const tensor::Tensor& input, void* stream) {
 void softmax_inplace_cpu(const float* input_ptr, size_t size) {
     tensor::Tensor input(base::DataType::kDataTypeFp32, size);
     std::shared_ptr<base::Buffer> buffer =
-        std::make_shared<base::Buffer>(size * sizeof(float), nullptr, (void*)input_ptr, true);
+        std::make_shared<base::Buffer>(size * sizeof(float), nullptr, const_cast<float*>(input_ptr),
+                                       true);
     input.assign(buffer);
     return softmax_inplace_cpu(input);
 }

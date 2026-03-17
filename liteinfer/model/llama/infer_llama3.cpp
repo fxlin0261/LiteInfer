@@ -1,7 +1,8 @@
-#include <cerrno>
+#include <charconv>
 #include <chrono>
 #include <cstdlib>
-#include <limits>
+#include <iostream>
+#include <string_view>
 #include <base/base.h>
 #include <glog/logging.h>
 #include "model/generation.h"
@@ -11,15 +12,15 @@ namespace {
 constexpr int32_t kDefaultRuntimeMaxSeqLen = 8192;
 constexpr int32_t kDefaultMaxTotalSteps = 128;
 
-int32_t ParsePositiveIntArg(const char* arg_name, const char* value) {
-    errno = 0;
-    char* end = nullptr;
-    const long parsed = std::strtol(value, &end, 10);
-    if (errno != 0 || end == value || *end != '\0' || parsed <= 0 ||
-        parsed > std::numeric_limits<int32_t>::max()) {
+int32_t ParsePositiveIntArg(std::string_view arg_name, const char* value) {
+    const std::string_view value_view(value);
+    int32_t parsed = 0;
+    const auto [end, error] =
+        std::from_chars(value_view.data(), value_view.data() + value_view.size(), parsed);
+    if (error != std::errc{} || end != value_view.data() + value_view.size() || parsed <= 0) {
         LOG(FATAL) << arg_name << " must be a positive integer, got: " << value;
     }
-    return static_cast<int32_t>(parsed);
+    return parsed;
 }
 }  // namespace
 
@@ -27,7 +28,7 @@ int main(int argc, char* argv[]) {
     if (argc < 3 || argc > 5) {
         LOG(INFO) << "Usage: ./llama3_infer <checkpoint_path> <tokenizer_path> "
                   << "[runtime_max_seq_len] [max_total_steps]";
-        return -1;
+        return EXIT_FAILURE;
     }
     const char* checkpoint_path = argv[1];
     const char* tokenizer_path = argv[2];
@@ -46,8 +47,7 @@ int main(int argc, char* argv[]) {
     }
     const std::string sentence = "hello";
     const auto start = std::chrono::steady_clock::now();
-    printf("Generating...\n");
-    fflush(stdout);
+    std::cout << "Generating...\n" << std::flush;
     int32_t executed_steps = 0;
     const auto generate_status =
         app::GenerateGreedyText(model, sentence, max_total_steps, true, &executed_steps);
@@ -58,7 +58,6 @@ int main(int argc, char* argv[]) {
     }
     const auto end = std::chrono::steady_clock::now();
     const auto duration = std::chrono::duration<double>(end - start).count();
-    printf("\nsteps/s:%lf\n", static_cast<double>(executed_steps) / duration);
-    fflush(stdout);
-    return 0;
+    std::cout << "\nsteps/s:" << (static_cast<double>(executed_steps) / duration) << '\n';
+    return EXIT_SUCCESS;
 }

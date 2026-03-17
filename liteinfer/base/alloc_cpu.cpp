@@ -16,21 +16,22 @@ void* CPUDeviceAllocator::allocate(size_t byte_size) const {
 #ifdef LITEINFER_HAVE_POSIX_MEMALIGN
     void* data = nullptr;
     const size_t alignment = (byte_size >= size_t(1024)) ? size_t(32) : size_t(16);
-    int status = posix_memalign(
-        (void**)&data, ((alignment >= sizeof(void*)) ? alignment : sizeof(void*)), byte_size);
+    const size_t effective_alignment =
+        (alignment >= sizeof(void*)) ? alignment : sizeof(void*);
+    const int status = posix_memalign(&data, effective_alignment, byte_size);
     if (status != 0) {
         return nullptr;
     }
     return data;
 #else
-    void* data = malloc(byte_size);
+    void* data = std::malloc(byte_size);
     return data;
 #endif
 }
 
 void CPUDeviceAllocator::release(void* ptr) const {
     if (ptr) {
-        free(ptr);
+        std::free(ptr);
     }
 }
 }  // namespace base
