@@ -265,6 +265,7 @@ set(
   LITEINFER_INFER_TARGET_SOURCES
   "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama2.cpp"
   "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama3.cpp"
+  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_chat.cpp"
 )
 
 file(GLOB_RECURSE LITEINFER_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/liteinfer/*.cpp")
@@ -310,6 +311,7 @@ endfunction()
 
 liteinfer_add_model_target(llama2_infer "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama2.cpp")
 liteinfer_add_model_target(llama3_infer "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama3.cpp")
+liteinfer_add_model_target(llama2_chat "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_chat.cpp")
 if(BUILD_TESTING)
   add_subdirectory(test)
 endif()

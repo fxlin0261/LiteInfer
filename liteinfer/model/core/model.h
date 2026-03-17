@@ -26,6 +26,10 @@ public:
                                  bool is_prompt, int& next) const = 0;
     virtual base::Status forward(const tensor::Tensor& input, const tensor::Tensor& pos_tensor,
                                  int& next) const = 0;
+    int32_t max_seq_len() const {
+        CHECK(config_ != nullptr);
+        return config_->seq_len_;
+    }
     base::ModelType model_type() const { return model_type_; }
     const std::string& token_path() const { return token_path_; }
     const std::string& model_path() const { return model_path_; }
