@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include "base/alloc.h"
-#include "common/generation.h"
+#include "generation.h"
 #include "op/embedding.h"
 #include "tensor/tensor.h"
 

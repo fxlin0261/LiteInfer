@@ -4,5 +4,5 @@ function(liteinfer_add_model_target target_name source_file)
   target_link_libraries(${target_name} PRIVATE liteinfer::runtime)
 endfunction()
 
-liteinfer_add_model_target(llama2_infer llama/infer_llama2.cpp)
-liteinfer_add_model_target(llama3_infer llama/infer_llama3.cpp)
+liteinfer_add_model_target(llama2_infer llama/infer/infer_llama2.cpp)
+liteinfer_add_model_target(llama3_infer llama/infer/infer_llama3.cpp)
