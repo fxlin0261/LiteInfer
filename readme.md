@@ -95,19 +95,19 @@ ctest --test-dir build --output-on-failure -R '^test_llm$'
 
 婵＄偑鍊曞﹢鍗灻烘导鏉戠闁告侗鍠栫徊鐟般€掑顓犫棩缂併劉鍓濈粙澶愬焵椤掍胶顩叉繛鎴烆伀娓氣偓瀹曞湱鈧綆浜堕崵銈夋煕閹达妇绱伴柛鎾炽偢瀵敻顢楁繝鍕槷婵炶揪绲界粔宕囪姳椤掑嫭鏅?
 
-- `models/llama/tools/`
+- `tools/`
 
 婵炴挻鑹鹃鍛淬€呰閺?
 
 ```bash
-python3 models/llama/tools/export_llama2.py <output_bin> --meta-llama <model_dir>
-python3 models/llama/tools/export_llama3.py <output_bin> --hf=<hf_model_dir>
+python3 tools/export_llama2.py <output_bin> --meta-llama <model_dir>
+python3 tools/export_llama3.py <output_bin> --hf=<hf_model_dir>
 ```
 
 ## 婵犮垼娉涘ú锕傚极?
 
 - `build/` 闂佸搫瀚烽崹宕囨椤忓棙瀚氶柟杈剧悼缂堝鏌涢幋锝嗩仩婵炲弶濯介妵?
-- `models/` 下是共享生成逻辑、Llama 推理入口和相关脚本
+- `liteinfer/model/` 下是共享生成逻辑、Llama 推理入口和相关脚本
 - `test/` 下是单元测试
 - 婵犵鈧啿鈧綊鎮樻径鎰煑妞ゅ繐鎳忕瑧闂傚倸鍟幊鎾活敋閻楀牏顩烽柨婵嗘川閸ㄦ娊鏌ㄥ☉妯垮缂傚倹鎸鹃幏瀣敊閻撳骸寮楅梺娲讳簻椤戞垹妲?
   - `liteinfer/model/core/model.h`

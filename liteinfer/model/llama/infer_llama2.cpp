@@ -4,7 +4,7 @@
 #include <limits>
 #include <base/base.h>
 #include <glog/logging.h>
-#include "generation.h"
+#include "model/generation.h"
 #include "model/llama/llama.h"
 
 namespace {
@@ -25,7 +25,7 @@ int32_t ParsePositiveIntArg(const char* arg_name, const char* value) {
 
 int main(int argc, char* argv[]) {
     if (argc < 3 || argc > 5) {
-        LOG(INFO) << "Usage: ./llama3_infer <checkpoint_path> <tokenizer_path> "
+        LOG(INFO) << "Usage: ./llama2_infer <checkpoint_path> <tokenizer_path> "
                   << "[runtime_max_seq_len] [max_total_steps]";
         return -1;
     }
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
                   : kDefaultRuntimeMaxSeqLen;
     const int32_t max_total_steps =
         argc >= 5 ? ParsePositiveIntArg("max_total_steps", argv[4]) : kDefaultMaxTotalSteps;
-    model::Llama3Model model(tokenizer_path, checkpoint_path, false);
+    model::Llama2Model model(tokenizer_path, checkpoint_path, false);
     LOG(INFO) << "Using runtime max seq len " << runtime_max_seq_len << " and max total steps "
               << max_total_steps;
     const auto init_status = model.init(base::DefaultDeviceType(), runtime_max_seq_len);

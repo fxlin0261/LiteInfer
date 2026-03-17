@@ -269,5 +269,3 @@ base::Status LlamaModel::create_param_layers() {
     return base::error::Success();
 }
 }  // namespace model
-
-

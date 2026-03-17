@@ -261,11 +261,18 @@ if(LITEINFER_ENABLE_BPE_TOKENIZERS)
   endif()
 endif()
 
+set(
+  LITEINFER_INFER_TARGET_SOURCES
+  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama2.cpp"
+  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama3.cpp"
+)
+
 file(GLOB_RECURSE LITEINFER_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/liteinfer/*.cpp")
 if(LITEINFER_WITH_CUDA)
   file(GLOB_RECURSE LITEINFER_CUDA_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/liteinfer/*.cu")
   list(APPEND LITEINFER_SOURCES ${LITEINFER_CUDA_SOURCES})
 endif()
+list(REMOVE_ITEM LITEINFER_SOURCES ${LITEINFER_INFER_TARGET_SOURCES})
 
 add_library(liteinfer_runtime SHARED ${LITEINFER_SOURCES})
 add_library(liteinfer::runtime ALIAS liteinfer_runtime)
@@ -295,8 +302,14 @@ if(WIN32)
   set_target_properties(liteinfer_runtime PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-add_subdirectory(models)
+function(liteinfer_add_model_target target_name source_file)
+  add_executable(${target_name} ${source_file})
+  set_target_properties(${target_name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/models")
+  target_link_libraries(${target_name} PRIVATE liteinfer::runtime)
+endfunction()
 
+liteinfer_add_model_target(llama2_infer "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama2.cpp")
+liteinfer_add_model_target(llama3_infer "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/infer_llama3.cpp")
 if(BUILD_TESTING)
   add_subdirectory(test)
 endif()

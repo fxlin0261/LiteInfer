@@ -1,5 +1,5 @@
-#ifndef LITEINFER_MODELS_GENERATION_H_
-#define LITEINFER_MODELS_GENERATION_H_
+#ifndef LITEINFER_MODEL_GENERATION_H_
+#define LITEINFER_MODEL_GENERATION_H_
 
 #include <algorithm>
 #include <cstdint>
@@ -101,4 +101,4 @@ base::Status GenerateGreedyText(const ModelT& model, const std::string& sentence
 }
 }  // namespace app
 
-#endif  // LITEINFER_MODELS_GENERATION_H_
+#endif  // LITEINFER_MODEL_GENERATION_H_

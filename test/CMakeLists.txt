@@ -30,7 +30,7 @@ if(LITEINFER_WITH_CUDA)
 endif()
 
 add_executable(test_llm ${TEST_SOURCES})
-target_include_directories(test_llm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/models")
+target_include_directories(test_llm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(test_llm PRIVATE liteinfer::runtime GTest::gtest)
 
 if(LITEINFER_WITH_CUDA)
