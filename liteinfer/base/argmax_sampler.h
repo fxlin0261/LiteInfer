@@ -1,7 +1,7 @@
-#ifndef LLAMA_INFER_NON_SAMPLER_H
-#define LLAMA_INFER_NON_SAMPLER_H
+#ifndef LITEINFER_BASE_ARGMAX_SAMPLER_H_
+#define LITEINFER_BASE_ARGMAX_SAMPLER_H_
 #include <base/base.h>
-#include "sampler.h"
+#include "base/sampler.h"
 
 namespace sampler {
 class ArgmaxSampler : public Sampler {
@@ -10,4 +10,4 @@ public:
     size_t sample(const float* logits, size_t size, void* stream = nullptr) override;
 };
 }  // namespace sampler
-#endif  // LLAMA_INFER_NON_SAMPLER_H
+#endif  // LITEINFER_BASE_ARGMAX_SAMPLER_H_

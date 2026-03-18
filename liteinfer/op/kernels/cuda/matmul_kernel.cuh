@@ -1,7 +1,7 @@
 #ifndef MATMUL_KERNEL_CU_CUH
 #define MATMUL_KERNEL_CU_CUH
 #include "../kernels_interface.h"
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace kernel {
 void matmul_kernel_cu(const tensor::Tensor& input, const tensor::Tensor& weight,

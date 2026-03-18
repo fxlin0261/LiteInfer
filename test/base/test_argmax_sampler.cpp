@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "sampler/argmax_sampler.h"
+#include "base/argmax_sampler.h"
 
 TEST(test_argmax_sampler, sample_returns_index_of_largest_logit_on_cpu) {
     sampler::ArgmaxSampler sampler(base::DeviceType::kDeviceCPU);

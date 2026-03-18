@@ -1,5 +1,5 @@
 #include <base/cuda_config.h>
-#include <tensor/tensor.h>
+#include <base/tensor.h>
 #include <cfloat>
 #include <cub/cub.cuh>
 #include "mha_kernel.cuh"

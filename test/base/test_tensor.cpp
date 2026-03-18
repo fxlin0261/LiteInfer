@@ -1,7 +1,7 @@
 #include <cuda_runtime_api.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <tensor/tensor.h>
+#include <base/tensor.h>
 #include "base/buffer.h"
 #include "support/cuda_test_utils.cuh"
 

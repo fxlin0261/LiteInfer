@@ -4,7 +4,7 @@
 #include <base/cuda_config.h>
 #include <memory>
 #include <vector>
-#include "model/core/model.h"
+#include "model/model.h"
 #include "op/add.h"
 #include "op/embedding.h"
 #include "op/rope.h"
@@ -78,4 +78,3 @@ private:
 }  // namespace model
 
 #endif  // LITEINFER_INCLUDE_MODEL_LLAMA_DECODER_H_
-

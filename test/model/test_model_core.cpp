@@ -9,7 +9,7 @@
 #include <vector>
 #include "base/alloc.h"
 #include "model/llama/llama_model_utils.h"
-#include "model/core/model.h"
+#include "model/model.h"
 
 namespace {
 class FakeEncodeLayer final : public op::TokenizerLayerBase {

@@ -1,6 +1,6 @@
 #ifndef LLAMA_INFER_SWIGLU_KERNEL_H
 #define LLAMA_INFER_SWIGLU_KERNEL_H
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace kernel {
 void swiglu_kernel_cpu(const tensor::Tensor& input1, const tensor::Tensor& input2,

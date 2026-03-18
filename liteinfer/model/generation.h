@@ -9,7 +9,7 @@
 
 #include <glog/logging.h>
 
-#include "model/core/model.h"
+#include "model/model.h"
 
 namespace app {
 struct GenerationState {

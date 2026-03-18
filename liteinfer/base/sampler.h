@@ -1,7 +1,8 @@
-#ifndef LLAMA_INFER_SAMPLER_H
-#define LLAMA_INFER_SAMPLER_H
+#ifndef LITEINFER_BASE_SAMPLER_H_
+#define LITEINFER_BASE_SAMPLER_H_
 #include <cstddef>
 #include <cstdint>
+#include "base/base.h"
 
 namespace sampler {
 class Sampler {
@@ -14,4 +15,4 @@ protected:
     base::DeviceType device_type_;
 };
 }  // namespace sampler
-#endif  // LLAMA_INFER_SAMPLER_H
+#endif  // LITEINFER_BASE_SAMPLER_H_

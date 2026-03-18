@@ -4,7 +4,7 @@
 #include "base/alloc.h"
 #include "model/generation.h"
 #include "op/embedding.h"
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace {
 class FakeGenerationModel {

@@ -1,5 +1,5 @@
-#ifndef LITEINFER_INCLUDE_MODEL_LLAMA_CONFIG_H_
-#define LITEINFER_INCLUDE_MODEL_LLAMA_CONFIG_H_
+#ifndef LITEINFER_MODEL_CONFIG_H_
+#define LITEINFER_MODEL_CONFIG_H_
 
 namespace model {
 struct ModelConfig {
@@ -26,4 +26,4 @@ struct TransformerConfig {
     bool is_shared_weight_ = false;
 };
 }  // namespace model
-#endif  // LITEINFER_INCLUDE_MODEL_LLAMA_CONFIG_H_
+#endif  // LITEINFER_MODEL_CONFIG_H_

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include "base/base.h"
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace op {
 class Layer;

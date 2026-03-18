@@ -1,5 +1,5 @@
-#ifndef LITEINFER_INCLUDE_TENSOR_TENSOR_H_
-#define LITEINFER_INCLUDE_TENSOR_TENSOR_H_
+#ifndef LITEINFER_INCLUDE_BASE_TENSOR_H_
+#define LITEINFER_INCLUDE_BASE_TENSOR_H_
 #include <glog/logging.h>
 #include <armadillo>
 #include <memory>
@@ -113,4 +113,4 @@ const T* Tensor::ptr(int64_t index) const {
     return reinterpret_cast<const T*>(buffer_->ptr()) + index;
 }
 }  // namespace tensor
-#endif  // LITEINFER_INCLUDE_TENSOR_TENSOR_H_
+#endif  // LITEINFER_INCLUDE_BASE_TENSOR_H_

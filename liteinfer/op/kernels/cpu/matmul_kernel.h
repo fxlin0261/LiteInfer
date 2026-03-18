@@ -1,7 +1,7 @@
 #ifndef LLAMA_INFER_MATMUL_KERNEL_H
 #define LLAMA_INFER_MATMUL_KERNEL_H
 #include "base/cuda_config.h"
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace kernel {
 void matmul_kernel_cpu(const tensor::Tensor& input, const tensor::Tensor& weight,

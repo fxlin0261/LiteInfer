@@ -1,5 +1,5 @@
-#ifndef RAW_MODEL_DATA_H
-#define RAW_MODEL_DATA_H
+#ifndef LITEINFER_MODEL_RAW_MODEL_DATA_H_
+#define LITEINFER_MODEL_RAW_MODEL_DATA_H_
 #include <cstddef>
 #include <cstdint>
 
@@ -21,4 +21,4 @@ struct RawModelDataInt8 : RawModelData {
     const void* weight(size_t offset) const override;
 };
 }  // namespace model
-#endif  // RAW_MODEL_DATA_H
+#endif  // LITEINFER_MODEL_RAW_MODEL_DATA_H_

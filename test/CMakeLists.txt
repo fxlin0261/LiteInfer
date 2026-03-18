@@ -9,7 +9,7 @@ set(
   model/test_raw_model_data.cpp
   op/cpu/test_embedding_cpu.cpp
   op/cpu/test_mha_cpu.cpp
-  sampler/test_argmax_sampler.cpp
+  base/test_argmax_sampler.cpp
 )
 
 if(LITEINFER_WITH_CUDA)
@@ -18,7 +18,7 @@ if(LITEINFER_WITH_CUDA)
     TEST_SOURCES
     base/test_buffer.cpp
     base/test_buffer_core.cpp
-    tensor/test_tensor.cpp
+    base/test_tensor.cpp
     support/test_cuda_utils.cpp
     support/cuda_test_utils.cu
     op/cuda/test_add_cuda.cpp

@@ -1,6 +1,6 @@
 #ifndef LLAMA_INFER_RMSNORM_KERNEL_H
 #define LLAMA_INFER_RMSNORM_KERNEL_H
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace kernel {
 void rmsnorm_kernel_cpu(const tensor::Tensor& input, const tensor::Tensor& weight,

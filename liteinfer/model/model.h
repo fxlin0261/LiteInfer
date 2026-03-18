@@ -4,13 +4,13 @@
 #include <op/embedding.h>
 #include <array>
 #include <string>
-#include "model/core/config.h"
+#include "model/config.h"
 #include "op/tokenizer_layer.h"
 #include "op/layer.h"
-#include "model/core/raw_model_data.h"
-#include "sampler/argmax_sampler.h"
+#include "model/raw_model_data.h"
+#include "base/argmax_sampler.h"
 #include "sentencepiece_processor.h"
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace model {
 constexpr size_t kRuntimeTensorCount = static_cast<size_t>(RuntimeTensorType::kCosCache) + 1;

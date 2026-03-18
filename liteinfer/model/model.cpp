@@ -1,4 +1,4 @@
-#include "model/core/model.h"
+#include "model/model.h"
 
 #include <cstddef>
 #include <cstdlib>

@@ -1,4 +1,4 @@
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 #include <functional>
 #include <glog/logging.h>
 #include <numeric>

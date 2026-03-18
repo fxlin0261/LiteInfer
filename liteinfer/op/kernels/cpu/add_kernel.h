@@ -1,6 +1,6 @@
 #ifndef LITEINFER_INCLUDE_OP_KERNEL
 #define LITEINFER_INCLUDE_OP_KERNEL
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace kernel {
 void add_kernel_cpu(const tensor::Tensor& input1, const tensor::Tensor& input2,

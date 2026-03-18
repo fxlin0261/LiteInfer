@@ -1,6 +1,6 @@
 #ifndef ADD_CU_H
 #define ADD_CU_H
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace kernel {
 void add_kernel_cu(const tensor::Tensor& input1, const tensor::Tensor& input2,

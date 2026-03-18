@@ -5,7 +5,7 @@
 #ifndef LITEINFER_INFER_EMB_KERNEL_H
 #define LITEINFER_INFER_EMB_KERNEL_H
 #include "base/base.h"
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace kernel {
 void emb_kernel_normal(const tensor::Tensor& input, const tensor::Tensor& weight,

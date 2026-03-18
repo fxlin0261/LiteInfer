@@ -1,7 +1,7 @@
-#include "sampler/argmax_sampler.h"
+#include "base/argmax_sampler.h"
 #include <algorithm>
 #if LITEINFER_ENABLE_CUDA
-#include "../op/kernels/cuda/argmax_kernel.cuh"
+#include "op/kernels/cuda/argmax_kernel.cuh"
 #endif
 
 namespace sampler {

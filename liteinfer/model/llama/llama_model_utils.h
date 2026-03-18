@@ -4,9 +4,9 @@
 #include <memory>
 #include <vector>
 #include "base/cuda_config.h"
-#include "model/core/raw_model_data.h"
+#include "model/raw_model_data.h"
 #include "op/layer.h"
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace model {
 namespace detail {
@@ -45,4 +45,3 @@ void MoveLayerRangeToCuda(const LayerCollection& layers,
 }  // namespace model
 
 #endif  // LITEINFER_INCLUDE_MODEL_LLAMA_MODEL_UTILS_H_
-

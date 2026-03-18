@@ -1,6 +1,6 @@
 #ifndef EMB_KERNEL_H
 #define EMB_KERNEL_H
-#include "tensor/tensor.h"
+#include "base/tensor.h"
 
 namespace kernel {
 void emb_kernel_cu(const tensor::Tensor& input, const tensor::Tensor& weight,
