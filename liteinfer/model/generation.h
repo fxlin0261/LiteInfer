@@ -5,9 +5,10 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
-#include <type_traits>
 #include <vector>
+
 #include <glog/logging.h>
+
 #include "model/core/model.h"
 
 namespace app {
@@ -18,21 +19,9 @@ struct GenerationState {
     std::vector<int32_t> words;
 };
 
-inline void CollectPromptAndGeneratedTokens(GenerationState& state,
-                                            const std::vector<int32_t>& prompt_tokens, int32_t pos,
-                                            int32_t prompt_len) {
-    if (pos < prompt_len - 1) {
-        state.next = prompt_tokens.at(pos + 1);
-    } else {
-        state.is_prompt = false;
-    }
-    state.words.push_back(state.next);
-}
-
-template <typename ModelT, typename TokenCollector>
+template <typename ModelT>
 base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens,
-                           int32_t max_total_steps, TokenCollector&& collect_token,
-                           GenerationState* result) {
+                           int32_t max_total_steps, GenerationState* result) {
     if (result == nullptr) {
         return base::error::InvalidArgument("The generation result pointer is empty.");
     }
@@ -40,19 +29,14 @@ base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens,
 
     GenerationState state;
     const int32_t prompt_len = static_cast<int32_t>(tokens.size());
-    // tokens 这串 token id 转成对应的 embedding 结果，并保存到 prompt_embedding
     const auto prompt_embedding = model.embedding(tokens);
-    // 取出pos的tensor
     tensor::Tensor pos_tensor = model.get_runtime_tensor(model::RuntimeTensorType::kInputPos);
     int32_t pos = 0;
     while (pos < max_total_steps) {
-        // 当前位置 pos 写进 pos_tensor 的第 0 个元素里
         pos_tensor.index<int32_t>(0) = pos;
         base::Status predict_status = base::error::Success();
         if (pos < prompt_len) {
-            // 当前位置 pos 是否还没到 prompt 的最后一个 token
             const bool is_prompt_step = pos < prompt_len - 1;
-            // 取出“当前 step 要送进模型的一行 embedding”，包装成输入 Tensor
             tensor::Tensor input = model.fill_input(pos_tensor, prompt_embedding, true);
             predict_status = model.predict(input, pos_tensor, is_prompt_step, state.next);
         } else {
@@ -67,16 +51,19 @@ base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens,
         if (model.is_sentence_ending(state.next)) {
             break;
         }
-        if constexpr (std::is_invocable_v<TokenCollector, GenerationState&,
-                                          const std::vector<int32_t>&, int32_t, int32_t>) {
-            collect_token(state, tokens, pos, prompt_len);
+
+        if (pos < prompt_len - 1) {
+            // “下一个要用的 token”不是模型自由生成的结果，而是 prompt 里本来就存在的下一个 token
+            state.next = tokens.at(pos + 1);
         } else {
-            collect_token(state, tokens, pos);
+            //  prompt 已经走到最后一个 token 了从下一步开始就不再靠 prompt 往后推
+            state.is_prompt = false;
         }
+        state.words.push_back(state.next);
         ++pos;
     }
 
-    state.executed_steps = std::min(pos, max_total_steps);
+    state.executed_steps = pos;
     *result = std::move(state);
     return base::error::Success();
 }
@@ -90,10 +77,8 @@ base::Status GenerateGreedyText(const ModelT& model, const std::string& sentence
     }
 
     GenerationState result;
-    // string -> 变成了一堆堆token id
     const auto tokens = model.encode(sentence);
-    const base::Status status =
-        RunGeneration(model, tokens, max_total_steps, CollectPromptAndGeneratedTokens, &result);
+    const base::Status status = RunGeneration(model, tokens, max_total_steps, &result);
     if (!status.ok()) {
         return status;
     }

@@ -124,23 +124,17 @@ base::Status GenerateAssistantReply(const model::Llama2Model& model,
 
     const int32_t capped_max_new_tokens = std::min(max_new_tokens, available_new_tokens);
     const int32_t max_total_steps = prompt_len + capped_max_new_tokens;
-    std::vector<int32_t> response_tokens;
     app::GenerationState generation_state;
-    const auto collector =
-        [&model, &response_tokens](app::GenerationState& state, const std::vector<int32_t>& tokens,
-                                   int32_t pos, int32_t prompt_len_in_tokens) {
-            UNUSED(tokens);
-            if (pos < prompt_len_in_tokens - 1) {
-                return;
-            }
-            response_tokens.push_back(state.next);
-            std::cout << model.decode(state.next) << std::flush;
-        };
-
-    const auto status =
-        app::RunGeneration(model, prompt_tokens, max_total_steps, collector, &generation_state);
+    const auto status = app::RunGeneration(model, prompt_tokens, max_total_steps, &generation_state);
     if (!status.ok()) {
         return status;
+    }
+
+    const int32_t generated_token_start = std::max<int32_t>(0, prompt_len - 1);
+    std::vector<int32_t> response_tokens;
+    if (generated_token_start < static_cast<int32_t>(generation_state.words.size())) {
+        response_tokens.assign(generation_state.words.begin() + generated_token_start,
+                               generation_state.words.end());
     }
 
     *generated_tokens = static_cast<int32_t>(response_tokens.size());
