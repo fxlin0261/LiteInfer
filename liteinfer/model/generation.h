@@ -40,14 +40,19 @@ base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens,
 
     GenerationState state;
     const int32_t prompt_len = static_cast<int32_t>(tokens.size());
+    // tokens 这串 token id 转成对应的 embedding 结果，并保存到 prompt_embedding
     const auto prompt_embedding = model.embedding(tokens);
+    // 取出pos的tensor
     tensor::Tensor pos_tensor = model.get_runtime_tensor(model::RuntimeTensorType::kInputPos);
     int32_t pos = 0;
     while (pos < max_total_steps) {
+        // 当前位置 pos 写进 pos_tensor 的第 0 个元素里
         pos_tensor.index<int32_t>(0) = pos;
         base::Status predict_status = base::error::Success();
         if (pos < prompt_len) {
+            // 当前位置 pos 是否还没到 prompt 的最后一个 token
             const bool is_prompt_step = pos < prompt_len - 1;
+            // 取出“当前 step 要送进模型的一行 embedding”，包装成输入 Tensor
             tensor::Tensor input = model.fill_input(pos_tensor, prompt_embedding, true);
             predict_status = model.predict(input, pos_tensor, is_prompt_step, state.next);
         } else {
@@ -85,6 +90,7 @@ base::Status GenerateGreedyText(const ModelT& model, const std::string& sentence
     }
 
     GenerationState result;
+    // string -> 变成了一堆堆token id
     const auto tokens = model.encode(sentence);
     const base::Status status =
         RunGeneration(model, tokens, max_total_steps, CollectPromptAndGeneratedTokens, &result);

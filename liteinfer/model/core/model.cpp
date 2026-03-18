@@ -373,7 +373,7 @@ tensor::Tensor Model::fill_input(const tensor::Tensor& pos_tensor,
     const int32_t pos = pos_tensor.index<int32_t>(0);
     UNUSED(embedding_output.input_tokens);
     UNUSED(embedding_output.input_token_num);
-
+    // 是 prompt 阶段就取第 pos 行，否则就取第 0 行
     const int32_t input_row = is_prompt ? pos : 0;
     const int32_t input_dim = input_width();
     float* input_ptr = const_cast<float*>(

@@ -103,13 +103,19 @@ base::Status LlamaDecoderModel::init(base::DeviceType device_type,
     return error::Success();
 }
 
+// 当前 token 的 embedding 
+// 当前位置 tensor，里面存当前 step 的位置 pos
+// 标记当前这一步是不是 prompt 阶段 true表示还在
+// next：输出参数，用来保存预测出的下一个 token id
 base::Status LlamaDecoderModel::predict(const tensor::Tensor& input,
                                            const tensor::Tensor& pos_tensor, bool is_prompt,
                                            int& next) const {
+    // 输出不在这里 会写到 runtime tensor 里，主要是 kForwardOutput
     auto status = forward(input, pos_tensor, next);
     if (!status.ok()) {
         return status;
     }
+    // 计算next, 为tokenid还是-1
     next = post_processing(pos_tensor, is_prompt);
     return base::error::Success();
 }
@@ -124,8 +130,8 @@ base::Status LlamaDecoderModel::forward(const tensor::Tensor& input,
     if (device_type_ == base::DeviceType::kDeviceCPU && is_quant_model_) {
         return base::error::InternalError("Unsupported int8 quant in the cpu device");
     }
-
     for (int32_t layer_idx = 0; layer_idx < config_->layer_num_; ++layer_idx) {
+        // 输入 1xdim 输出 1xdim
         attention_rms(layer_idx, input);
         attention_qkv(layer_idx, pos_tensor);
         attention_mha(layer_idx, pos_tensor);
@@ -145,12 +151,15 @@ op::EmbeddingOutput LlamaDecoderModel::embedding(const std::vector<int>& tokens)
         input_embeddings.reshape({static_cast<int32_t>(tokens.size()), embedding_width});
     }
     for (int32_t i = 0; i < static_cast<int32_t>(tokens.size()); ++i) {
+        // 把 tokens 里的第 i 个 token id 写进 input_tokens 这个 Tensor
         input_tokens.index<int32_t>(i) = tokens.at(i);
     }
 
     LOG_IF(FATAL, !layers().embedding_layer_)
         << "The embedding layer in the decoder model is null pointer.";
+    // 调用emb_kernel_cu_fp32 将tokenid对应的一维向量赋值给 该token所在索引位置
     STATUS_CHECK(layers().embedding_layer_->forward(input_tokens, input_embeddings));
+    // 返回结果 包装了token id 的 Tensor embedding 结果的 Tensor token 数量
     return op::EmbeddingOutput(input_tokens, input_embeddings, static_cast<int32_t>(tokens.size()));
 }
 
@@ -431,6 +440,7 @@ base::Status LlamaDecoderModel::create_param_quant_layers() {
 }
 
 void LlamaDecoderModel::attention_rms(int32_t layer_idx, const tensor::Tensor& input) const {
+    // 获取上一步的rmsnorm的结果
     tensor::Tensor rmsnorm_output = get_runtime_tensor(RuntimeTensorType::kOutputRMSNorm);
     const auto& rmsnorm_layer = layers().rmsnorm_layers_.at(layer_idx);
     CHECK_NE(rmsnorm_layer, nullptr)
@@ -440,26 +450,37 @@ void LlamaDecoderModel::attention_rms(int32_t layer_idx, const tensor::Tensor& i
 
 void LlamaDecoderModel::attention_qkv(int32_t layer_idx,
                                          const tensor::Tensor& pos_tensor) const {
+    // 运行时缓存里取出 kQuery 这个 Tensor，作为当前层 attention 里保存 Q 向量的缓冲区
+    // 1 x attention_dim  attention_dim = config_->dim_
     tensor::Tensor query = get_runtime_tensor(RuntimeTensorType::kQuery);
     const int32_t pos = pos_tensor.index<int32_t>(0);
+    // 从整块 key/value cache 里，切出“当前层、当前位置”对应的那一小段 K 和 V 缓冲区返回
+    // 1 x kv_dim 1 x kv_dim
     auto [key, val] = slice_kv_cache(layer_idx, pos);
+    // 取出output的结果
     auto rmsnorm_output = get_runtime_tensor(RuntimeTensorType::kOutputRMSNorm);
+    // 从当前层的 wq_layers_ 里取出第 layer_idx 层对应的 Wq 线性层
     const auto& query_layer = layers().wq_layers_.at(layer_idx);
     CHECK_NE(query_layer, nullptr) << "The query layer in the decoder model is null pointer.";
+    // 1 x attention_dim | [attention_dim, dim] * [dim] 保存在query
     STATUS_CHECK(query_layer->forward(rmsnorm_output, query));
     const auto& key_layer = layers().wk_layers_.at(layer_idx);
     CHECK_NE(key_layer, nullptr) << "The key layer in the decoder model is null pointer.";
+    // 1 x kv_dim | [kv_dim, dim] * [dim]
     STATUS_CHECK(key_layer->forward(rmsnorm_output, key));
     const auto& value_layer = layers().wv_layers_.at(layer_idx);
     CHECK_NE(value_layer, nullptr) << "The value layer in the decoder model is null pointer.";
+    // 1 x kv_dim | [kv_dim, dim] * [dim]
     STATUS_CHECK(value_layer->forward(rmsnorm_output, val));
+    // hook 现在啥也不做
     apply_attention_projection_norms(layer_idx, query, key);
-
     CHECK_NE(layers().rope_layer_, nullptr)
         << "The RoPE layer in the decoder model is null pointer.";
-    STATUS_CHECK(layers().rope_layer_->forward(
-        query, key, pos_tensor, get_runtime_tensor(RuntimeTensorType::kSinCache),
-        get_runtime_tensor(RuntimeTensorType::kCosCache), tensor::Tensor{}));
+    tensor::Tensor sin_cache = get_runtime_tensor(RuntimeTensorType::kSinCache);
+    tensor::Tensor cos_cache = get_runtime_tensor(RuntimeTensorType::kCosCache);
+    // RoPE
+    STATUS_CHECK(layers().rope_layer_->forward(query, key, pos_tensor, sin_cache, cos_cache,
+                                               tensor::Tensor{}));
 }
 
 void LlamaDecoderModel::attention_mha(int32_t layer_idx,
@@ -473,6 +494,9 @@ void LlamaDecoderModel::attention_mha(int32_t layer_idx,
     CHECK_NE(mha_layer, nullptr)
         << "The multi head attention layer in the decoder model is null pointer.";
     const int32_t pos = pos_tensor.index<int32_t>(0);
+    // mha_layer 静态类型是 shared_ptr<op::Layer>，
+    // 要调用 set_pos 和 set_layer_idx 这些 MultiHeadAttention 特有函数，
+    // 必须先转成 MultiHeadAttention
     std::dynamic_pointer_cast<op::MultiHeadAttention>(mha_layer)->set_pos(pos);
     std::dynamic_pointer_cast<op::MultiHeadAttention>(mha_layer)->set_layer_idx(layer_idx);
     STATUS_CHECK(mha_layer->forward(query, score_storage, key_cache, val_cache, mha_output));
@@ -508,6 +532,7 @@ void LlamaDecoderModel::feed_forward(int32_t layer_idx, const tensor::Tensor& in
     const auto& w2_layer = layers().w2_layers_.at(layer_idx);
     CHECK_NE(w2_layer, nullptr) << "The w2 layer in the decoder model is null pointer.";
     STATUS_CHECK(w2_layer->forward(w1_output, w2_output));
+    // 结果还是写回input了
     STATUS_CHECK(layers().add_layer_->forward(input, w2_output, input));
 }
 
@@ -517,17 +542,20 @@ void LlamaDecoderModel::cls_logits(const tensor::Tensor& input) const {
     STATUS_CHECK(norm->forward(input, input));
     tensor::Tensor forward_output = get_runtime_tensor(RuntimeTensorType::kForwardOutput);
     CHECK_NE(layers().cls_layer_, nullptr);
+    // 结果forward_output 也就是kForwardOutput
     STATUS_CHECK(layers().cls_layer_->forward(input, forward_output));
 }
 
 int32_t LlamaDecoderModel::post_processing(const tensor::Tensor& pos, bool is_prompt) const {
     UNUSED(pos);
+    // 从 kForwardOutput 里取出 logits
     tensor::Tensor forward_output = get_runtime_tensor(RuntimeTensorType::kForwardOutput);
     const float* forward_logits = forward_output.ptr<float>();
-
+    // 如果当前还是 prompt 阶段，直接返回 -1
     if (is_prompt) {
         return -1;
     }
+    // 如果已经进入生成阶段，就用 sampler_->sample(...) 从 logits 里选出下一个 token id
     return static_cast<int32_t>(sampler_->sample(forward_logits, forward_output.size(),
                                                  cuda_config_ ? cuda_config_->stream : nullptr));
 }
