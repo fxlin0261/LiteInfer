@@ -6,6 +6,7 @@ Current support:
 - Llama 2 inference
 - Llama 2 chat
 - Llama 3 inference
+- Llama 3 chat
 - CPU execution
 - CUDA execution when available
 
@@ -40,6 +41,21 @@ Example:
   local_models/llama3/Llama-3.2-1B.bin \
   local_models/llama3/Llama-3.2-1B/tokenizer.json \
   2048 1
+```
+
+## Run Llama 3 Chat
+
+```bash
+./build/models/llama3_chat <model_path> <tokenizer_path> [runtime_max_seq_len] [max_new_tokens]
+```
+
+Example:
+
+```bash
+./build/models/llama3_chat \
+  local_models/llama3/Llama-3.2-1B.bin \
+  local_models/llama3/Llama-3.2-1B/tokenizer.json \
+  2048 128
 ```
 
 ## Tests
