@@ -29,14 +29,18 @@ if(LITEINFER_WITH_CUDA)
   )
 endif()
 
-add_executable(test_llm ${TEST_SOURCES})
-target_include_directories(test_llm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(test_llm PRIVATE liteinfer::runtime GTest::gtest)
+add_executable(test_main ${TEST_SOURCES})
+target_include_directories(test_main PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(test_main PRIVATE liteinfer::runtime GTest::gtest)
 
 if(LITEINFER_WITH_CUDA)
-  set_target_properties(test_llm PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  set_target_properties(test_main PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 endif()
 
-set_target_properties(test_llm PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+set_target_properties(
+  test_main
+  PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/test"
+)
 
-add_test(NAME test_llm COMMAND test_llm)
+add_test(NAME test_main COMMAND test_main)

@@ -10,7 +10,7 @@
 
 namespace {
 std::filesystem::path test_model_path() {
-    return std::filesystem::path(__FILE__).parent_path().parent_path() / "data" / "test.bin";
+    return std::filesystem::path(__FILE__).parent_path() / "test.bin";
 }
 }  // namespace
 
@@ -91,7 +91,7 @@ TEST(test_load, create_matmul) {
     ASSERT_TRUE(
         wq->set_weight(0, {config.dim, config.hidden_dim}, weight_data, base::DeviceType::kDeviceCPU)
             .ok());
-    ASSERT_TRUE(wq->forward().ok());  // 完成一个计算
+    ASSERT_TRUE(wq->forward().ok());  // 完成一个计�?
 
     /** python code:
      *  w = np.arange(0,128 * 16).reshape(16, 128)
@@ -105,3 +105,4 @@ TEST(test_load, create_matmul) {
     delete[] in;
     delete[] out;
 }
+

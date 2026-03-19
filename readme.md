@@ -4,34 +4,34 @@ LiteInfer is a lightweight C++ inference project for Llama-style models.
 
 Current support:
 - Llama 2 inference
-- Llama 2 chat
 - Llama 3 inference
-- Llama 3 chat
 - CPU execution
 - CUDA execution when available
 
 ## Build
 
-Use CPM to fetch dependencies automatically:
+Run the build script from the project root:
 
 ```bash
-cmake -S . -B build -DUSE_CPM=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel
+./build.sh
 ```
 
-Or build with system-installed dependencies:
+By default, it configures `build/` with `USE_CPM=ON` and `CMAKE_BUILD_TYPE=Release`.
+
+You can still override the defaults when needed:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel
+USE_CPM=OFF CMAKE_BUILD_TYPE=Debug ./build.sh
 ```
 
 If CUDA is not available, LiteInfer builds in CPU-only mode.
 
 ## Run Llama 3
 
+LiteInfer now generates automatically until it reaches EOS or fills the runtime KV cache.
+
 ```bash
-./build/models/llama3_infer <model_path> <tokenizer_path> [runtime_max_seq_len] [max_total_steps]
+./build/models/llama3_infer <model_path> <tokenizer_path>
 ```
 
 Example:
@@ -39,30 +39,14 @@ Example:
 ```bash
 ./build/models/llama3_infer \
   local_models/llama3/Llama-3.2-1B.bin \
-  local_models/llama3/Llama-3.2-1B/tokenizer.json \
-  2048 1
-```
-
-## Run Llama 3 Chat
-
-```bash
-./build/models/llama3_chat <model_path> <tokenizer_path> [runtime_max_seq_len] [max_new_tokens]
-```
-
-Example:
-
-```bash
-./build/models/llama3_chat \
-  local_models/llama3/Llama-3.2-1B.bin \
-  local_models/llama3/Llama-3.2-1B/tokenizer.json \
-  2048 128
+  local_models/llama3/Llama-3.2-1B/tokenizer.json
 ```
 
 ## Tests
 
 ```bash
-cmake --build build --target test_llm --parallel
-ctest --test-dir build --output-on-failure -R '^test_llm$'
+./build/test/test_main
+ctest --test-dir build --output-on-failure -R '^test_main$'
 ```
 
 ## Tools

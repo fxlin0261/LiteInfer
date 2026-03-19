@@ -21,7 +21,7 @@ struct GenerationState {
 
 template <typename ModelT>
 base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens,
-                           int32_t max_total_steps, GenerationState* result) {
+                           int32_t max_context_steps, GenerationState* result) {
     if (result == nullptr) {
         return base::error::InvalidArgument("The generation result pointer is empty.");
     }
@@ -32,7 +32,7 @@ base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens,
     const auto prompt_embedding = model.embedding(tokens);
     tensor::Tensor pos_tensor = model.get_runtime_tensor(model::RuntimeTensorType::kInputPos);
     int32_t pos = 0;
-    while (pos < max_total_steps) {
+    while (pos < max_context_steps) {
         pos_tensor.index<int32_t>(0) = pos;
         base::Status predict_status = base::error::Success();
         if (pos < prompt_len) {
@@ -53,10 +53,10 @@ base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens,
         }
 
         if (pos < prompt_len - 1) {
-            // “下一个要用的 token”不是模型自由生成的结果，而是 prompt 里本来就存在的下一个 token
+            // “下一个要用的 token”不是模型自由生成的结果，而是 prompt 里本来就存在的下一�?token
             state.next = tokens.at(pos + 1);
         } else {
-            //  prompt 已经走到最后一个 token 了从下一步开始就不再靠 prompt 往后推
+            //  prompt 已经走到最后一�?token 了从下一步开始就不再�?prompt 往后推
             state.is_prompt = false;
         }
         state.words.push_back(state.next);
@@ -70,7 +70,7 @@ base::Status RunGeneration(const ModelT& model, std::vector<int32_t> tokens,
 
 template <typename ModelT>
 base::Status GenerateGreedyText(const ModelT& model, const std::string& sentence,
-                                int32_t max_total_steps, bool need_output,
+                                int32_t max_context_steps, bool need_output,
                                 int32_t* executed_steps) {
     if (executed_steps == nullptr) {
         return base::error::InvalidArgument("The executed steps pointer is empty.");
@@ -78,7 +78,7 @@ base::Status GenerateGreedyText(const ModelT& model, const std::string& sentence
 
     GenerationState result;
     const auto tokens = model.encode(sentence);
-    const base::Status status = RunGeneration(model, tokens, max_total_steps, &result);
+    const base::Status status = RunGeneration(model, tokens, max_context_steps, &result);
     if (!status.ok()) {
         return status;
     }
@@ -92,3 +92,4 @@ base::Status GenerateGreedyText(const ModelT& model, const std::string& sentence
 }  // namespace app
 
 #endif  // LITEINFER_MODEL_GENERATION_H_
+
