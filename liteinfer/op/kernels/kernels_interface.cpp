@@ -10,6 +10,7 @@
 #include "cpu/scale_sum_kernel.h"
 #include "cpu/softmax_kernel.h"
 #include "cpu/swiglu_kernel.h"
+#include "cpu/topk_sampling_kernel.h"
 #if LITEINFER_ENABLE_CUDA
 #include "cuda/add_kernel.cuh"
 #include "cuda/emb_kernel.cuh"
@@ -18,6 +19,7 @@
 #include "cuda/rmsnorm_kernel.cuh"
 #include "cuda/rope_kernel.cuh"
 #include "cuda/swiglu_kernel.cuh"
+#include "cuda/topk_sampling_kernel.cuh"
 #endif
 
 namespace kernel {
@@ -53,6 +55,7 @@ constexpr RoPEKernel kRoPEKernelCuda = rope_kernel_cu;
 constexpr SwigluKernel kSwigluKernelCuda = swiglu_kernel_cu;
 constexpr RMSNormKernel kRmsNormKernelCuda = rmsnorm_kernel_cu;
 constexpr RMSNormKernelDim kRmsNormDimKernelCuda = rmsnorm_kernel_cu_dim;
+constexpr TopKSamplingKernel kTopKSamplingKernelCuda = topk_sampling_kernel_cu;
 #else
 constexpr AddKernel kAddKernelCuda = nullptr;
 constexpr EmbeddingKernel kEmbeddingKernelCuda = nullptr;
@@ -63,6 +66,7 @@ constexpr RoPEKernel kRoPEKernelCuda = nullptr;
 constexpr SwigluKernel kSwigluKernelCuda = nullptr;
 constexpr RMSNormKernel kRmsNormKernelCuda = nullptr;
 constexpr RMSNormKernelDim kRmsNormDimKernelCuda = nullptr;
+constexpr TopKSamplingKernel kTopKSamplingKernelCuda = nullptr;
 #endif
 }  // namespace
 
@@ -139,5 +143,11 @@ ScaleSumKernel get_scale_sum_kernel(base::DeviceType device_type) {
         LOG(FATAL) << "Unknown device type for get a scale and reduce kernel.";
         return nullptr;
     }
+}
+
+TopKSamplingKernel get_topk_sampling_kernel(base::DeviceType device_type) {
+    return select_kernel(device_type, topk_sampling_kernel_cpu, kTopKSamplingKernelCuda,
+                         "topk_sampling_kernel_cu",
+                         "Unknown device type for get a top-k sampling kernel.");
 }
 }  // namespace kernel

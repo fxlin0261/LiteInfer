@@ -11,9 +11,6 @@ public:
     explicit TopKSampler(base::DeviceType device_type, size_t top_k = 40, float temperature = 0.8f,
                          uint32_t seed = 0);
     size_t sample(const float* logits, size_t size, void* stream = nullptr) override;
-    bool requires_host_logits(base::DeviceType logits_device_type) const override {
-        return logits_device_type == base::DeviceType::kDeviceCUDA;
-    }
 
 private:
     size_t top_k_ = 40;

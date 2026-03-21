@@ -37,6 +37,8 @@ typedef void (*SoftmaxInplaceKernel)(const tensor::Tensor& input, void* stream);
 typedef void (*ScaleSumKernel)(const tensor::Tensor& value, const tensor::Tensor& scale,
                                const tensor::Tensor& output, int t, int size, int stride,
                                void* stream);
+typedef size_t (*TopKSamplingKernel)(const float* logits, size_t size, size_t top_k,
+                                     float temperature, double random_value, void* stream);
 void softmax_inplace_cpu(const float* input_ptr, size_t size);
 AddKernel get_add_kernel(base::DeviceType device_type);
 EmbeddingKernel get_emb_kernel(base::DeviceType device_type);
@@ -50,5 +52,6 @@ SoftmaxInplaceKernel get_softmax_kernel(base::DeviceType device_type);
 SwigluKernel get_swiglu_kernel(base::DeviceType device_type, void* stream = nullptr);
 ScaleSumKernel get_scale_sum_kernel(base::DeviceType device_type);
 RMSNormKernelDim get_rmsnorm_dim_kernel(base::DeviceType device_type);
+TopKSamplingKernel get_topk_sampling_kernel(base::DeviceType device_type);
 }  // namespace kernel
 #endif  // KERNELS_INTERFACE_H

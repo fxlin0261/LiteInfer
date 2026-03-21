@@ -15,9 +15,3 @@ TEST(test_topk_sampler, sampling_stays_within_top_k_candidates) {
         EXPECT_TRUE(sampled == 0U || sampled == 1U);
     }
 }
-
-TEST(test_topk_sampler, cuda_logits_are_sampled_from_host_copy) {
-    sampler::TopKSampler sampler(base::DeviceType::kDeviceCUDA, 4, 0.8f, 123);
-    EXPECT_TRUE(sampler.requires_host_logits(base::DeviceType::kDeviceCUDA));
-    EXPECT_FALSE(sampler.requires_host_logits(base::DeviceType::kDeviceCPU));
-}

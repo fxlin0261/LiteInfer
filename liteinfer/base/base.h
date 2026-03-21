@@ -28,7 +28,6 @@ enum class RuntimeTensorType {
     kW3Output = 12,
     kFFNRMSNorm = 13,
     kForwardOutput = 15,
-    kForwardOutputCPU = 16,
 
     kSinCache = 17,
     kCosCache = 18,
@@ -66,8 +65,6 @@ inline const char* RuntimeTensorTypeName(RuntimeTensorType buffer_type) {
             return "kFFNRMSNorm";
         case RuntimeTensorType::kForwardOutput:
             return "kForwardOutput";
-        case RuntimeTensorType::kForwardOutputCPU:
-            return "kForwardOutputCPU";
         case RuntimeTensorType::kSinCache:
             return "kSinCache";
         case RuntimeTensorType::kCosCache:

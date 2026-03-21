@@ -234,11 +234,6 @@ void LlamaDecoderModel::init_mem() {
     tensor::Tensor attn_output(base::DataType::kDataTypeFp32, residual_dim, true, alloc);
     CHECK(insert_runtime_tensor(RuntimeTensorType::kAttnOutput, attn_output).ok());
     tensor::Tensor forward_output(base::DataType::kDataTypeFp32, config_->vocab_size_, true, alloc);
-    if (device_type_ == base::DeviceType::kDeviceCUDA) {
-        tensor::Tensor forward_output_cpu(base::DataType::kDataTypeFp32, config_->vocab_size_, true,
-                                          alloc_cpu);
-        CHECK(insert_runtime_tensor(RuntimeTensorType::kForwardOutputCPU, forward_output_cpu).ok());
-    }
     CHECK(insert_runtime_tensor(RuntimeTensorType::kForwardOutput, forward_output).ok());
 }
 
@@ -559,23 +554,13 @@ int32_t LlamaDecoderModel::post_processing(const tensor::Tensor& pos, bool is_pr
 
     // 从 kForwardOutput 里取出 logits
     const tensor::Tensor& forward_output = get_runtime_tensor(RuntimeTensorType::kForwardOutput);
-    const tensor::Tensor* sampling_output = &forward_output;
-    if (sampler_->requires_host_logits(forward_output.device_type())) {
-        const tensor::Tensor& forward_output_cpu =
-            get_runtime_tensor(RuntimeTensorType::kForwardOutputCPU);
-        CHECK_EQ(forward_output_cpu.size(), forward_output.size())
-            << "The CPU logits buffer size does not match the forward output.";
-        forward_output_cpu.get_runtime_tensor()->copy_from(forward_output.get_runtime_tensor().get());
-        sampling_output = &forward_output_cpu;
-    }
-
     void* sample_stream = nullptr;
-    if (sampling_output->device_type() == base::DeviceType::kDeviceCUDA && cuda_config_) {
+    if (forward_output.device_type() == base::DeviceType::kDeviceCUDA && cuda_config_) {
         sample_stream = cuda_config_->stream;
     }
 
     // 如果已经进入生成阶段，就用 sampler_->sample(...) 从 logits 里选出下一个 token id
     return static_cast<int32_t>(
-        sampler_->sample(sampling_output->ptr<float>(), sampling_output->size(), sample_stream));
+        sampler_->sample(forward_output.ptr<float>(), forward_output.size(), sample_stream));
 }
 }  // namespace model
