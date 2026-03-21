@@ -91,8 +91,7 @@ TEST(test_generation, single_token_prompt_switches_to_decode_path_cleanly) {
     app::GenerationState result;
 
     const auto status =
-        app::RunGeneration(model, model.encode("ignored"), 4,
-                           app::CollectPromptAndGeneratedTokens, &result);
+        app::RunGeneration(model, model.encode("ignored"), 4, &result);
     ASSERT_TRUE(status.ok());
     EXPECT_EQ(result.executed_steps, 1);
     EXPECT_EQ(result.words, std::vector<int32_t>({7}));
@@ -106,8 +105,7 @@ TEST(test_generation, prompt_tokens_are_consumed_before_generated_tokens) {
     app::GenerationState result;
 
     const auto status =
-        app::RunGeneration(model, model.encode("ignored"), 3,
-                           app::CollectPromptAndGeneratedTokens, &result);
+        app::RunGeneration(model, model.encode("ignored"), 3, &result);
     ASSERT_TRUE(status.ok());
     EXPECT_EQ(result.executed_steps, 3);
     EXPECT_EQ(result.words, std::vector<int32_t>({11, 12, 52}));
