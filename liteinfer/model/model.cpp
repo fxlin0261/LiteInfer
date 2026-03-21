@@ -145,6 +145,11 @@ Model::Model(base::TokenizerType tokenizer_type, base::ModelType model_type, std
       model_path_(std::move(model_path)),
       is_quant_model_(is_quant_model) {}
 
+void Model::set_sampler(std::unique_ptr<sampler::Sampler> sampler) {
+    CHECK_NE(sampler, nullptr) << "The sampler pointer is null.";
+    sampler_ = std::move(sampler);
+}
+
 base::Status Model::set_runtime_max_seq_len(int32_t max_seq_len) {
     if (max_seq_len <= 0) {
         return base::error::InvalidArgument("The runtime max seq_len must be positive.");

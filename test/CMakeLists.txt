@@ -9,7 +9,7 @@ set(
   model/test_raw_model_data.cpp
   op/cpu/test_embedding_cpu.cpp
   op/cpu/test_mha_cpu.cpp
-  base/test_argmax_sampler.cpp
+  base/test_topk_sampler.cpp
 )
 
 if(LITEINFER_WITH_CUDA)

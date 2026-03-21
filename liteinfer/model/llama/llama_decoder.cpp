@@ -3,6 +3,7 @@
 #include <op/matmul.h>
 #include <op/mha.h>
 #include <op/rmsnorm.h>
+#include "base/topk_sampler.h"
 #include "model/llama/llama_model_utils.h"
 #include "op/kernels/cpu/rope_kernel.h"
 
@@ -99,7 +100,9 @@ base::Status LlamaDecoderModel::init(base::DeviceType device_type,
         }
     }
 
-    sampler_ = std::make_unique<sampler::ArgmaxSampler>(device_type_);
+    if (!sampler_) {
+        sampler_ = std::make_unique<sampler::TopKSampler>(device_type_);
+    }
     return error::Success();
 }
 
@@ -548,16 +551,31 @@ void LlamaDecoderModel::cls_logits(const tensor::Tensor& input) const {
 
 int32_t LlamaDecoderModel::post_processing(const tensor::Tensor& pos, bool is_prompt) const {
     UNUSED(pos);
-    // 从 kForwardOutput 里取出 logits
-    tensor::Tensor forward_output = get_runtime_tensor(RuntimeTensorType::kForwardOutput);
-    const float* forward_logits = forward_output.ptr<float>();
     // 如果当前还是 prompt 阶段，直接返回 -1
     if (is_prompt) {
         return -1;
     }
+    CHECK_NE(sampler_, nullptr) << "The sampler is null.";
+
+    // 从 kForwardOutput 里取出 logits
+    const tensor::Tensor& forward_output = get_runtime_tensor(RuntimeTensorType::kForwardOutput);
+    const tensor::Tensor* sampling_output = &forward_output;
+    if (sampler_->requires_host_logits(forward_output.device_type())) {
+        const tensor::Tensor& forward_output_cpu =
+            get_runtime_tensor(RuntimeTensorType::kForwardOutputCPU);
+        CHECK_EQ(forward_output_cpu.size(), forward_output.size())
+            << "The CPU logits buffer size does not match the forward output.";
+        forward_output_cpu.get_runtime_tensor()->copy_from(forward_output.get_runtime_tensor().get());
+        sampling_output = &forward_output_cpu;
+    }
+
+    void* sample_stream = nullptr;
+    if (sampling_output->device_type() == base::DeviceType::kDeviceCUDA && cuda_config_) {
+        sample_stream = cuda_config_->stream;
+    }
+
     // 如果已经进入生成阶段，就用 sampler_->sample(...) 从 logits 里选出下一个 token id
-    return static_cast<int32_t>(sampler_->sample(forward_logits, forward_output.size(),
-                                                 cuda_config_ ? cuda_config_->stream : nullptr));
+    return static_cast<int32_t>(
+        sampler_->sample(sampling_output->ptr<float>(), sampling_output->size(), sample_stream));
 }
 }  // namespace model
-

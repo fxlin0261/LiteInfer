@@ -4,11 +4,12 @@
 #include <op/embedding.h>
 #include <array>
 #include <string>
+#include <utility>
 #include "model/config.h"
-#include "op/tokenizer_layer.h"
+#include "tokenizer/tokenizer_layer.h"
 #include "op/layer.h"
 #include "model/raw_model_data.h"
-#include "base/argmax_sampler.h"
+#include "base/sampler.h"
 #include "sentencepiece_processor.h"
 #include "base/tensor.h"
 
@@ -38,6 +39,7 @@ public:
     virtual bool is_sentence_ending(int32_t token_idx) const;
     virtual std::string decode(int32_t token_idx) const;
     virtual std::string decode(std::vector<int32_t> token_idxs) const;
+    void set_sampler(std::unique_ptr<sampler::Sampler> sampler);
 
     /////////////////////////////////////////////////////
     /////////////////////////////////////////////////////

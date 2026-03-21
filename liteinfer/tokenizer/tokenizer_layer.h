@@ -1,13 +1,13 @@
-#ifndef LITEINFER_INCLUDE_OP_TOKENIZER_LAYER_H_
-#define LITEINFER_INCLUDE_OP_TOKENIZER_LAYER_H_
+#ifndef LITEINFER_INCLUDE_TOKENIZER_TOKENIZER_LAYER_H_
+#define LITEINFER_INCLUDE_TOKENIZER_TOKENIZER_LAYER_H_
 #include <absl/strings/str_join.h>
 #include <absl/strings/str_replace.h>
 #include <absl/strings/str_split.h>
 #include <sentencepiece_processor.h>
-#include "tokenizer/tiktoken.h"
 #include <ankerl/unordered_dense.h>
-#include "layer.h"
 #include "nlohmann/json.hpp"
+#include "op/layer.h"
+#include "tokenizer/tiktoken.h"
 
 namespace op {
 class TokenizerLayerBase : public Layer {
@@ -60,4 +60,4 @@ protected:
     std::unique_ptr<tiktoken::tiktoken> tiktoken_;
 };
 }  // namespace op
-#endif  // LITEINFER_INCLUDE_OP_TOKENIZER_LAYER_H_
+#endif  // LITEINFER_INCLUDE_TOKENIZER_TOKENIZER_LAYER_H_
