@@ -9,7 +9,7 @@
 #include "model/llama/llama.h"
 
 namespace {
-constexpr int32_t kDefaultRuntimeMaxSeqLen = 8192;
+constexpr int32_t kDefaultRuntimeMaxSeqLen = 4096;
 }  // namespace
 
 int main(int argc, char* argv[]) {

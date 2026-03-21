@@ -11,7 +11,7 @@
 #include "model/llama/llama.h"
 
 namespace {
-constexpr int32_t kDefaultRuntimeMaxSeqLen = 8192;
+constexpr int32_t kDefaultRuntimeMaxSeqLen = 4096;
 constexpr const char* kCheckpointRelativePath = "local_models/llama3/Llama-3.2-1B.bin";
 constexpr const char* kTokenizerRelativePath = "local_models/llama3/Llama-3.2-1B/tokenizer.json";
 
