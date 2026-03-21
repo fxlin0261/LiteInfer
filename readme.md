@@ -16,28 +16,35 @@ Run the build script from the project root:
 ./build.sh
 ```
 
-By default, it configures `build/` with `USE_CPM=ON` and `CMAKE_BUILD_TYPE=Release`.
+Use `--cpu` or `--cuda` to choose the backend explicitly:
+
+```bash
+./build.sh --cpu
+./build.sh --cuda
+```
+
+By default, it configures `build/` with `USE_CPM=ON`, `CMAKE_BUILD_TYPE=Release`, and auto-detects CUDA.
 
 You can still override the defaults when needed:
 
 ```bash
-USE_CPM=OFF CMAKE_BUILD_TYPE=Debug ./build.sh
+USE_CPM=OFF CMAKE_BUILD_TYPE=Debug ./build.sh --cpu
 ```
 
-If CUDA is not available, LiteInfer builds in CPU-only mode.
+`--cpu` forces a CPU-only build even on machines with CUDA. `--cuda` requires CUDA and fails during CMake configure if CUDA is unavailable. Without either flag, LiteInfer falls back to CPU-only when CUDA is not available.
 
 ## Run Llama 3
 
 LiteInfer now generates automatically until it reaches EOS or fills the runtime KV cache.
 
 ```bash
-./build/models/llama3_infer <model_path> <tokenizer_path>
+./build/llama3_infer <model_path> <tokenizer_path>
 ```
 
 Example:
 
 ```bash
-./build/models/llama3_infer \
+./build/llama3_infer \
   local_models/llama3/Llama-3.2-1B.bin \
   local_models/llama3/Llama-3.2-1B/tokenizer.json
 ```
@@ -46,7 +53,7 @@ Example:
 
 ```bash
 ./build/test/test_main
-ctest --test-dir build --output-on-failure -R '^test_main$'
+ctest --test-dir build --output-on-failure -R test_main
 ```
 
 ## Tools
