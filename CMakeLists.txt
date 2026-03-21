@@ -281,8 +281,9 @@ endif()
 
 set(
   LITEINFER_INFER_TARGET_SOURCES
-  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_infer.cpp"
-  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer.cpp"
+  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_infer_demo.cpp"
+  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer_demo.cpp"
+  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer_prompt_demo.cpp"
 )
 
 file(GLOB_RECURSE LITEINFER_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/liteinfer/*.cpp")
@@ -326,8 +327,9 @@ function(liteinfer_add_model_target target_name source_file)
   target_link_libraries(${target_name} PRIVATE liteinfer::runtime)
 endfunction()
 
-liteinfer_add_model_target(llama2_infer "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_infer.cpp")
-liteinfer_add_model_target(llama3_infer "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer.cpp")
+liteinfer_add_model_target(llama2_infer_demo "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_infer_demo.cpp")
+liteinfer_add_model_target(llama3_infer_demo "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer_demo.cpp")
+liteinfer_add_model_target(llama3_infer_prompt_demo "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer_prompt_demo.cpp")
 if(BUILD_TESTING)
   add_subdirectory(test)
 endif()

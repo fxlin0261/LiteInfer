@@ -38,15 +38,21 @@ USE_CPM=OFF CMAKE_BUILD_TYPE=Debug ./build.sh --cpu
 LiteInfer now generates automatically until it reaches EOS or fills the runtime KV cache.
 
 ```bash
-./build/llama3_infer <model_path> <tokenizer_path>
+./build/llama3_infer_demo <model_path> <tokenizer_path>
 ```
 
 Example:
 
 ```bash
-./build/llama3_infer \
+./build/llama3_infer_demo \
   local_models/llama3/Llama-3.2-1B.bin \
   local_models/llama3/Llama-3.2-1B/tokenizer.json
+```
+
+If you want a fixed local Llama 3.2 1B setup and only pass the prompt:
+
+```bash
+./build/llama3_infer_prompt_demo 你好，介绍一下你自己
 ```
 
 ## Tests

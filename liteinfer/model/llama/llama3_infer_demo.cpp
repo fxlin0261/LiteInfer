@@ -14,7 +14,7 @@ constexpr int32_t kDefaultRuntimeMaxSeqLen = 8192;
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
-        LOG(INFO) << "Usage: ./llama3_infer <checkpoint_path> <tokenizer_path>";
+        LOG(INFO) << "Usage: ./llama3_infer_demo <checkpoint_path> <tokenizer_path>";
         return EXIT_FAILURE;
     }
     const char* checkpoint_path = argv[1];
@@ -45,4 +45,3 @@ int main(int argc, char* argv[]) {
     std::cout << "\nsteps/s:" << (static_cast<double>(executed_steps) / duration) << '\n';
     return EXIT_SUCCESS;
 }
-
