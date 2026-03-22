@@ -146,7 +146,7 @@ Model::Model(base::TokenizerType tokenizer_type, base::ModelType model_type, std
       is_quant_model_(is_quant_model) {}
 
 void Model::set_sampler(std::unique_ptr<sampler::Sampler> sampler) {
-    CHECK_NE(sampler, nullptr) << "The sampler pointer is null.";
+    CHECK(sampler != nullptr) << "The sampler pointer is null.";
     sampler_ = std::move(sampler);
 }
 

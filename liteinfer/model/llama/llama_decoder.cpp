@@ -550,7 +550,7 @@ int32_t LlamaDecoderModel::post_processing(const tensor::Tensor& pos, bool is_pr
     if (is_prompt) {
         return -1;
     }
-    CHECK_NE(sampler_, nullptr) << "The sampler is null.";
+    CHECK(sampler_ != nullptr) << "The sampler is null.";
 
     // 从 kForwardOutput 里取出 logits
     const tensor::Tensor& forward_output = get_runtime_tensor(RuntimeTensorType::kForwardOutput);
