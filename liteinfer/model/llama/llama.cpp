@@ -96,13 +96,14 @@ size_t AppendQuantizedMatmulLayers(const RawModelData& raw_model_data, int32_t l
     return offset;
 }
 
-LlamaDenseWeightOffsets BuildDenseWeightOffsets(const TransformerConfig& config) {
+LlamaDenseWeightOffsets BuildDenseWeightOffsets(const TransformerConfig& config,
+                                                int32_t serialized_seq_len) {
     const int32_t dim = config.dim_;
     const int32_t hidden_dim = config.hidden_dim_;
     const int32_t layer_num = config.layer_num_;
     const int32_t kv_dim = config.kv_dim_;
     const int32_t vocab_size = config.vocab_size_;
-    const int32_t seq_len = config.seq_len_;
+    const int32_t seq_len = serialized_seq_len > 0 ? serialized_seq_len : config.seq_len_;
     const int32_t head_size = config.head_size_;
 
     LlamaDenseWeightOffsets layout;
@@ -214,7 +215,7 @@ base::Status LlamaModel::create_param_layers() {
     const int32_t layer_num = config_->layer_num_;
     const int32_t kv_dim = config_->kv_dim_;
     const int32_t vocab_size = std::abs(config_->vocab_size_);
-    const LlamaDenseWeightOffsets layout = BuildDenseWeightOffsets(*config_);
+    const LlamaDenseWeightOffsets layout = BuildDenseWeightOffsets(*config_, serialized_seq_len_);
 
     llama_layers.embedding_layer_ = CreateEmbeddingLayer(
         device_type_, dim, config_->seq_len_, vocab_size, raw_model_data_->weight(layout.token_embedding_offset),

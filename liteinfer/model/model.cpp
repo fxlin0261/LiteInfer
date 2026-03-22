@@ -205,6 +205,7 @@ base::Status Model::read_model_file() {
     if (!header_status.ok()) {
         return header_status;
     }
+    serialized_seq_len_ = config.seq_len;
 
     const Status model_info_status = generate_model_infos(config);
     if (!model_info_status.ok()) {

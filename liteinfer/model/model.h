@@ -85,6 +85,7 @@ protected:
     base::ModelType model_type_ = base::ModelType::kModelTypeUnknown;
     base::TokenizerType tokenizer_type_ = base::TokenizerType::kEncodeUnknown;
     int32_t runtime_max_seq_len_ = 0;
+    int32_t serialized_seq_len_ = 0;
 };
 }  // namespace model
 #endif  // LITEINFER_INCLUDE_MODEL_MODEL_H_
