@@ -5,7 +5,7 @@
 
 namespace op {
 static const std::string PAT_STR =
-    R"((?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+)";
+    R"((?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+$|\s+)";
 BpeTokenizerLayer::BpeTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos)
     : TokenizerLayerBase(std::move(token_model_path), has_bos, has_eos) {
     using json = nlohmann::json;
@@ -46,7 +46,11 @@ BpeTokenizerLayer::BpeTokenizerLayer(std::string token_model_path, bool has_bos,
     stop_token1_ = eos_id_;
     stop_token2_ = special_tokens["<|eot_id|>"];
     num_token_ = encoder.size() + special_tokens.size();
-    tiktoken_ = std::make_unique<tiktoken::tiktoken>(encoder, special_tokens, PAT_STR);
+    try {
+        tiktoken_ = std::make_unique<tiktoken::tiktoken>(encoder, special_tokens, PAT_STR);
+    } catch (const std::exception& ex) {
+        LOG(FATAL) << "Failed to create the BPE tokenizer: " << ex.what();
+    }
 }
 
 std::vector<int32_t> BpeTokenizerLayer::encode(const std::string& sentence) const {

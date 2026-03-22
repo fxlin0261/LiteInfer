@@ -5,6 +5,7 @@
 #include <limits>
 #include <optional>
 #include <regex>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -103,6 +104,9 @@ public:
              ankerl::unordered_dense::map<std::string, int> special_encoder,
              const std::string& pattern) {
         regex_ = std::make_unique<re2::RE2>("(" + pattern + ")");
+        if (!regex_->ok()) {
+            throw std::invalid_argument("Invalid tokenizer regex: " + regex_->error());
+        }
         std::string special_pattern;
         for (const auto& item : special_encoder) {
             if (!special_pattern.empty()) {
@@ -114,6 +118,10 @@ public:
             special_regex_ = nullptr;
         } else {
             special_regex_ = std::make_unique<re2::RE2>("(" + special_pattern + ")");
+            if (!special_regex_->ok()) {
+                throw std::invalid_argument("Invalid special-token regex: " +
+                                            special_regex_->error());
+            }
         }
 
         encoder_ = std::move(encoder);
