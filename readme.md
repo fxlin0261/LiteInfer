@@ -53,6 +53,16 @@ Prompt demo:
 
 Prompt demo passes your prompt directly into the selected model.
 
+For faster local CPU debugging, you can lower the runtime window:
+
+```bash
+./build/llama3_infer_prompt_demo \
+  --max-seq-len 128 \
+  local_models/Llama-3.2-1B-Instruct.bin \
+  local_models/Llama-3.2-1B-Instruct/tokenizer.json \
+  你好，介绍一下你自己
+```
+
 ## Tests
 
 ```bash

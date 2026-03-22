@@ -14,6 +14,31 @@
 namespace {
 constexpr int32_t kDefaultRuntimeMaxSeqLen = 4096;
 
+bool ParseRuntimeMaxSeqLenArg(int argc, char* argv[], int32_t* runtime_max_seq_len,
+                              int* first_positional_arg_index) {
+    CHECK(runtime_max_seq_len != nullptr);
+    CHECK(first_positional_arg_index != nullptr);
+
+    *runtime_max_seq_len = kDefaultRuntimeMaxSeqLen;
+    *first_positional_arg_index = 1;
+    if (argc < 3 || std::string(argv[1]) != "--max-seq-len") {
+        return true;
+    }
+    if (argc < 5) {
+        return false;
+    }
+
+    char* parse_end = nullptr;
+    const long parsed_value = std::strtol(argv[2], &parse_end, 10);
+    if (parse_end == argv[2] || *parse_end != '\0' || parsed_value <= 0) {
+        return false;
+    }
+
+    *runtime_max_seq_len = static_cast<int32_t>(parsed_value);
+    *first_positional_arg_index = 3;
+    return true;
+}
+
 std::string JoinPromptArgs(int argc, char* argv[], int start_index) {
     std::string prompt;
     for (int index = start_index; index < argc; ++index) {
@@ -36,17 +61,23 @@ std::vector<int32_t> GeneratedTokensOnly(const std::vector<int32_t>& all_output_
 }  // namespace
 
 int main(int argc, char* argv[]) {
-    if (argc < 4) {
-        LOG(INFO) << "Usage: ./llama3_infer_prompt_demo <checkpoint_path> <tokenizer_path> <prompt>";
+    int32_t requested_runtime_max_seq_len = kDefaultRuntimeMaxSeqLen;
+    int first_positional_arg_index = 1;
+    if (!ParseRuntimeMaxSeqLenArg(argc, argv, &requested_runtime_max_seq_len,
+                                  &first_positional_arg_index) ||
+        argc - first_positional_arg_index < 3) {
+        LOG(INFO) << "Usage: ./llama3_infer_prompt_demo [--max-seq-len <n>] "
+                     "<checkpoint_path> <tokenizer_path> <prompt>";
         return EXIT_FAILURE;
     }
 
-    const std::string checkpoint_path = argv[1];
-    const std::string tokenizer_path = argv[2];
-    const std::string prompt = JoinPromptArgs(argc, argv, 3);
+    const std::string checkpoint_path = argv[first_positional_arg_index];
+    const std::string tokenizer_path = argv[first_positional_arg_index + 1];
+    const std::string prompt = JoinPromptArgs(argc, argv, first_positional_arg_index + 2);
 
     model::Llama3Model model(tokenizer_path, checkpoint_path, false);
-    const auto init_status = model.init(base::DefaultDeviceType(), kDefaultRuntimeMaxSeqLen);
+    const auto init_status =
+        model.init(base::DefaultDeviceType(), requested_runtime_max_seq_len);
     if (!init_status.ok()) {
         LOG(FATAL) << "The model init failed, code: " << static_cast<int>(init_status.code())
                    << ", message: " << init_status.message();
