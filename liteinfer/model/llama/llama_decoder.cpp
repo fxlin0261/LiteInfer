@@ -1,12 +1,5 @@
 #include "model/llama/llama_decoder.h"
-#include <algorithm>
-#include <cctype>
-#include <cstdio>
-#include <cstdlib>
 #include <limits>
-#include <string>
-#include <utility>
-#include <vector>
 #include <glog/logging.h>
 #include <base/alloc.h>
 #include <op/matmul.h>
@@ -18,136 +11,6 @@
 
 namespace model {
 namespace {
-constexpr int32_t kDefaultDebugTopLogits = 8;
-constexpr int32_t kMaxDebugTokenPreviewLength = 48;
-
-bool IsTruthyEnvValue(const char* value) {
-    if (value == nullptr || *value == '\0') {
-        return false;
-    }
-
-    std::string normalized(value);
-    std::transform(normalized.begin(), normalized.end(), normalized.begin(),
-                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-    return normalized != "0" && normalized != "false" && normalized != "off" &&
-           normalized != "no";
-}
-
-bool DebugLogitsEnabled() { return IsTruthyEnvValue(std::getenv("LITEINFER_DEBUG_LOGITS")); }
-
-int32_t DebugTopLogitsCount() {
-    const char* env_value = std::getenv("LITEINFER_DEBUG_TOPK");
-    if (env_value == nullptr || *env_value == '\0') {
-        return kDefaultDebugTopLogits;
-    }
-
-    char* parse_end = nullptr;
-    const long parsed_value = std::strtol(env_value, &parse_end, 10);
-    if (parse_end == env_value || *parse_end != '\0' || parsed_value <= 0) {
-        return kDefaultDebugTopLogits;
-    }
-    return static_cast<int32_t>(std::min<long>(parsed_value, 32));
-}
-
-tensor::Tensor CopyTensorToCpu(const tensor::Tensor& tensor, void* stream = nullptr) {
-    if (tensor.device_type() == base::DeviceType::kDeviceCPU) {
-        return tensor.clone();
-    }
-
-    CHECK(tensor.device_type() == base::DeviceType::kDeviceCUDA)
-        << "CopyTensorToCpu only supports CPU or CUDA tensors.";
-
-    tensor::Tensor cpu_copy(tensor.data_type(), tensor.dims(), true,
-                            base::CPUDeviceAllocatorFactory::get_instance());
-    auto cuda_alloc = base::CUDADeviceAllocatorFactory::get_instance();
-    cuda_alloc->memcpy(tensor.ptr<void>(), cpu_copy.ptr<void>(), tensor.byte_size(),
-                       base::MemcpyKind::kMemcpyCUDA2CPU, stream, true);
-    return cpu_copy;
-}
-
-std::vector<std::pair<int32_t, float>> CollectTopLogits(const tensor::Tensor& logits_cpu,
-                                                        int32_t top_count) {
-    CHECK(logits_cpu.device_type() == base::DeviceType::kDeviceCPU);
-
-    const int32_t candidate_count =
-        std::min<int32_t>(top_count, static_cast<int32_t>(logits_cpu.size()));
-    std::vector<std::pair<int32_t, float>> top_logits;
-    top_logits.reserve(static_cast<size_t>(candidate_count));
-    for (int32_t token_id = 0; token_id < static_cast<int32_t>(logits_cpu.size()); ++token_id) {
-        top_logits.emplace_back(token_id, logits_cpu.index<float>(token_id));
-    }
-
-    const auto compare_by_logit = [](const auto& lhs, const auto& rhs) {
-        return lhs.second > rhs.second;
-    };
-    if (candidate_count < static_cast<int32_t>(top_logits.size())) {
-        std::partial_sort(top_logits.begin(), top_logits.begin() + candidate_count,
-                          top_logits.end(), compare_by_logit);
-        top_logits.resize(static_cast<size_t>(candidate_count));
-    } else {
-        std::sort(top_logits.begin(), top_logits.end(), compare_by_logit);
-    }
-    return top_logits;
-}
-
-std::string SanitizeTokenText(std::string text) {
-    if (text.empty()) {
-        return "<empty>";
-    }
-
-    std::string sanitized;
-    sanitized.reserve(std::min<size_t>(text.size(), kMaxDebugTokenPreviewLength + 8));
-    bool truncated = false;
-    for (unsigned char ch : text) {
-        std::string fragment;
-        switch (ch) {
-            case '\n':
-                fragment = "\\n";
-                break;
-            case '\r':
-                fragment = "\\r";
-                break;
-            case '\t':
-                fragment = "\\t";
-                break;
-            default:
-                if (std::isprint(ch) != 0) {
-                    fragment.push_back(static_cast<char>(ch));
-                } else {
-                    char buffer[5];
-                    std::snprintf(buffer, sizeof(buffer), "\\x%02X", ch);
-                    fragment = buffer;
-                }
-                break;
-        }
-
-        if (sanitized.size() + fragment.size() > kMaxDebugTokenPreviewLength) {
-            truncated = true;
-            break;
-        }
-        sanitized += fragment;
-    }
-
-    if (truncated || sanitized.size() < text.size()) {
-        sanitized += "...";
-    }
-    return sanitized;
-}
-
-void LogTopLogits(const LlamaDecoderModel& model, const char* label, int32_t pos,
-                  const tensor::Tensor& logits_cpu, int32_t top_count) {
-    const auto top_logits = CollectTopLogits(logits_cpu, top_count);
-    LOG(INFO) << "Debug logits [" << label << "] at position " << pos
-              << " (top " << top_logits.size() << ")";
-    for (size_t rank = 0; rank < top_logits.size(); ++rank) {
-        const int32_t token_id = top_logits[rank].first;
-        const float logit = top_logits[rank].second;
-        LOG(INFO) << "  rank=" << rank + 1 << " token_id=" << token_id
-                  << " logit=" << logit
-                  << " text=\"" << SanitizeTokenText(model.decode(token_id)) << "\"";
-    }
-}
-
 base::Status ValidateLayerGroup(const std::vector<std::shared_ptr<op::Layer>>& layers,
                                 int32_t expected_size, const char* error_message) {
     if (static_cast<int32_t>(layers.size()) != expected_size) {
@@ -716,29 +579,12 @@ int32_t LlamaDecoderModel::post_processing(const tensor::Tensor& pos, bool is_pr
     if (forward_output.device_type() == base::DeviceType::kDeviceCUDA && cuda_config_) {
         sample_stream = cuda_config_->stream;
     }
-    const bool should_log_debug_logits = DebugLogitsEnabled() && !debug_logits_logged_;
-    tensor::Tensor raw_logits_cpu;
-    tensor::Tensor suppressed_logits_cpu;
-    if (should_log_debug_logits) {
-        raw_logits_cpu = CopyTensorToCpu(forward_output, sample_stream);
-        suppressed_logits_cpu = raw_logits_cpu.clone();
-        SuppressTokenLogit(suppressed_logits_cpu, bos_token_id(), nullptr);
-    }
     SuppressTokenLogit(forward_output, bos_token_id(), sample_stream);
 
     // 如果已经进入生成阶段，就用 sampler_->sample(...) 从 logits 里选出下一个 token id
     const int32_t next_token =
         static_cast<int32_t>(sampler_->sample(forward_output.ptr<float>(), forward_output.size(),
                                               sample_stream));
-    if (should_log_debug_logits) {
-        const int32_t current_pos = pos.index<int32_t>(0);
-        const int32_t top_count = DebugTopLogitsCount();
-        LogTopLogits(*this, "raw", current_pos, raw_logits_cpu, top_count);
-        LogTopLogits(*this, "bos_suppressed", current_pos, suppressed_logits_cpu, top_count);
-        LOG(INFO) << "Debug sample at position " << current_pos << ": token_id=" << next_token
-                  << " text=\"" << SanitizeTokenText(decode(next_token)) << "\"";
-        debug_logits_logged_ = true;
-    }
     return next_token;
 }
 }  // namespace model

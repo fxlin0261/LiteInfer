@@ -74,7 +74,6 @@ private:
 private:
     std::shared_ptr<kernel::CudaConfig> cuda_config_;
     std::unique_ptr<LlamaDecoderLayers> layers_;
-    mutable bool debug_logits_logged_ = false;
 };
 }  // namespace model
 
