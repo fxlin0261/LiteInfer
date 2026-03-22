@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <ctime>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -31,7 +32,29 @@ bool LooksLikeInstructCheckpoint(const std::string& checkpoint_path,
 }
 
 std::string ApplyLlama3ChatTemplate(const std::string& prompt) {
-    return "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n" + prompt +
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    std::tm local_tm {};
+#if defined(_WIN32)
+    localtime_s(&local_tm, &now_time);
+#else
+    localtime_r(&now_time, &local_tm);
+#endif
+
+    static constexpr const char* kMonths[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    CHECK_GE(local_tm.tm_mon, 0);
+    CHECK_LT(local_tm.tm_mon, 12);
+
+    char date_buf[32];
+    std::snprintf(date_buf, sizeof(date_buf), "%02d %s %04d", local_tm.tm_mday,
+                  kMonths[local_tm.tm_mon], local_tm.tm_year + 1900);
+
+    return "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
+           "Cutting Knowledge Date: December 2023\n"
+           "Today Date: " +
+           std::string(date_buf) +
+           "\n\n<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n" + prompt +
            "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n";
 }
 
