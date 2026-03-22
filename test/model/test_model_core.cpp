@@ -33,6 +33,7 @@ public:
     }
     bool is_sentence_ending(int32_t token_id) const override { return token_id == 999; }
     int32_t vocab_size() const override { return 2048; }
+    int32_t bos_token_id() const override { return 101; }
 };
 
 class FakeModel final : public model::Model {
