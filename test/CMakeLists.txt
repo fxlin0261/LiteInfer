@@ -1,6 +1,7 @@
 set(
   TEST_SOURCES
   support/test_main.cpp
+  base/test_bpe_tokenizer.cpp
   base/test_unicode.cpp
   model/test_generation.cpp
   model/test_llama_model_cpu.cpp

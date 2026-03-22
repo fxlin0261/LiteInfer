@@ -100,10 +100,7 @@ BpeTokenizerLayer::BpeTokenizerLayer(std::string token_model_path, bool has_bos,
 
 std::vector<int32_t> BpeTokenizerLayer::encode(const std::string& sentence) const {
     CHECK(this->tiktoken_ != nullptr);
-    std::map<std::string, std::string> replacements;
-    replacements[" "] = "Ġ";
-    std::string s = absl::StrReplaceAll(sentence, replacements);
-    auto input_ids = this->tiktoken_->encode(s);
+    auto input_ids = this->tiktoken_->encode(sentence);
 
     if (has_bos_) {
         input_ids.insert(input_ids.begin(), bos_id_);
@@ -120,11 +117,7 @@ std::string BpeTokenizerLayer::decode(int32_t token_id) const {
 
 std::string BpeTokenizerLayer::decode(const std::vector<int32_t>& token_ids) const {
     CHECK(this->tiktoken_ != nullptr);
-    auto s = tiktoken_->decode(token_ids);
-    std::map<std::string, std::string> reverse_replacements;
-    reverse_replacements["Ġ"] = " ";
-    const std::string& sentence = absl::StrReplaceAll(s, reverse_replacements);
-    return sentence;
+    return tiktoken_->decode(token_ids);
 }
 
 bool BpeTokenizerLayer::is_sentence_ending(int32_t token_id) const {
