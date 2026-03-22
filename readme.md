@@ -34,7 +34,7 @@ python3 tools/export_llama3.py \
 
 ## Run
 
-Explicit model path:
+Basic demo:
 
 ```bash
 ./build/llama3_infer_demo \
@@ -51,9 +51,9 @@ Prompt demo:
   你好，介绍一下你自己
 ```
 
-Prompt demo passes your prompt directly into the selected model.
+For Instruct checkpoints, `llama3_infer_prompt_demo` applies the Llama 3 chat template automatically.
 
-For faster local CPU debugging, you can lower the runtime window:
+Useful flags:
 
 ```bash
 ./build/llama3_infer_prompt_demo \
@@ -61,6 +61,19 @@ For faster local CPU debugging, you can lower the runtime window:
   local_models/Llama-3.2-1B-Instruct.bin \
   local_models/Llama-3.2-1B-Instruct/tokenizer.json \
   你好，介绍一下你自己
+```
+
+- `--max-seq-len`: limit the runtime context window for faster local debugging
+- `--raw-prompt`: disable the automatic chat template and pass your prompt as-is
+
+Example:
+
+```bash
+./build/llama3_infer_prompt_demo \
+  --raw-prompt \
+  local_models/Llama-3.2-1B-Instruct.bin \
+  local_models/Llama-3.2-1B-Instruct/tokenizer.json \
+  "Hello, who are you"
 ```
 
 ## Tests
