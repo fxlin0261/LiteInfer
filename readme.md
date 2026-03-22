@@ -49,10 +49,19 @@ Example:
   local_models/llama3/Llama-3.2-1B/tokenizer.json
 ```
 
-If you want a fixed local Llama 3.2 1B setup and only pass the prompt:
+If you want a fixed local Llama 3.2 setup and only pass the prompt:
 
 ```bash
 ./build/llama3_infer_prompt_demo 你好，介绍一下你自己
+```
+
+`llama3_infer_prompt_demo` now prefers a local `Llama-3.2-1B-Instruct` export when it is
+available and automatically wraps the prompt with the Llama 3 instruct chat template. You can
+override the selection explicitly:
+
+```bash
+./build/llama3_infer_prompt_demo --instruct 你好，介绍一下你自己
+./build/llama3_infer_prompt_demo --base explain rotary embeddings
 ```
 
 ## Tests
@@ -67,4 +76,12 @@ ctest --test-dir build --output-on-failure -R test_main
 ```bash
 python3 tools/export_llama2.py <output_bin> --meta-llama <model_dir>
 python3 tools/export_llama3.py <output_bin> --hf=<hf_model_dir>
+```
+
+Example for the instruct model:
+
+```bash
+python3 tools/export_llama3.py \
+  local_models/llama3/Llama-3.2-1B-Instruct.bin \
+  --hf=local_models/llama3/Llama-3.2-1B-Instruct
 ```
