@@ -2,6 +2,35 @@
 
 namespace kernel {
 namespace {
+constexpr float kTwoPi = 6.28318530717958647692f;
+
+__device__ float ApplyLlama3InvFreqScaling(float inv_freq, bool enabled, float factor,
+                                           float low_freq_factor, float high_freq_factor,
+                                           int original_max_position_embeddings) {
+    if (!enabled || factor <= 0.0f || high_freq_factor <= low_freq_factor ||
+        original_max_position_embeddings <= 0) {
+        return inv_freq;
+    }
+
+    const float wavelen = kTwoPi / inv_freq;
+    const float low_freq_wavelen =
+        static_cast<float>(original_max_position_embeddings) / low_freq_factor;
+    const float high_freq_wavelen =
+        static_cast<float>(original_max_position_embeddings) / high_freq_factor;
+
+    if (wavelen < high_freq_wavelen) {
+        return inv_freq;
+    }
+    if (wavelen > low_freq_wavelen) {
+        return inv_freq / factor;
+    }
+
+    const float smooth_factor =
+        (static_cast<float>(original_max_position_embeddings) / wavelen - low_freq_factor) /
+        (high_freq_factor - low_freq_factor);
+    return (1.0f - smooth_factor) * (inv_freq / factor) + smooth_factor * inv_freq;
+}
+
 __device__ void rope_calc(float fcr, float fci, float* vec, int32_t idx) {
     float2* vec_ptr = reinterpret_cast<float2*>(vec + idx);
     float2 vec_value = *vec_ptr;
@@ -55,13 +84,21 @@ __global__ void rope_kernel_cu_fp32(bool use_half_split, int pos, int dim, int k
     rope_calc(fcr, fci, const_cast<float*>(input_k), idx);
 }
 
-__global__ void sin_cos_calc(float rope_theta, int head_size, int max_seq_len, float* sin_cache,
-                             float* cos_cache) {
+__global__ void sin_cos_calc(float rope_theta, bool use_llama3_scaling, float scaling_factor,
+                             float low_freq_factor, float high_freq_factor,
+                             int original_max_position_embeddings, int head_size,
+                             int max_seq_len, float* sin_cache, float* cos_cache) {
     int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    if (idx >= head_size) {
+        return;
+    }
     int head_dim = idx % head_size;
     for (int pos = 0; pos < max_seq_len; ++pos) {
         float freq =
             1.0f / powf(rope_theta, static_cast<float>(head_dim) / static_cast<float>(head_size));
+        freq = ApplyLlama3InvFreqScaling(freq, use_llama3_scaling, scaling_factor,
+                                         low_freq_factor, high_freq_factor,
+                                         original_max_position_embeddings);
         float val = static_cast<float>(pos) * freq;
         float fcr = cosf(val);
         float fci = sinf(val);
@@ -71,19 +108,25 @@ __global__ void sin_cos_calc(float rope_theta, int head_size, int max_seq_len, f
 }
 }  // namespace
 
-void sin_cos_cache_calc_cu(base::ModelType model_type, int head_size, int max_seq_len,
+void sin_cos_cache_calc_cu(float rope_theta, const base::RoPEScalingConfig& rope_scaling,
+                           int head_size, int max_seq_len,
                            const tensor::Tensor& sin_cache, const tensor::Tensor& cos_cache,
                            cudaStream_t stream) {
     CHECK_EQ(sin_cache.is_empty(), false);
     CHECK_EQ(cos_cache.is_empty(), false);
     const int threads = head_size;
-    const float rope_theta = base::RoPETheta(model_type);
     if (stream) {
-        sin_cos_calc<<<1, threads, 0, stream>>>(rope_theta, head_size, max_seq_len,
+        sin_cos_calc<<<1, threads, 0, stream>>>(
+            rope_theta, rope_scaling.enabled, rope_scaling.factor,
+            rope_scaling.low_freq_factor, rope_scaling.high_freq_factor,
+            rope_scaling.original_max_position_embeddings, head_size, max_seq_len,
                                                 const_cast<float*>(sin_cache.ptr<float>()),
                                                 const_cast<float*>(cos_cache.ptr<float>()));
     } else {
-        sin_cos_calc<<<1, threads>>>(rope_theta, head_size, max_seq_len,
+        sin_cos_calc<<<1, threads>>>(
+            rope_theta, rope_scaling.enabled, rope_scaling.factor,
+            rope_scaling.low_freq_factor, rope_scaling.high_freq_factor,
+            rope_scaling.original_max_position_embeddings, head_size, max_seq_len,
                                      const_cast<float*>(sin_cache.ptr<float>()),
                                      const_cast<float*>(cos_cache.ptr<float>()));
     }

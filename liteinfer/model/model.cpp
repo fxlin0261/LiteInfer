@@ -2,17 +2,87 @@
 
 #include <cstddef>
 #include <cstdlib>
+#include <filesystem>
 #include <fcntl.h>
 #include <fstream>
 #include <memory>
 #include <utility>
 
+#include <nlohmann/json.hpp>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 namespace model {
 namespace {
+void InitializeDefaultRoPEConfig(base::ModelType model_type, TransformerConfig* config) {
+    CHECK(config != nullptr);
+    config->rope_theta_ = base::RoPETheta(model_type);
+    config->rope_scaling_ = base::RoPEScalingConfig();
+}
+
+void TryLoadHFConfigSideOverrides(base::ModelType model_type, const std::string& token_path,
+                                  TransformerConfig* config) {
+    CHECK(config != nullptr);
+    InitializeDefaultRoPEConfig(model_type, config);
+
+    if (token_path.empty()) {
+        return;
+    }
+
+    namespace fs = std::filesystem;
+    fs::path token_fs_path(token_path);
+    fs::path config_path =
+        fs::is_directory(token_fs_path) ? token_fs_path / "config.json"
+                                        : token_fs_path.parent_path() / "config.json";
+    if (config_path.empty() || !fs::exists(config_path) || !fs::is_regular_file(config_path)) {
+        return;
+    }
+
+    try {
+        std::ifstream config_file(config_path);
+        if (!config_file.is_open()) {
+            return;
+        }
+
+        const auto hf_config = nlohmann::json::parse(config_file);
+        if (const auto theta_it = hf_config.find("rope_theta");
+            theta_it != hf_config.end() && theta_it->is_number()) {
+            config->rope_theta_ = theta_it->get<float>();
+        }
+
+        const auto rope_scaling_it = hf_config.find("rope_scaling");
+        if (rope_scaling_it == hf_config.end() || !rope_scaling_it->is_object()) {
+            return;
+        }
+
+        const auto rope_type = rope_scaling_it->value("rope_type", rope_scaling_it->value("type", ""));
+        if (rope_type != "llama3") {
+            return;
+        }
+
+        config->rope_scaling_.enabled = true;
+        config->rope_scaling_.factor = rope_scaling_it->value("factor", 1.0f);
+        config->rope_scaling_.low_freq_factor =
+            rope_scaling_it->value("low_freq_factor", 1.0f);
+        config->rope_scaling_.high_freq_factor =
+            rope_scaling_it->value("high_freq_factor", 1.0f);
+        config->rope_scaling_.original_max_position_embeddings =
+            rope_scaling_it->value("original_max_position_embeddings", 0);
+
+        LOG(INFO) << "Loaded llama3 RoPE scaling from " << config_path
+                  << " with theta=" << config->rope_theta_
+                  << ", factor=" << config->rope_scaling_.factor
+                  << ", low_freq_factor=" << config->rope_scaling_.low_freq_factor
+                  << ", high_freq_factor=" << config->rope_scaling_.high_freq_factor
+                  << ", original_max_position_embeddings="
+                  << config->rope_scaling_.original_max_position_embeddings;
+    } catch (const std::exception& ex) {
+        LOG(WARNING) << "Failed to parse Hugging Face config overrides from " << config_path
+                     << ": " << ex.what();
+    }
+}
+
 class ScopedFd {
 public:
     explicit ScopedFd(int32_t fd = -1) : fd_(fd) {}
@@ -314,6 +384,7 @@ base::Status Model::create_tokenizer_layer() {
 base::Status Model::gen_model_from_file() {
     using namespace base;
     config_ = std::make_unique<TransformerConfig>();
+    TryLoadHFConfigSideOverrides(model_type_, token_path_, config_.get());
 
     const Status tokenizer_status = create_tokenizer_layer();
     if (!tokenizer_status.ok()) {

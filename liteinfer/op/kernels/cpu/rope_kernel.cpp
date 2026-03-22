@@ -2,6 +2,38 @@
 
 namespace kernel {
 namespace {
+constexpr float kTwoPi = 6.28318530717958647692f;
+
+float ApplyLlama3InvFreqScaling(float inv_freq, const base::RoPEScalingConfig& rope_scaling) {
+    if (!rope_scaling.enabled || rope_scaling.factor <= 0.0f ||
+        rope_scaling.high_freq_factor <= rope_scaling.low_freq_factor ||
+        rope_scaling.original_max_position_embeddings <= 0) {
+        return inv_freq;
+    }
+
+    const float wavelen = kTwoPi / inv_freq;
+    const float low_freq_wavelen =
+        static_cast<float>(rope_scaling.original_max_position_embeddings) /
+        rope_scaling.low_freq_factor;
+    const float high_freq_wavelen =
+        static_cast<float>(rope_scaling.original_max_position_embeddings) /
+        rope_scaling.high_freq_factor;
+
+    if (wavelen < high_freq_wavelen) {
+        return inv_freq;
+    }
+    if (wavelen > low_freq_wavelen) {
+        return inv_freq / rope_scaling.factor;
+    }
+
+    const float smooth_factor =
+        (static_cast<float>(rope_scaling.original_max_position_embeddings) / wavelen -
+         rope_scaling.low_freq_factor) /
+        (rope_scaling.high_freq_factor - rope_scaling.low_freq_factor);
+    return (1.0f - smooth_factor) * (inv_freq / rope_scaling.factor) +
+           smooth_factor * inv_freq;
+}
+
 void rope_kernel_half_split_cpu(int32_t dim, int32_t kv_dim, int32_t head_size,
                                 const tensor::Tensor& input_q, const tensor::Tensor& input_k,
                                 const tensor::Tensor& input_pos, const tensor::Tensor& sin_cache,
@@ -52,13 +84,14 @@ void rope_kernel_pairwise_cpu(int32_t dim, int32_t kv_dim, int32_t head_size,
 }
 }  // namespace
 
-void sin_cos_cache_calc_cpu(base::ModelType model_type, int head_size, int max_seq_len,
+void sin_cos_cache_calc_cpu(float rope_theta, const base::RoPEScalingConfig& rope_scaling,
+                            int head_size, int max_seq_len,
                             float* sin_cache, float* cos_cache) {
-    const float rope_theta = base::RoPETheta(model_type);
     for (int pos = 0; pos < max_seq_len; ++pos) {
         for (int head_dim = 0; head_dim < head_size; ++head_dim) {
             float freq = 1.0f / std::pow(rope_theta, static_cast<float>(head_dim) /
                                                          static_cast<float>(head_size));
+            freq = ApplyLlama3InvFreqScaling(freq, rope_scaling);
             float val = static_cast<float>(pos) * freq;
             float fcr = cosf(val);
             float fci = sinf(val);

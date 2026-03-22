@@ -17,7 +17,8 @@ struct LegacyQuantizedWeightsLayout {
 };
 
 base::Status InitCudaConfig(std::shared_ptr<kernel::CudaConfig>& cuda_config);
-base::Status InitSinCosCache(base::ModelType model_type, int32_t head_size, int32_t seq_len,
+base::Status InitSinCosCache(float rope_theta, const base::RoPEScalingConfig& rope_scaling,
+                             int32_t head_size, int32_t seq_len,
                              const tensor::Tensor& sin_cache, const tensor::Tensor& cos_cache,
                              const std::shared_ptr<kernel::CudaConfig>& cuda_config);
 size_t LegacyQuantizedTensorBytes(int32_t rows, int32_t cols, int32_t group_size);

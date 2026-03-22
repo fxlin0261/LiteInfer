@@ -139,6 +139,14 @@ inline bool UsesHalfSplitRoPE(ModelType model_type) {
     return UsesLlama3RoPE(model_type);
 }
 
+struct RoPEScalingConfig {
+    bool enabled = false;
+    float factor = 1.0f;
+    float low_freq_factor = 1.0f;
+    float high_freq_factor = 1.0f;
+    int32_t original_max_position_embeddings = 0;
+};
+
 inline float RoPETheta(ModelType model_type) {
     if (UsesLlama3RoPE(model_type)) {
         return 500000.0f;

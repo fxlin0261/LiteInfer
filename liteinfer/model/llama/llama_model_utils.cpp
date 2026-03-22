@@ -53,16 +53,18 @@ base::Status InitCudaConfig(std::shared_ptr<kernel::CudaConfig>& cuda_config) {
 #endif
 }
 
-base::Status InitSinCosCache(base::ModelType model_type, int32_t head_size, int32_t seq_len,
+base::Status InitSinCosCache(float rope_theta, const base::RoPEScalingConfig& rope_scaling,
+                             int32_t head_size, int32_t seq_len,
                              const tensor::Tensor& sin_cache, const tensor::Tensor& cos_cache,
                              const std::shared_ptr<kernel::CudaConfig>& cuda_config) {
 #if LITEINFER_ENABLE_CUDA
     CHECK_NE(cuda_config, nullptr);
-    kernel::sin_cos_cache_calc_cu(model_type, head_size, seq_len, sin_cache, cos_cache,
+    kernel::sin_cos_cache_calc_cu(rope_theta, rope_scaling, head_size, seq_len, sin_cache, cos_cache,
                                   cuda_config->stream);
     return base::error::Success();
 #else
-    UNUSED(model_type);
+    UNUSED(rope_theta);
+    UNUSED(rope_scaling);
     UNUSED(head_size);
     UNUSED(seq_len);
     UNUSED(sin_cache);
@@ -73,4 +75,3 @@ base::Status InitSinCosCache(base::ModelType model_type, int32_t head_size, int3
 }
 }  // namespace detail
 }  // namespace model
-

@@ -2,6 +2,7 @@
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -91,6 +92,53 @@ std::vector<int32_t> GeneratedTokensOnly(const std::vector<int32_t>& all_output_
     return std::vector<int32_t>(all_output_tokens.begin() + prompt_token_count,
                                 all_output_tokens.end());
 }
+
+bool DebugPromptTokensEnabled() {
+    const char* env = std::getenv("LITEINFER_DEBUG_PROMPT_TOKENS");
+    return env != nullptr && std::strcmp(env, "0") != 0;
+}
+
+std::string SanitizeDebugText(std::string text) {
+    std::string out;
+    out.reserve(text.size());
+    for (unsigned char ch : text) {
+        switch (ch) {
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            case '"':
+                out += "\\\"";
+                break;
+            default:
+                if (ch >= 0x20 && ch <= 0x7E) {
+                    out.push_back(static_cast<char>(ch));
+                } else {
+                    char buf[5];
+                    std::snprintf(buf, sizeof(buf), "\\x%02X", ch);
+                    out += buf;
+                }
+                break;
+        }
+    }
+    return out;
+}
+
+void LogPromptTokens(const model::Model& model, const std::string& formatted_prompt,
+                     const std::vector<int32_t>& tokens) {
+    LOG(INFO) << "Formatted prompt: \"" << SanitizeDebugText(formatted_prompt) << "\"";
+    LOG(INFO) << "Prompt token count: " << tokens.size();
+    for (size_t index = 0; index < tokens.size(); ++index) {
+        const int32_t token_id = tokens[index];
+        LOG(INFO) << "  prompt_token[" << index << "] id=" << token_id << " text=\""
+                  << SanitizeDebugText(model.decode(token_id)) << "\"";
+    }
+}
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -137,6 +185,9 @@ int main(int argc, char* argv[]) {
     const std::string formatted_prompt =
         should_apply_chat_template ? ApplyLlama3ChatTemplate(prompt) : prompt;
     const auto tokens = model.encode(formatted_prompt);
+    if (DebugPromptTokensEnabled()) {
+        LogPromptTokens(model, formatted_prompt, tokens);
+    }
     app::GenerationState generation_result;
     const auto generate_status =
         app::RunGeneration(model, tokens, max_context_steps, &generation_result);

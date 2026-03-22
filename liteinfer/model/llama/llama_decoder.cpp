@@ -242,12 +242,14 @@ base::Status LlamaDecoderModel::init(base::DeviceType device_type,
 
     init_mem();
     if (device_type_ == DeviceType::kDeviceCPU) {
-        kernel::sin_cos_cache_calc_cpu(model_type_, config_->head_size_, config_->seq_len_,
+        kernel::sin_cos_cache_calc_cpu(config_->rope_theta_, config_->rope_scaling_,
+                                       config_->head_size_, config_->seq_len_,
                                        get_runtime_tensor(RuntimeTensorType::kSinCache).ptr<float>(),
                                        get_runtime_tensor(RuntimeTensorType::kCosCache).ptr<float>());
     } else {
         auto cache_status =
-            detail::InitSinCosCache(model_type_, config_->head_size_, config_->seq_len_,
+            detail::InitSinCosCache(config_->rope_theta_, config_->rope_scaling_,
+                                    config_->head_size_, config_->seq_len_,
                                     get_runtime_tensor(RuntimeTensorType::kSinCache),
                                     get_runtime_tensor(RuntimeTensorType::kCosCache), cuda_config_);
         if (!cache_status.ok()) {

@@ -1,6 +1,8 @@
 #ifndef LITEINFER_MODEL_CONFIG_H_
 #define LITEINFER_MODEL_CONFIG_H_
 
+#include "base/base.h"
+
 namespace model {
 struct ModelConfig {
     int32_t dim = 0;
@@ -24,6 +26,8 @@ struct TransformerConfig {
     int32_t kv_head_num_ = 0;
     int32_t seq_len_ = 0;
     bool is_shared_weight_ = false;
+    float rope_theta_ = 0.0f;
+    base::RoPEScalingConfig rope_scaling_;
 };
 }  // namespace model
 #endif  // LITEINFER_MODEL_CONFIG_H_
