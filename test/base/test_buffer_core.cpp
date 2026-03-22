@@ -47,7 +47,7 @@ TEST(test_buffer, allocate_succeeds_when_allocator_and_size_are_valid) {
 }
 
 // 没有 allocator 时分配失败
-TEST(test_buffer, allocate_fails_without_allocator) {
+TEST(test_buffer, allocate_fails_without_allocator_in_core_path) {
     using namespace base;
     Buffer buffer(16 * sizeof(float), nullptr, nullptr, false);
     EXPECT_FALSE(buffer.allocate());
@@ -55,7 +55,7 @@ TEST(test_buffer, allocate_fails_without_allocator) {
 }
 
 // 申请 0 字节时分配失败
-TEST(test_buffer, allocate_fails_with_zero_size) {
+TEST(test_buffer, allocate_fails_with_zero_size_in_core_path) {
     using namespace base;
     auto alloc = CPUDeviceAllocatorFactory::get_instance();
     Buffer buffer(0, alloc);
