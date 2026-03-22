@@ -1,8 +1,10 @@
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/base.h>
@@ -14,28 +16,59 @@
 namespace {
 constexpr int32_t kDefaultRuntimeMaxSeqLen = 4096;
 
-bool ParseRuntimeMaxSeqLenArg(int argc, char* argv[], int32_t* runtime_max_seq_len,
-                              int* first_positional_arg_index) {
+bool ContainsCaseInsensitive(std::string_view haystack, std::string_view needle) {
+    return std::search(haystack.begin(), haystack.end(), needle.begin(), needle.end(),
+                       [](unsigned char lhs, unsigned char rhs) {
+                           return std::tolower(lhs) == std::tolower(rhs);
+                       }) != haystack.end();
+}
+
+bool LooksLikeInstructCheckpoint(const std::string& checkpoint_path,
+                                 const std::string& tokenizer_path) {
+    return ContainsCaseInsensitive(checkpoint_path, "instruct") ||
+           ContainsCaseInsensitive(tokenizer_path, "instruct");
+}
+
+std::string ApplyLlama3ChatTemplate(const std::string& prompt) {
+    return "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n" + prompt +
+           "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n";
+}
+
+bool ParseArgs(int argc, char* argv[], int32_t* runtime_max_seq_len, bool* use_raw_prompt,
+               int* first_positional_arg_index) {
     CHECK(runtime_max_seq_len != nullptr);
+    CHECK(use_raw_prompt != nullptr);
     CHECK(first_positional_arg_index != nullptr);
 
     *runtime_max_seq_len = kDefaultRuntimeMaxSeqLen;
+    *use_raw_prompt = false;
     *first_positional_arg_index = 1;
-    if (argc < 3 || std::string(argv[1]) != "--max-seq-len") {
-        return true;
-    }
-    if (argc < 5) {
-        return false;
+
+    int arg_index = 1;
+    while (arg_index < argc) {
+        const std::string_view arg = argv[arg_index];
+        if (arg == "--max-seq-len") {
+            if (arg_index + 1 >= argc) {
+                return false;
+            }
+            char* parse_end = nullptr;
+            const long parsed_value = std::strtol(argv[arg_index + 1], &parse_end, 10);
+            if (parse_end == argv[arg_index + 1] || *parse_end != '\0' || parsed_value <= 0) {
+                return false;
+            }
+            *runtime_max_seq_len = static_cast<int32_t>(parsed_value);
+            arg_index += 2;
+            continue;
+        }
+        if (arg == "--raw-prompt") {
+            *use_raw_prompt = true;
+            ++arg_index;
+            continue;
+        }
+        break;
     }
 
-    char* parse_end = nullptr;
-    const long parsed_value = std::strtol(argv[2], &parse_end, 10);
-    if (parse_end == argv[2] || *parse_end != '\0' || parsed_value <= 0) {
-        return false;
-    }
-
-    *runtime_max_seq_len = static_cast<int32_t>(parsed_value);
-    *first_positional_arg_index = 3;
+    *first_positional_arg_index = arg_index;
     return true;
 }
 
@@ -62,11 +95,12 @@ std::vector<int32_t> GeneratedTokensOnly(const std::vector<int32_t>& all_output_
 
 int main(int argc, char* argv[]) {
     int32_t requested_runtime_max_seq_len = kDefaultRuntimeMaxSeqLen;
+    bool use_raw_prompt = false;
     int first_positional_arg_index = 1;
-    if (!ParseRuntimeMaxSeqLenArg(argc, argv, &requested_runtime_max_seq_len,
+    if (!ParseArgs(argc, argv, &requested_runtime_max_seq_len, &use_raw_prompt,
                                   &first_positional_arg_index) ||
         argc - first_positional_arg_index < 3) {
-        LOG(INFO) << "Usage: ./llama3_infer_prompt_demo [--max-seq-len <n>] "
+        LOG(INFO) << "Usage: ./llama3_infer_prompt_demo [--max-seq-len <n>] [--raw-prompt] "
                      "<checkpoint_path> <tokenizer_path> <prompt>";
         return EXIT_FAILURE;
     }
@@ -93,7 +127,16 @@ int main(int argc, char* argv[]) {
 
     const auto start = std::chrono::steady_clock::now();
     std::cout << "Generating...\n" << std::flush;
-    const auto tokens = model.encode(prompt);
+    const bool should_apply_chat_template =
+        !use_raw_prompt && LooksLikeInstructCheckpoint(checkpoint_path, tokenizer_path);
+    if (should_apply_chat_template) {
+        LOG(INFO) << "Applying the Llama 3 instruct chat template.";
+    } else if (use_raw_prompt) {
+        LOG(INFO) << "Using the raw prompt without a chat template.";
+    }
+    const std::string formatted_prompt =
+        should_apply_chat_template ? ApplyLlama3ChatTemplate(prompt) : prompt;
+    const auto tokens = model.encode(formatted_prompt);
     app::GenerationState generation_result;
     const auto generate_status =
         app::RunGeneration(model, tokens, max_context_steps, &generation_result);
