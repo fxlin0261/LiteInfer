@@ -16,7 +16,6 @@ inline constexpr DeviceType DefaultDeviceType() {
 }  // namespace base
 
 #if LITEINFER_ENABLE_CUDA
-#include <cublas_v2.h>
 #include <cuda_runtime_api.h>
 
 namespace kernel {

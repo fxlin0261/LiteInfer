@@ -7,6 +7,7 @@ __pycache__/
 
 # Build outputs
 /build/
+/build_cpu_check/
 /build-*/
 /cmake-build-*/
 /log/

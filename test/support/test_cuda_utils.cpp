@@ -68,7 +68,7 @@ TEST(test_cu, set_value_cu_sets_custom_value_on_device_buffer) {
     constexpr int32_t size = 1025;
     constexpr float value = -2.f;
     float* ptr_cu = nullptr;
-    ASSERT_EQ(cudaMalloc(&ptr_cu, sizeof(float) * size), cudaSuccess);
+    ASSERT_EQ(cudaMalloc(reinterpret_cast<void**>(&ptr_cu), sizeof(float) * size), cudaSuccess);
     set_value_cu(ptr_cu, size, value);
     float* host_ptr = new float[size];
     ASSERT_EQ(cudaMemcpy(host_ptr, ptr_cu, sizeof(float) * size, cudaMemcpyDeviceToHost),
