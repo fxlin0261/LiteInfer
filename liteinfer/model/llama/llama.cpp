@@ -208,6 +208,7 @@ base::Status LlamaModel::create_param_layers() {
     CHECK(!is_quant_model_);
     auto& llama_layers = layers();
     ReserveLayerStorage(llama_layers, config_->layer_num_);
+    llama_layers.rmsnorm_layers_.resize(static_cast<size_t>(2 * config_->layer_num_ + 1));
 
     const auto weight_device = base::DeviceType::kDeviceCPU;
     const int32_t dim = config_->dim_;
@@ -232,9 +233,11 @@ base::Status LlamaModel::create_param_layers() {
         const size_t down_projection_offset = layout.down_projection_offset + static_cast<size_t>(layer_idx) * hidden_dim * dim;
         const size_t up_projection_offset = layout.up_projection_offset + static_cast<size_t>(layer_idx) * hidden_dim * dim;
 
-        llama_layers.rmsnorm_layers_.push_back(CreateRmsNormLayer(
+        // Keep RMSNorm layers grouped as [all attention norms][all ffn norms][final norm]
+        // so the runtime can index them by layer block.
+        llama_layers.rmsnorm_layers_.at(static_cast<size_t>(layer_idx)) = CreateRmsNormLayer(
             device_type_, model_type_, dim, raw_model_data_->weight(attention_rmsnorm_offset),
-            weight_device));
+            weight_device);
         llama_layers.wq_layers_.push_back(
             CreateMatmulLayer(device_type_, dim, dim, raw_model_data_->weight(query_projection_offset),
                               weight_device));
@@ -247,9 +250,9 @@ base::Status LlamaModel::create_param_layers() {
         llama_layers.wo_layers_.push_back(
             CreateMatmulLayer(device_type_, dim, dim, raw_model_data_->weight(output_projection_offset),
                               weight_device));
-        llama_layers.rmsnorm_layers_.push_back(CreateRmsNormLayer(
+        llama_layers.rmsnorm_layers_.at(static_cast<size_t>(layer_idx + layer_num)) = CreateRmsNormLayer(
             device_type_, model_type_, dim, raw_model_data_->weight(feed_forward_rmsnorm_offset),
-            weight_device));
+            weight_device);
         llama_layers.w1_layers_.push_back(
             CreateMatmulLayer(device_type_, hidden_dim, dim, raw_model_data_->weight(gate_projection_offset),
                               weight_device));
@@ -260,8 +263,9 @@ base::Status LlamaModel::create_param_layers() {
                               weight_device));
     }
 
-    llama_layers.rmsnorm_layers_.push_back(CreateRmsNormLayer(
-        device_type_, model_type_, dim, raw_model_data_->weight(layout.final_rmsnorm_offset), weight_device));
+    llama_layers.rmsnorm_layers_.at(static_cast<size_t>(2 * layer_num)) = CreateRmsNormLayer(
+        device_type_, model_type_, dim, raw_model_data_->weight(layout.final_rmsnorm_offset),
+        weight_device);
 
     const void* lm_head_weight = config_->is_shared_weight_ ? raw_model_data_->weight(layout.token_embedding_offset)
                                                         : raw_model_data_->weight(layout.lm_head_offset);
