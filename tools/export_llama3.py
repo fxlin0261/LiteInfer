@@ -540,8 +540,38 @@ def load_hf_model(model_path):
         print("Please run `pip install transformers` to install it")
         return None
 
-    # load HF model
-    hf_model = AutoModelForCausalLM.from_pretrained(model_path)
+    input_path = Path(model_path).expanduser()
+    candidate_paths = []
+    if input_path.is_absolute():
+        candidate_paths.append(input_path)
+    else:
+        candidate_paths.append(Path.cwd() / input_path)
+        candidate_paths.append(SCRIPT_DIR.parent / input_path)
+
+    local_model_path = next((path for path in candidate_paths if path.is_dir()), None)
+
+    try:
+        if local_model_path is not None:
+            hf_model = AutoModelForCausalLM.from_pretrained(
+                str(local_model_path), local_files_only=True
+            )
+        else:
+            hf_model = AutoModelForCausalLM.from_pretrained(model_path)
+    except OSError as exc:
+        looks_like_local_path = (
+            model_path.startswith(".")
+            or model_path.startswith("/")
+            or model_path.startswith("~")
+            or model_path.startswith("local_models/")
+        )
+        if looks_like_local_path:
+            checked_paths = ", ".join(str(path) for path in candidate_paths)
+            raise OSError(
+                "Local Hugging Face model directory not found. "
+                f"Received: {model_path}. Checked: {checked_paths}"
+            ) from exc
+        raise
+
     hf_dict = hf_model.state_dict()
 
     # convert LlamaConfig to ModelArgs

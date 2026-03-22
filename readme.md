@@ -8,7 +8,9 @@ Current support:
 - CPU execution
 - CUDA execution when available
 
-## Build
+## Quick Start
+
+### 1. Build
 
 Run the build script from the project root:
 
@@ -16,26 +18,76 @@ Run the build script from the project root:
 ./build.sh
 ```
 
-Use `--cpu` or `--cuda` to choose the backend explicitly:
+Useful variants:
 
 ```bash
 ./build.sh --cpu
 ./build.sh --cuda
-```
-
-By default, it configures `build/` with `USE_CPM=ON`, `CMAKE_BUILD_TYPE=Release`, and auto-detects CUDA.
-
-You can still override the defaults when needed:
-
-```bash
 USE_CPM=OFF CMAKE_BUILD_TYPE=Debug ./build.sh --cpu
 ```
 
-`--cpu` forces a CPU-only build even on machines with CUDA. `--cuda` requires CUDA and fails during CMake configure if CUDA is unavailable. Without either flag, LiteInfer falls back to CPU-only when CUDA is not available.
+Notes:
+- `--cpu` forces a CPU-only build.
+- `--cuda` requires CUDA and fails if CUDA is unavailable.
+- Without either flag, LiteInfer auto-detects CUDA and falls back to CPU-only when needed.
+- By default the build uses `build/`, `USE_CPM=ON`, and `CMAKE_BUILD_TYPE=Release`.
 
-## Run Llama 3
+### 2. Prepare a Local Model Directory
 
-LiteInfer now generates automatically until it reaches EOS or fills the runtime KV cache.
+Place the downloaded Hugging Face model files under `local_models/llama3/`.
+
+Recommended layout:
+
+```text
+local_models/
+  llama3/
+    Llama-3.2-1B/
+      config.json
+      generation_config.json
+      model.safetensors
+      special_tokens_map.json
+      tokenizer.json
+      tokenizer_config.json
+    Llama-3.2-1B-Instruct/
+      config.json
+      generation_config.json
+      model.safetensors
+      special_tokens_map.json
+      tokenizer.json
+      tokenizer_config.json
+```
+
+### 3. Export LiteInfer `.bin` Weights
+
+LiteInfer runs on its own `.bin` format, so Hugging Face weights must be exported first.
+
+Base model:
+
+```bash
+python3 tools/export_llama3.py \
+  local_models/llama3/Llama-3.2-1B.bin \
+  --hf=local_models/llama3/Llama-3.2-1B
+```
+
+Instruct model:
+
+```bash
+python3 tools/export_llama3.py \
+  local_models/llama3/Llama-3.2-1B-Instruct.bin \
+  --hf=local_models/llama3/Llama-3.2-1B-Instruct
+```
+
+Llama 2 export is also supported:
+
+```bash
+python3 tools/export_llama2.py <output_bin> --meta-llama <model_dir>
+```
+
+### 4. Run
+
+#### Option A: Smoke Test With Explicit Paths
+
+`llama3_infer_demo` loads a model from explicit paths and runs a built-in prompt.
 
 ```bash
 ./build/llama3_infer_demo <model_path> <tokenizer_path>
@@ -49,20 +101,39 @@ Example:
   local_models/llama3/Llama-3.2-1B/tokenizer.json
 ```
 
-If you want a fixed local Llama 3.2 setup and only pass the prompt:
+#### Option B: Prompt Demo With Local Default Paths
+
+`llama3_infer_prompt_demo` is the easier interactive entry point.
+
+It:
+- accepts your prompt from the command line
+- prefers `Llama-3.2-1B-Instruct` when it is available
+- automatically wraps Instruct prompts with the Llama 3 chat template
+- prints only newly generated text instead of echoing the whole prompt back
+
+Default behavior:
 
 ```bash
 ./build/llama3_infer_prompt_demo 你好，介绍一下你自己
 ```
 
-`llama3_infer_prompt_demo` now prefers a local `Llama-3.2-1B-Instruct` export when it is
-available and automatically wraps the prompt with the Llama 3 instruct chat template. You can
-override the selection explicitly:
+Force the instruct model:
 
 ```bash
 ./build/llama3_infer_prompt_demo --instruct 你好，介绍一下你自己
+```
+
+Force the base model:
+
+```bash
 ./build/llama3_infer_prompt_demo --base explain rotary embeddings
 ```
+
+## Which Binary Should I Use?
+
+- Use `./build/llama3_infer_prompt_demo` if you want to type your own prompt.
+- Use `./build/llama3_infer_demo` if you want a simple load-and-run smoke test with explicit model paths.
+- Use `./build/llama2_infer_demo` for Llama 2.
 
 ## Tests
 
@@ -71,17 +142,8 @@ override the selection explicitly:
 ctest --test-dir build --output-on-failure -R test_main
 ```
 
-## Tools
+## Troubleshooting
 
-```bash
-python3 tools/export_llama2.py <output_bin> --meta-llama <model_dir>
-python3 tools/export_llama3.py <output_bin> --hf=<hf_model_dir>
-```
-
-Example for the instruct model:
-
-```bash
-python3 tools/export_llama3.py \
-  local_models/llama3/Llama-3.2-1B-Instruct.bin \
-  --hf=local_models/llama3/Llama-3.2-1B-Instruct
-```
+- If `llama3_infer_prompt_demo` says assets are missing, make sure both the `.bin` file and the matching `tokenizer.json` exist under `local_models/llama3/`.
+- If export succeeds but generation looks wrong, re-export the `.bin` from the Hugging Face directory with `tools/export_llama3.py`.
+- If CMake cannot find dependencies, try building with `USE_CPM=ON` or clean `build/` and rerun `./build.sh`.
