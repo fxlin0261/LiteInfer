@@ -369,11 +369,6 @@ def hf_export(llama_model, filepath, group_size=64, dtype=torch.float32):
     n_rep = llama_model.params.n_heads // num_key_value_heads
     key_value_dim = dim // n_rep
 
-    # HuggingFace needs the weights permuted.
-    # See: https://github.com/huggingface/transformers/blob/b132c1703eb1c8bd9dfa4ad6a9be2bfd6ef819e9/src/transformers/models/llama/convert_llama_weights_to_hf.py#L122
-    def permute_original(w, n_heads=llama_model.params.n_heads, dim1=dim, dim2=dim):
-        return w.view(dim1, dim2).reshape(n_heads, dim1 // n_heads // 2, 2, dim2).transpose(1, 2).reshape(dim1, dim2)
-
     # Transfer weights from llama model to the HF state dictionary format
     hf_state_dict['model.embed_tokens.weight'] = llama_model.tok_embeddings.weight.clone().to(dtype)
     hf_state_dict['model.norm.weight'] = llama_model.norm.weight.clone().to(dtype)
@@ -383,10 +378,10 @@ def hf_export(llama_model, filepath, group_size=64, dtype=torch.float32):
         layer_id = layer.layer_id
         hf_state_dict[f'model.layers.{i}.input_layernorm.weight'] = llama_model.layers[
             layer_id].attention_norm.weight.clone().to(dtype)
-        hf_state_dict[f'model.layers.{i}.self_attn.q_proj.weight'] = permute_original(
-            llama_model.layers[layer_id].attention.wq.weight.clone()).to(dtype)
-        hf_state_dict[f'model.layers.{i}.self_attn.k_proj.weight'] = permute_original(
-            llama_model.layers[layer_id].attention.wk.weight.clone(), num_key_value_heads, key_value_dim, dim).to(dtype)
+        hf_state_dict[f'model.layers.{i}.self_attn.q_proj.weight'] = llama_model.layers[
+            layer_id].attention.wq.weight.clone().to(dtype)
+        hf_state_dict[f'model.layers.{i}.self_attn.k_proj.weight'] = llama_model.layers[
+            layer_id].attention.wk.weight.clone().to(dtype)
         hf_state_dict[f'model.layers.{i}.self_attn.v_proj.weight'] = llama_model.layers[
             layer_id].attention.wv.weight.clone().to(dtype)
         hf_state_dict[f'model.layers.{i}.self_attn.o_proj.weight'] = llama_model.layers[
@@ -592,19 +587,15 @@ def load_hf_model(model_path):
     model.tok_embeddings.weight = nn.Parameter(hf_dict['model.embed_tokens.weight'])
     model.norm.weight = nn.Parameter(hf_dict['model.norm.weight'])
 
-    # huggingface permutes WQ and WK, this function reverses it
-    def permute_reverse(w, n_heads=config.n_heads, dim1=config.dim, dim2=config.dim):
-        return w.view(n_heads, 2, dim1 // n_heads // 2, dim2).transpose(1, 2).reshape(dim1, dim2)
-
     for layer in model.layers:
         i = layer.layer_id
         layer.attention_norm.weight = nn.Parameter(hf_dict[f'model.layers.{i}.input_layernorm.weight'])
-        layer.attention.wq.weight = nn.Parameter(permute_reverse(
-            hf_dict[f'model.layers.{i}.self_attn.q_proj.weight']))
-        layer.attention.wk.weight = nn.Parameter(permute_reverse(
-            hf_dict[f'model.layers.{i}.self_attn.k_proj.weight'],
-            n_heads=config.n_kv_heads,
-            dim1=config.dim // config.n_heads * config.n_kv_heads))
+        # Llama 3 in Hugging Face uses rotate_half() style RoPE, which matches LiteInfer's
+        # half-split runtime layout. Keep q/k projections in the original HF ordering.
+        layer.attention.wq.weight = nn.Parameter(
+            hf_dict[f'model.layers.{i}.self_attn.q_proj.weight'])
+        layer.attention.wk.weight = nn.Parameter(
+            hf_dict[f'model.layers.{i}.self_attn.k_proj.weight'])
         layer.attention.wv.weight = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.v_proj.weight'])
         layer.attention.wo.weight = nn.Parameter(hf_dict[f'model.layers.{i}.self_attn.o_proj.weight'])
         layer.ffn_norm.weight = nn.Parameter(hf_dict[f'model.layers.{i}.post_attention_layernorm.weight'])
