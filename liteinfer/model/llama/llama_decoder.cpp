@@ -49,11 +49,19 @@ int32_t DebugTopLogitsCount() {
     return static_cast<int32_t>(std::min<long>(parsed_value, 32));
 }
 
-tensor::Tensor CopyTensorToCpu(const tensor::Tensor& tensor) {
-    tensor::Tensor cpu_copy = tensor.clone();
-    if (cpu_copy.device_type() == base::DeviceType::kDeviceCUDA) {
-        cpu_copy.to_cpu();
+tensor::Tensor CopyTensorToCpu(const tensor::Tensor& tensor, void* stream = nullptr) {
+    if (tensor.device_type() == base::DeviceType::kDeviceCPU) {
+        return tensor.clone();
     }
+
+    CHECK(tensor.device_type() == base::DeviceType::kDeviceCUDA)
+        << "CopyTensorToCpu only supports CPU or CUDA tensors.";
+
+    tensor::Tensor cpu_copy(tensor.data_type(), tensor.dims(), true,
+                            base::CPUDeviceAllocatorFactory::get_instance());
+    auto cuda_alloc = base::CUDADeviceAllocatorFactory::get_instance();
+    cuda_alloc->memcpy(tensor.ptr<void>(), cpu_copy.ptr<void>(), tensor.byte_size(),
+                       base::MemcpyKind::kMemcpyCUDA2CPU, stream, true);
     return cpu_copy;
 }
 
@@ -710,7 +718,7 @@ int32_t LlamaDecoderModel::post_processing(const tensor::Tensor& pos, bool is_pr
     tensor::Tensor raw_logits_cpu;
     tensor::Tensor suppressed_logits_cpu;
     if (should_log_debug_logits) {
-        raw_logits_cpu = CopyTensorToCpu(forward_output);
+        raw_logits_cpu = CopyTensorToCpu(forward_output, sample_stream);
         suppressed_logits_cpu = raw_logits_cpu.clone();
         SuppressTokenLogit(suppressed_logits_cpu, bos_token_id(), nullptr);
     }
