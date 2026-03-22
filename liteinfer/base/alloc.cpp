@@ -3,6 +3,14 @@
 #include "base/cuda_config.h"
 
 namespace base {
+#if LITEINFER_ENABLE_CUDA
+namespace {
+void CheckCudaStatus(cudaError_t status, const char* op_name) {
+    CHECK(status == cudaSuccess) << op_name << " failed: " << cudaGetErrorString(status);
+}
+}  // namespace
+#endif
+
 void DeviceAllocator::memcpy(const void* src_ptr, void* dest_ptr, size_t byte_size,
                              MemcpyKind memcpy_kind, void* stream, bool need_sync) const {
     CHECK_NE(src_ptr, nullptr);
@@ -24,27 +32,36 @@ void DeviceAllocator::memcpy(const void* src_ptr, void* dest_ptr, size_t byte_si
 
     if (memcpy_kind == MemcpyKind::kMemcpyCPU2CUDA) {
         if (!stream_) {
-            cudaMemcpy(dest_ptr, src_ptr, byte_size, cudaMemcpyHostToDevice);
+            CheckCudaStatus(cudaMemcpy(dest_ptr, src_ptr, byte_size, cudaMemcpyHostToDevice),
+                            "cudaMemcpy HostToDevice");
         } else {
-            cudaMemcpyAsync(dest_ptr, src_ptr, byte_size, cudaMemcpyHostToDevice, stream_);
+            CheckCudaStatus(
+                cudaMemcpyAsync(dest_ptr, src_ptr, byte_size, cudaMemcpyHostToDevice, stream_),
+                "cudaMemcpyAsync HostToDevice");
         }
     } else if (memcpy_kind == MemcpyKind::kMemcpyCUDA2CPU) {
         if (!stream_) {
-            cudaMemcpy(dest_ptr, src_ptr, byte_size, cudaMemcpyDeviceToHost);
+            CheckCudaStatus(cudaMemcpy(dest_ptr, src_ptr, byte_size, cudaMemcpyDeviceToHost),
+                            "cudaMemcpy DeviceToHost");
         } else {
-            cudaMemcpyAsync(dest_ptr, src_ptr, byte_size, cudaMemcpyDeviceToHost, stream_);
+            CheckCudaStatus(
+                cudaMemcpyAsync(dest_ptr, src_ptr, byte_size, cudaMemcpyDeviceToHost, stream_),
+                "cudaMemcpyAsync DeviceToHost");
         }
     } else if (memcpy_kind == MemcpyKind::kMemcpyCUDA2CUDA) {
         if (!stream_) {
-            cudaMemcpy(dest_ptr, src_ptr, byte_size, cudaMemcpyDeviceToDevice);
+            CheckCudaStatus(cudaMemcpy(dest_ptr, src_ptr, byte_size, cudaMemcpyDeviceToDevice),
+                            "cudaMemcpy DeviceToDevice");
         } else {
-            cudaMemcpyAsync(dest_ptr, src_ptr, byte_size, cudaMemcpyDeviceToDevice, stream_);
+            CheckCudaStatus(
+                cudaMemcpyAsync(dest_ptr, src_ptr, byte_size, cudaMemcpyDeviceToDevice, stream_),
+                "cudaMemcpyAsync DeviceToDevice");
         }
     } else {
         LOG(FATAL) << "Unknown memcpy kind: " << int(memcpy_kind);
     }
     if (need_sync) {
-        cudaDeviceSynchronize();
+        CheckCudaStatus(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
     }
 #else
     LOG(FATAL) << "CUDA memcpy requested in a CPU-only build.";
@@ -59,12 +76,12 @@ void DeviceAllocator::memset_zero(void* ptr, size_t byte_size, void* stream, boo
 #if LITEINFER_ENABLE_CUDA
         if (stream) {
             cudaStream_t stream_ = static_cast<cudaStream_t>(stream);
-            cudaMemsetAsync(ptr, 0, byte_size, stream_);
+            CheckCudaStatus(cudaMemsetAsync(ptr, 0, byte_size, stream_), "cudaMemsetAsync");
         } else {
-            cudaMemset(ptr, 0, byte_size);
+            CheckCudaStatus(cudaMemset(ptr, 0, byte_size), "cudaMemset");
         }
         if (need_sync) {
-            cudaDeviceSynchronize();
+            CheckCudaStatus(cudaDeviceSynchronize(), "cudaDeviceSynchronize");
         }
 #else
         LOG(FATAL) << "CUDA memset requested in a CPU-only build.";
