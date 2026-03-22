@@ -7,18 +7,11 @@ namespace model {
 class LlamaModel : public LlamaDecoderModel {
 public:
     explicit LlamaModel(base::TokenizerType tokenizer_type, base::ModelType model_type,
-                            std::string token_path, std::string model_path, bool is_quant_model);
+                        std::string token_path, std::string model_path, bool is_quant_model);
 
 protected:
     base::Status create_param_layers() override;
     base::Status create_param_quant_layers() override;
-};
-
-class Llama2Model : public LlamaModel {
-public:
-    explicit Llama2Model(std::string token_path, std::string model_path, bool is_quant_model)
-        : LlamaModel(base::TokenizerType::kEncodeSpe, base::ModelType::kModelTypeLlama2,
-                         std::move(token_path), std::move(model_path), is_quant_model) {}
 };
 
 class Llama3Model : public LlamaModel {
@@ -29,4 +22,3 @@ public:
 };
 }  // namespace model
 #endif
-

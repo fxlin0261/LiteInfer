@@ -96,7 +96,6 @@ enum class DataType : uint8_t {
 enum class ModelType : uint8_t {
     kModelTypeUnknown = 0,
     kModelTypeLlama = 1,
-    kModelTypeLlama2 = kModelTypeLlama,
     kModelTypeLlama3 = 2,
 };
 
@@ -125,13 +124,11 @@ using StatusCode = absl::StatusCode;
 
 enum class TokenizerType {
     kEncodeUnknown = -1,
-    kEncodeSpe = 0,
-    kEncodeBpe = 1,
+    kEncodeBpe = 0,
 };
 
 inline bool IsLlamaModel(ModelType model_type) {
-    return model_type == ModelType::kModelTypeLlama || model_type == ModelType::kModelTypeLlama2 ||
-           model_type == ModelType::kModelTypeLlama3;
+    return model_type == ModelType::kModelTypeLlama || model_type == ModelType::kModelTypeLlama3;
 }
 
 inline bool UsesLlama3RoPE(ModelType model_type) {

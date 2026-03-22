@@ -118,8 +118,6 @@ base::Status MapModelData(ScopedFd&& fd, const std::string& model_path, size_t h
 std::unique_ptr<op::TokenizerLayerBase> CreateTokenizerLayer(base::TokenizerType tokenizer_type,
                                                              const std::string& token_path) {
     switch (tokenizer_type) {
-        case base::TokenizerType::kEncodeSpe:
-            return std::make_unique<op::SentencePieceTokenizerLayer>(token_path, true, false);
         case base::TokenizerType::kEncodeBpe:
             return std::make_unique<op::BpeTokenizerLayer>(token_path, true, false);
         default:

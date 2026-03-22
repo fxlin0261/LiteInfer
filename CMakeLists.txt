@@ -120,12 +120,6 @@ if(USE_CPM)
     GIT_TAG 14.0.1
   )
 
-  CPMAddPackage(
-    NAME sentencepiece
-    GITHUB_REPOSITORY google/sentencepiece
-    VERSION 0.2.0
-  )
-
   if(LITEINFER_ENABLE_BPE_TOKENIZERS)
     CPMAddPackage(
       NAME re2
@@ -171,48 +165,6 @@ if(NOT TARGET armadillo AND NOT TARGET Armadillo::Armadillo)
   find_package(Armadillo REQUIRED)
 endif()
 
-if(NOT TARGET sentencepiece::sentencepiece
-   AND NOT TARGET sentencepiece
-   AND NOT TARGET sentencepiece-static
-)
-  find_package(sentencepiece QUIET)
-endif()
-
-if(NOT TARGET sentencepiece::sentencepiece
-   AND NOT TARGET sentencepiece
-   AND NOT TARGET sentencepiece-static
-)
-  set(LITEINFER_SENTENCEPIECE_PREFIX_HINTS
-      /opt/homebrew
-      /opt/homebrew/opt/sentencepiece
-      /usr/local
-      /usr/local/opt/sentencepiece
-  )
-  find_path(
-    SENTENCEPIECE_INCLUDE_DIR
-    sentencepiece_processor.h
-    HINTS ${LITEINFER_SENTENCEPIECE_PREFIX_HINTS}
-    PATH_SUFFIXES include
-  )
-  find_library(
-    SENTENCEPIECE_LIBRARY
-    NAMES sentencepiece
-    HINTS ${LITEINFER_SENTENCEPIECE_PREFIX_HINTS}
-    PATH_SUFFIXES lib
-  )
-
-  if(SENTENCEPIECE_INCLUDE_DIR AND SENTENCEPIECE_LIBRARY)
-    add_library(sentencepiece UNKNOWN IMPORTED)
-    set_target_properties(
-      sentencepiece
-      PROPERTIES IMPORTED_LOCATION "${SENTENCEPIECE_LIBRARY}"
-                 INTERFACE_INCLUDE_DIRECTORIES "${SENTENCEPIECE_INCLUDE_DIR}"
-    )
-  else()
-    message(FATAL_ERROR "Unable to find sentencepiece headers and library.")
-  endif()
-endif()
-
 if(NOT TARGET absl::status)
   find_package(absl REQUIRED)
 endif()
@@ -233,24 +185,7 @@ endif()
 
 liteinfer_maybe_disable_third_party_warnings(
   glog_internal
-  sentencepiece_train
-  sentencepiece_train-static
 )
-
-add_library(liteinfer_sentencepiece INTERFACE)
-if(TARGET sentencepiece::sentencepiece)
-  target_link_libraries(liteinfer_sentencepiece INTERFACE sentencepiece::sentencepiece)
-elseif(TARGET sentencepiece)
-  target_link_libraries(liteinfer_sentencepiece INTERFACE sentencepiece)
-elseif(TARGET sentencepiece-static)
-  target_link_libraries(liteinfer_sentencepiece INTERFACE sentencepiece-static)
-else()
-  message(FATAL_ERROR "Unable to find a usable sentencepiece target.")
-endif()
-
-if(DEFINED sentencepiece_SOURCE_DIR AND EXISTS "${sentencepiece_SOURCE_DIR}/src")
-  target_include_directories(liteinfer_sentencepiece INTERFACE "${sentencepiece_SOURCE_DIR}/src")
-endif()
 
 add_library(liteinfer_armadillo INTERFACE)
 if(TARGET Armadillo::Armadillo)
@@ -281,7 +216,6 @@ endif()
 
 set(
   LITEINFER_INFER_TARGET_SOURCES
-  "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_infer_demo.cpp"
   "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer_demo.cpp"
   "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer_prompt_demo.cpp"
 )
@@ -298,7 +232,7 @@ add_library(liteinfer::runtime ALIAS liteinfer_runtime)
 
 target_compile_features(liteinfer_runtime PUBLIC cxx_std_17)
 target_include_directories(liteinfer_runtime PUBLIC "${PROJECT_SOURCE_DIR}/liteinfer")
-target_link_libraries(liteinfer_runtime PUBLIC glog::glog absl::status liteinfer_armadillo liteinfer_sentencepiece)
+target_link_libraries(liteinfer_runtime PUBLIC glog::glog absl::status liteinfer_armadillo)
 
 if(LITEINFER_WITH_CUDA)
   target_link_libraries(liteinfer_runtime PUBLIC ${LITEINFER_CUDART_TARGET})
@@ -327,7 +261,6 @@ function(liteinfer_add_model_target target_name source_file)
   target_link_libraries(${target_name} PRIVATE liteinfer::runtime)
 endfunction()
 
-liteinfer_add_model_target(llama2_infer_demo "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama2_infer_demo.cpp")
 liteinfer_add_model_target(llama3_infer_demo "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer_demo.cpp")
 liteinfer_add_model_target(llama3_infer_prompt_demo "${PROJECT_SOURCE_DIR}/liteinfer/model/llama/llama3_infer_prompt_demo.cpp")
 if(BUILD_TESTING)

@@ -3,7 +3,6 @@
 #include <absl/strings/str_join.h>
 #include <absl/strings/str_replace.h>
 #include <absl/strings/str_split.h>
-#include <sentencepiece_processor.h>
 #include <ankerl/unordered_dense.h>
 #include "nlohmann/json.hpp"
 #include "op/layer.h"
@@ -28,20 +27,6 @@ protected:
     bool has_bos_ = true;
     bool has_eos_ = false;
     std::string token_model_path_;
-};
-
-class SentencePieceTokenizerLayer : public TokenizerLayerBase {
-public:
-    explicit SentencePieceTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos);
-    std::vector<int32_t> encode(const std::string& sentence) const override;
-    std::string decode(int32_t token_id) const override;
-    std::string decode(const std::vector<int32_t>& token_ids) const override;
-    bool is_sentence_ending(int32_t token_id) const override;
-    int32_t vocab_size() const override;
-    int32_t bos_token_id() const override;
-
-private:
-    std::unique_ptr<sentencepiece::SentencePieceProcessor> spe;
 };
 
 class BpeTokenizerLayer : public TokenizerLayerBase {

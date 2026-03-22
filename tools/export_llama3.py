@@ -4,12 +4,11 @@ Basically, we have a bunch of versions of the model, and we
 want to export them to .bin files to be read from and inferenced in C.
 
 Among the "input" versions of PyTorch files/models:
-- Official Llama 2 weights released by Meta
 - Huggingface weights available on the hub
-- llama2.c (this repo) trained models
+- local checkpoints produced by this repo
 
 Among the "output" versions of .bin files:
-- v0: Legacy files of the original llama2.c repo (will eventually be DEPRECATED)
+- v0: Legacy flat binary files (will eventually be DEPRECATED)
 - v1-vN: Improved .bin files with a proper header, cache alignment, etc.
 
 This script aspires to provide all of these conversions.
@@ -82,7 +81,7 @@ def quantize_q80(w, group_size):
 # legacy
 
 def legacy_export(model, filepath):
-    """ Original export of llama2.c bin files, i.e. version v0 """
+    """ Original export of the legacy v0 bin format. """
     out_file = open(filepath, 'wb')
 
     # first write out the header
@@ -138,7 +137,7 @@ def legacy_export(model, filepath):
 
 def legacy_export_quant(model, filepath):
     print('export quant model')
-    """ Original export of llama2.c bin files, i.e. version v0 """
+    """ Original export of the legacy v0 bin format. """
     out_file = open(filepath, 'wb')
 
     # first write out the header
@@ -395,7 +394,7 @@ def hf_export(llama_model, filepath, group_size=64, dtype=torch.float32):
         hf_state_dict[f'model.layers.{i}.mlp.up_proj.weight'] = llama_model.layers[
             layer_id].feed_forward.w3.weight.clone().to(dtype)
 
-    # llama2.c usually uses tied weights -> reference the embed_tokens.weights instead
+    # Tied weights usually share the embedding table with lm_head.
     hf_state_dict['lm_head.weight'] = hf_state_dict['model.embed_tokens.weight']
 
     # We check that the embeddings are tied, else use manual output weights
@@ -616,7 +615,7 @@ def model_export(model, filepath, version, dtype=torch.float32):
     """
     Versions docs:
     v-1:huggingface export, i.e. intended for use outside of this repo, in HF
-    v0: legacy llama2.c float format, DEPRECATED
+    v0: legacy flat float format, DEPRECATED
     v1: float32 export
     v2: int8 quantized Q8_0 export, similar to llama.cpp, in groups
     # TODO: add dtype export support for other versions (?)

@@ -10,7 +10,6 @@
 #include "op/layer.h"
 #include "model/raw_model_data.h"
 #include "base/sampler.h"
-#include "sentencepiece_processor.h"
 #include "base/tensor.h"
 
 namespace model {

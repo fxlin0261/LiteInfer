@@ -4,57 +4,8 @@
 #include "base/unicode_utf8.h"
 
 namespace op {
-std::string SentencePieceTokenizerLayer::decode(int32_t token_id) const {
-    CHECK(spe != nullptr);
-    std::vector<int32_t> token_ids{token_id};
-    return this->spe->DecodeIds(token_ids);
-}
-
-std::string SentencePieceTokenizerLayer::decode(const std::vector<int32_t>& token_ids) const {
-    CHECK(spe != nullptr);
-    return this->spe->DecodeIds(token_ids);
-}
-SentencePieceTokenizerLayer::SentencePieceTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos)
-    : TokenizerLayerBase(std::move(token_model_path), has_bos, has_eos) {
-    using namespace sentencepiece::util;
-    spe = std::make_unique<sentencepiece::SentencePieceProcessor>();
-    auto rc = spe->Load(token_model_path_);
-    if (rc.code() != StatusCode::kOk) {
-        LOG(FATAL)
-            << "The token model path is not valid, please check the path and type of token model.";
-    }
-}
-
-std::vector<int32_t> SentencePieceTokenizerLayer::encode(const std::string& sentence) const {
-    CHECK(spe != nullptr);
-    // SentencePiece 编码，可按需补 BOS/EOS。
-    std::vector<int32_t> input_ids = spe->EncodeAsIds(sentence);
-    if (has_bos_) {
-        input_ids.insert(input_ids.begin(), spe->bos_id());
-    }
-    if (has_eos_) {
-        input_ids.push_back(spe->eos_id());
-    }
-    return input_ids;
-}
-
-bool SentencePieceTokenizerLayer::is_sentence_ending(int32_t token_id) const {
-    CHECK(this->spe != nullptr);
-    return token_id == this->spe->eos_id();
-}
-
-int32_t SentencePieceTokenizerLayer::vocab_size() const {
-    CHECK(spe != nullptr);
-    return spe->GetPieceSize();
-}
-
-int32_t SentencePieceTokenizerLayer::bos_token_id() const {
-    CHECK(spe != nullptr);
-    return spe->bos_id();
-}
-
 static const std::string PAT_STR =
-    R"((?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?:$|[^\S])|\s+)";
+    R"((?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+)";
 BpeTokenizerLayer::BpeTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos)
     : TokenizerLayerBase(std::move(token_model_path), has_bos, has_eos) {
     using json = nlohmann::json;
@@ -102,10 +53,10 @@ std::vector<int32_t> BpeTokenizerLayer::encode(const std::string& sentence) cons
     CHECK(this->tiktoken_ != nullptr);
     auto input_ids = this->tiktoken_->encode(sentence);
 
-    if (has_bos_) {
+    if (has_bos_ && (input_ids.empty() || input_ids.front() != bos_id_)) {
         input_ids.insert(input_ids.begin(), bos_id_);
     }
-    if (has_eos_) {
+    if (has_eos_ && (input_ids.empty() || input_ids.back() != eos_id_)) {
         input_ids.push_back(eos_id_);
     }
     return input_ids;

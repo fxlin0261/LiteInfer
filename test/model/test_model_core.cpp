@@ -38,8 +38,8 @@ public:
 
 class FakeModel final : public model::Model {
 public:
-    explicit FakeModel(base::ModelType model_type = base::ModelType::kModelTypeLlama2,
-                       base::TokenizerType tokenizer_type = base::TokenizerType::kEncodeSpe,
+    explicit FakeModel(base::ModelType model_type = base::ModelType::kModelTypeLlama3,
+                       base::TokenizerType tokenizer_type = base::TokenizerType::kEncodeBpe,
                        std::string token_path = "token.model",
                        std::string model_path = "model.bin", bool is_quant_model = false)
         : Model(tokenizer_type, model_type, std::move(token_path), std::move(model_path),
@@ -296,7 +296,6 @@ TEST(test_model_core, fill_input_uses_prompt_position_or_first_generation_token)
         EXPECT_FLOAT_EQ(generation_input.index<float>(3), 4.f);
     };
 
-    run_case(base::ModelType::kModelTypeLlama2, base::TokenizerType::kEncodeSpe);
     run_case(base::ModelType::kModelTypeLlama3, base::TokenizerType::kEncodeBpe);
 }
 
@@ -339,7 +338,7 @@ TEST(test_model_core, read_model_file_rejects_tokenizer_and_model_vocab_mismatch
 
     const auto model_path = write_model_file(config);
     {
-        FakeModel model(base::ModelType::kModelTypeLlama2, base::TokenizerType::kEncodeSpe,
+        FakeModel model(base::ModelType::kModelTypeLlama3, base::TokenizerType::kEncodeBpe,
                         "token.model", model_path.string());
         model.set_tokenizer_layer_for_test(std::make_unique<FakeEncodeLayer>());
         const auto status = model.read_model_file_for_test();

@@ -51,3 +51,12 @@ TEST(test_bpe_tokenizer, encode_handles_special_tokens_without_rewriting_followi
     EXPECT_EQ(tokenizer.decode(std::vector<int32_t>{10, 1, 12}),
               "<|begin_of_text|> A<|eot_id|>");
 }
+
+TEST(test_bpe_tokenizer, encode_does_not_duplicate_bos_or_eos_special_tokens) {
+    const auto tokenizer_path = WriteMiniTokenizerJson();
+    op::BpeTokenizerLayer tokenizer(tokenizer_path.string(), true, true);
+
+    EXPECT_EQ((tokenizer.encode("<|begin_of_text|> A")), (std::vector<int32_t>{10, 1, 11}));
+    EXPECT_EQ((tokenizer.encode("<|begin_of_text|> A<|end_of_text|>")),
+              (std::vector<int32_t>{10, 1, 11}));
+}
