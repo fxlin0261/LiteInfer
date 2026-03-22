@@ -48,6 +48,11 @@ int32_t SentencePieceTokenizerLayer::vocab_size() const {
     return spe->GetPieceSize();
 }
 
+int32_t SentencePieceTokenizerLayer::bos_token_id() const {
+    CHECK(spe != nullptr);
+    return spe->bos_id();
+}
+
 static const std::string PAT_STR =
     R"((?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?:$|[^\S])|\s+)";
 BpeTokenizerLayer::BpeTokenizerLayer(std::string token_model_path, bool has_bos, bool has_eos)
@@ -134,4 +139,6 @@ int32_t BpeTokenizerLayer::vocab_size() const {
     CHECK(this->tiktoken_ != nullptr);
     return num_token_;
 }
+
+int32_t BpeTokenizerLayer::bos_token_id() const { return bos_id_; }
 }  // namespace op

@@ -348,6 +348,11 @@ bool Model::is_sentence_ending(int32_t token_idx) const {
     return this->tokenizer_layer_->is_sentence_ending(token_idx);
 }
 
+int32_t Model::bos_token_id() const {
+    CHECK(this->tokenizer_layer_ != nullptr);
+    return this->tokenizer_layer_->bos_token_id();
+}
+
 std::string Model::decode(int32_t token_idx) const {
     CHECK(this->tokenizer_layer_ != nullptr);
     return this->tokenizer_layer_->decode(token_idx);

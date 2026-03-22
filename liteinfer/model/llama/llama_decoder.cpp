@@ -1,5 +1,7 @@
 #include "model/llama/llama_decoder.h"
+#include <limits>
 #include <glog/logging.h>
+#include <base/alloc.h>
 #include <op/matmul.h>
 #include <op/mha.h>
 #include <op/rmsnorm.h>
@@ -28,6 +30,22 @@ base::Status ValidateOptionalLayerGroup(const std::vector<std::shared_ptr<op::La
         return base::error::Success();
     }
     return ValidateLayerGroup(layers, expected_size, error_message);
+}
+
+void SuppressTokenLogit(tensor::Tensor& logits, int32_t token_id, void* stream) {
+    if (token_id < 0 || token_id >= static_cast<int32_t>(logits.size())) {
+        return;
+    }
+
+    constexpr float kSuppressedLogit = -std::numeric_limits<float>::infinity();
+    if (logits.device_type() == base::DeviceType::kDeviceCPU) {
+        logits.index<float>(token_id) = kSuppressedLogit;
+        return;
+    }
+
+    auto alloc = base::CUDADeviceAllocatorFactory::get_instance();
+    alloc->memcpy(&kSuppressedLogit, logits.ptr<float>(token_id), sizeof(float),
+                  base::MemcpyKind::kMemcpyCPU2CUDA, stream);
 }
 }  // namespace
 
@@ -553,11 +571,13 @@ int32_t LlamaDecoderModel::post_processing(const tensor::Tensor& pos, bool is_pr
     CHECK(sampler_ != nullptr) << "The sampler is null.";
 
     // 从 kForwardOutput 里取出 logits
-    const tensor::Tensor& forward_output = get_runtime_tensor(RuntimeTensorType::kForwardOutput);
+    tensor::Tensor& forward_output =
+        const_cast<tensor::Tensor&>(get_runtime_tensor(RuntimeTensorType::kForwardOutput));
     void* sample_stream = nullptr;
     if (forward_output.device_type() == base::DeviceType::kDeviceCUDA && cuda_config_) {
         sample_stream = cuda_config_->stream;
     }
+    SuppressTokenLogit(forward_output, bos_token_id(), sample_stream);
 
     // 如果已经进入生成阶段，就用 sampler_->sample(...) 从 logits 里选出下一个 token id
     return static_cast<int32_t>(

@@ -22,6 +22,7 @@ public:
     virtual std::string decode(const std::vector<int32_t>& token_ids) const = 0;
     virtual bool is_sentence_ending(int32_t token_id) const = 0;
     virtual int32_t vocab_size() const = 0;
+    virtual int32_t bos_token_id() const = 0;
 
 protected:
     bool has_bos_ = true;
@@ -37,6 +38,7 @@ public:
     std::string decode(const std::vector<int32_t>& token_ids) const override;
     bool is_sentence_ending(int32_t token_id) const override;
     int32_t vocab_size() const override;
+    int32_t bos_token_id() const override;
 
 private:
     std::unique_ptr<sentencepiece::SentencePieceProcessor> spe;
@@ -50,6 +52,7 @@ public:
     std::string decode(const std::vector<int32_t>& token_ids) const override;
     bool is_sentence_ending(int32_t token_id) const override;
     int32_t vocab_size() const override;
+    int32_t bos_token_id() const override;
 
 protected:
     int32_t bos_id_ = -1;

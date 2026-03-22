@@ -37,6 +37,7 @@ public:
     virtual tensor::Tensor& get_runtime_tensor(RuntimeTensorType tensor_idx);
     virtual const tensor::Tensor& get_runtime_tensor(RuntimeTensorType tensor_idx) const;
     virtual bool is_sentence_ending(int32_t token_idx) const;
+    virtual int32_t bos_token_id() const;
     virtual std::string decode(int32_t token_idx) const;
     virtual std::string decode(std::vector<int32_t> token_idxs) const;
     void set_sampler(std::unique_ptr<sampler::Sampler> sampler);
